@@ -87,7 +87,7 @@ router.post('/:id/ledger', async (req, res) => {
       type,
       amount,
       currency: currency || 'AFN',
-      amountInPKR: toAFN(amount, currency || 'AFN'),
+      amountInPKR: await toAFN(amount, currency || 'AFN'),
       purpose,
       date: date || new Date(),
       balance: newBalance,

@@ -110,7 +110,7 @@ router.post('/payroll', async (req, res) => {
       transactionType: 'Salary',
       amount: totalSalary,
       currency: 'AFN',
-      amountPKR: toAFN(totalSalary, 'AFN'),
+      amountPKR: await toAFN(totalSalary, 'AFN'),
       relatedEntityType: 'Employee',
       relatedEntityId: employee.id,
       description: `Salary for ${employee.fullName} - ${month}/${year}`,
