@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { FAB, Card, Text, IconButton, Menu, Chip } from 'react-native-paper';
+import { FAB, Text, IconButton, Menu, Chip, TouchableRipple } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
-import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -50,31 +51,33 @@ export default function LedgerScreen({ navigation }) {
   const renderItem = ({ item }) => {
     const credit = isCredit(item);
     const amt = Math.abs(Number(item.amount || item.credit || item.debit || 0));
+    const iconColor = credit ? c.success : c.error;
     return (
-      <Card style={[styles.card, { backgroundColor: c.surface }]} mode="elevated"
-        onPress={() => navigation.navigate('LedgerForm', { entry: item })}>
-        <Card.Content style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[styles.typeIcon, { backgroundColor: credit ? '#e8f5e9' : '#ffebee' }]}>
-            <Text style={{ fontSize: 16 }}>{credit ? '📥' : '📤'}</Text>
+      <TouchableRipple
+        onPress={() => navigation.navigate('LedgerForm', { entry: item })}
+        style={[styles.card, { backgroundColor: c.card }, paperTheme.shadows?.sm]}
+        borderless
+      >
+        <View style={styles.cardInner}>
+          <LinearGradient colors={[iconColor + '20', iconColor + '08']} style={styles.cardIcon}>
+            <MaterialCommunityIcons name={credit ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'} size={22} color={iconColor} />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>{item.type || item.description || 'Entry'}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]} numberOfLines={1}>{item.description || item.notes || ''}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.date || item.createdAt ? new Date(item.date || item.createdAt).toLocaleDateString() : ''}</Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface, flex: 1 }} numberOfLines={1}>{item.type || item.description || 'Entry'}</Text>
-            </View>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }} numberOfLines={1}>{item.description || item.notes || ''}</Text>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{item.date || item.createdAt ? new Date(item.date || item.createdAt).toLocaleDateString() : ''}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-            <Text variant="bodyMedium" style={{ fontWeight: '800', color: credit ? '#4caf50' : '#f44336' }}>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: iconColor }}>
               {credit ? '+' : '-'}{formatCurrency(amt)}
             </Text>
+            <View style={{ flexDirection: 'row' }}>
+              <IconButton icon="pencil-outline" size={16} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('LedgerForm', { entry: item })} style={styles.actionBtn} />
+              <IconButton icon="trash-can-outline" size={16} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
+            </View>
           </View>
-          <View style={{ marginLeft: -4, flexDirection: 'row' }}>
-            <IconButton icon="pencil" size={16} onPress={() => navigation.navigate('LedgerForm', { entry: item })} />
-            <IconButton icon="delete" size={16} iconColor={c.error} onPress={() => setDeleteId(item.id)} />
-          </View>
-        </Card.Content>
-      </Card>
+        </View>
+      </TouchableRipple>
     );
   };
 
@@ -93,36 +96,45 @@ export default function LedgerScreen({ navigation }) {
       {/* Balance summary */}
       {balance && (
         <View style={[styles.balanceRow, { paddingHorizontal: 16, paddingTop: 12 }]}>
-          <Card style={[styles.balCard, { backgroundColor: '#e3f2fd' }]}>
-            <Card.Content style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <Text variant="bodySmall" style={{ color: '#1565c0' }}>Showroom</Text>
-              <Text variant="titleSmall" style={{ fontWeight: '800', color: '#1565c0' }}>{formatCurrency(showroomBal)}</Text>
-            </Card.Content>
-          </Card>
-          <Card style={[styles.balCard, { backgroundColor: '#e8f5e9' }]}>
-            <Card.Content style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <Text variant="bodySmall" style={{ color: '#2e7d32' }}>Owner</Text>
-              <Text variant="titleSmall" style={{ fontWeight: '800', color: '#2e7d32' }}>{formatCurrency(ownerBal)}</Text>
-            </Card.Content>
-          </Card>
+          <View style={[styles.balCard, { backgroundColor: c.info + '10' }, paperTheme.shadows?.sm]}>
+            <LinearGradient colors={[c.info + '20', c.info + '08']} style={styles.balIcon}>
+              <MaterialCommunityIcons name="store-outline" size={18} color={c.info} />
+            </LinearGradient>
+            <Text style={{ color: c.info, fontSize: 11, fontWeight: '600', marginTop: 6 }}>Showroom</Text>
+            <Text style={{ fontWeight: '800', color: c.info, fontSize: 15 }}>{formatCurrency(showroomBal)}</Text>
+          </View>
+          <View style={[styles.balCard, { backgroundColor: c.success + '10' }, paperTheme.shadows?.sm]}>
+            <LinearGradient colors={[c.success + '20', c.success + '08']} style={styles.balIcon}>
+              <MaterialCommunityIcons name="account-outline" size={18} color={c.success} />
+            </LinearGradient>
+            <Text style={{ color: c.success, fontSize: 11, fontWeight: '600', marginTop: 6 }}>Owner</Text>
+            <Text style={{ fontWeight: '800', color: c.success, fontSize: 15 }}>{formatCurrency(ownerBal)}</Text>
+          </View>
         </View>
       )}
 
-      {typeFilter !== 'All' && <View style={{ paddingLeft: 16, paddingTop: 8 }}><Chip icon="filter" onClose={() => setTypeFilter('All')}>{typeFilter}</Chip></View>}
+      {typeFilter !== 'All' && <View style={{ paddingLeft: 16, paddingTop: 8 }}><Chip icon="filter" onClose={() => setTypeFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{typeFilter}</Chip></View>}
 
       <FlatList data={filtered} keyExtractor={i => String(i.id)} renderItem={renderItem} contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} colors={[c.primary]} />}
-        ListEmptyComponent={<EmptyState loading={loading} message="No ledger entries" icon="📒" />} />
+        ListEmptyComponent={<EmptyState loading={loading} message="No ledger entries" icon="📒" />}
+        showsVerticalScrollIndicator={false} />
       <ConfirmDialog visible={!!deleteId} title="Delete Entry" message="Delete this ledger entry?" onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  balanceRow: { flexDirection: 'row', gap: 8 },
-  balCard: { flex: 1, borderRadius: 12, elevation: 0 },
-  list: { padding: 16, paddingTop: 8, gap: 8, paddingBottom: 90 },
-  card: { borderRadius: 12, elevation: 1 },
-  typeIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16 },
+  balanceRow: { flexDirection: 'row', gap: 10 },
+  balCard: { flex: 1, borderRadius: 16, alignItems: 'center', paddingVertical: 14 },
+  balIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
+  list: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 90 },
+  card: { borderRadius: 16, overflow: 'hidden' },
+  cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'center' },
+  cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  cardTitle: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
+  cardMeta: { fontSize: 12, marginTop: 1, fontWeight: '400' },
+  actionBtn: { margin: 0, width: 30, height: 30 },
+  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16, elevation: 4 },
 });

@@ -1,19 +1,12 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Chip } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useAppTheme } from '../contexts/ThemeContext';
 
 const STATUS_COLORS = {
-  // Vehicle
   Available: 'success', Sold: 'error', Reserved: 'warning', Coming: 'info', 'Under Repair': 'warning',
-  // Sale
   Paid: 'success', Partial: 'warning', Pending: 'warning', Unpaid: 'error',
-  // Employee
-  Active: 'success', Inactive: 'error',
-  // Loan
-  Active: 'success', Overdue: 'error',
-  // Payroll
-  // Generic
+  Active: 'success', Inactive: 'error', Overdue: 'error',
   success: 'success', error: 'error', warning: 'warning', info: 'info',
 };
 
@@ -31,34 +24,41 @@ export default function StatusChip({ label, type, style }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
 
-  // Try status color first, then type color
   const statusKey = STATUS_COLORS[label];
-  let bgColor, textColor;
+  let bgColor, textColor, dotColor;
 
   if (statusKey) {
-    bgColor = (c[statusKey] || '#757575') + '20';
     textColor = c[statusKey] || '#757575';
+    bgColor = textColor + '15';
+    dotColor = textColor;
   } else if (TYPE_COLORS[label]) {
-    bgColor = TYPE_COLORS[label] + '20';
     textColor = TYPE_COLORS[label];
+    bgColor = textColor + '15';
+    dotColor = textColor;
   } else {
     bgColor = c.surfaceVariant;
     textColor = c.onSurfaceVariant;
+    dotColor = c.onSurfaceVariant;
   }
 
   return (
-    <Chip
-      mode="flat"
-      compact
-      style={[styles.chip, { backgroundColor: bgColor }, style]}
-      textStyle={[styles.text, { color: textColor }]}
-    >
-      {label}
-    </Chip>
+    <View style={[styles.chip, { backgroundColor: bgColor }, style]}>
+      <View style={[styles.dot, { backgroundColor: dotColor }]} />
+      <Text style={[styles.text, { color: textColor }]}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: { borderRadius: 8, height: 28 },
-  text: { fontSize: 12, fontWeight: '600' },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 5,
+    alignSelf: 'flex-start',
+  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  text: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 });

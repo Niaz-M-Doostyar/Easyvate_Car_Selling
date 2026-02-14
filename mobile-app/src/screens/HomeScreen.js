@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Animated, Dimensions, StatusBar, Pressable, Linking } from 'react-native';
-import { Text, Button, Card, Surface, Chip, Divider } from 'react-native-paper';
+import { Text, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -13,21 +14,21 @@ const BRAND = {
 };
 
 const FEATURES = [
-  { icon: 'car-multiple', title: 'Wide Selection', desc: 'Browse our extensive inventory of quality vehicles', color: '#1565c0' },
-  { icon: 'shield-check', title: 'Trusted Deals', desc: 'Transparent pricing with no hidden fees', color: '#2e7d32' },
-  { icon: 'swap-horizontal-bold', title: 'Car Exchange', desc: 'Trade in your old vehicle for a new one', color: '#e65100' },
-  { icon: 'file-document-outline', title: 'Licensed Cars', desc: 'All vehicles with proper documentation', color: '#7b1fa2' },
-  { icon: 'currency-usd', title: 'Multi-Currency', desc: 'Pay in AFN, USD, or PKR', color: '#00695c' },
-  { icon: 'handshake-outline', title: 'Easy Financing', desc: 'Flexible payment plans and loan options', color: '#c2185b' },
+  { icon: 'car-multiple', title: 'Wide Selection', desc: 'Browse our extensive inventory of quality vehicles', color: '#3b82f6' },
+  { icon: 'shield-check', title: 'Trusted Deals', desc: 'Transparent pricing with no hidden fees', color: '#10b981' },
+  { icon: 'swap-horizontal-bold', title: 'Car Exchange', desc: 'Trade in your old vehicle for a new one', color: '#f59e0b' },
+  { icon: 'file-document-outline', title: 'Licensed Cars', desc: 'All vehicles with proper documentation', color: '#8b5cf6' },
+  { icon: 'currency-usd', title: 'Multi-Currency', desc: 'Pay in AFN, USD, or PKR', color: '#06b6d4' },
+  { icon: 'handshake-outline', title: 'Easy Financing', desc: 'Flexible payment plans and loan options', color: '#ec4899' },
 ];
 
 const VEHICLE_TYPES = [
-  { icon: 'car-side', name: 'Sedans', color: '#1565c0' },
-  { icon: 'car-estate', name: 'SUVs', color: '#2e7d32' },
-  { icon: 'truck', name: 'Trucks', color: '#e65100' },
-  { icon: 'car-sports', name: 'Sports', color: '#c2185b' },
-  { icon: 'van-utility', name: 'Vans', color: '#7b1fa2' },
-  { icon: 'car-convertible', name: 'Luxury', color: '#00695c' },
+  { icon: 'car-side', name: 'Sedans', color: '#3b82f6' },
+  { icon: 'car-estate', name: 'SUVs', color: '#10b981' },
+  { icon: 'truck', name: 'Trucks', color: '#f59e0b' },
+  { icon: 'car-sports', name: 'Sports', color: '#ef4444' },
+  { icon: 'van-utility', name: 'Vans', color: '#8b5cf6' },
+  { icon: 'car-convertible', name: 'Luxury', color: '#c8963e' },
 ];
 
 const STATS = [
@@ -44,20 +45,21 @@ const SERVICES = [
   { icon: 'truck-delivery', title: 'Delivery', desc: 'Vehicle delivery to your doorstep across Afghanistan' },
 ];
 
+const ACCENT = '#c8963e';
+const DARK = '#0d1b2a';
+const PRIMARY = '#1b4965';
+
 export default function HomeScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
     ]).start();
 
-    // Subtle pulse on the logo
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
@@ -71,12 +73,15 @@ export default function HomeScreen({ navigation }) {
       <StatusBar barStyle="light-content" />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* ===== HERO SECTION ===== */}
-        <View style={styles.hero}>
-          <View style={styles.heroOverlay} />
+        {/* ===== HERO ===== */}
+        <LinearGradient colors={[DARK, PRIMARY + 'dd']} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }}>
+          {/* Decorative circles */}
+          <View style={[styles.decoCircle, { top: 30, right: -30, width: 120, height: 120, backgroundColor: ACCENT + '08' }]} />
+          <View style={[styles.decoCircle, { bottom: 60, left: -40, width: 160, height: 160, backgroundColor: '#fff' + '05' }]} />
+
           <Animated.View style={[styles.heroContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Animated.View style={[styles.logoCircle, { transform: [{ scale: pulseAnim }] }]}>
-              <MaterialCommunityIcons name="car-sports" size={56} color="#fff" />
+              <MaterialCommunityIcons name="car-sports" size={48} color="#fff" />
             </Animated.View>
             <Text style={styles.heroTitle}>{BRAND.name}</Text>
             <Text style={styles.heroTagline}>{BRAND.tagline}</Text>
@@ -84,76 +89,73 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.heroDesc}>{BRAND.description}</Text>
 
             <View style={styles.heroBtnRow}>
-              <Button
-                mode="contained"
-                onPress={() => navigation.navigate('Login')}
-                style={styles.heroBtnPrimary}
-                contentStyle={{ height: 50 }}
-                labelStyle={{ fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}
-                icon="login"
-              >
-                Sign In
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={() => navigation.navigate('Login')}
-                style={styles.heroBtnSecondary}
-                contentStyle={{ height: 50 }}
-                labelStyle={{ fontSize: 14, fontWeight: '600', color: '#fff' }}
-                textColor="#fff"
-                icon="information-outline"
-              >
-                Learn More
-              </Button>
+              <Pressable onPress={() => navigation.navigate('Login')}>
+                <LinearGradient colors={[ACCENT, '#b8862e']} style={styles.heroBtnPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <MaterialCommunityIcons name="login" size={18} color="#fff" />
+                  <Text style={styles.heroBtnPrimaryText}>Sign In</Text>
+                </LinearGradient>
+              </Pressable>
+              <Pressable onPress={() => navigation.navigate('Login')} style={styles.heroBtnSecondary}>
+                <MaterialCommunityIcons name="information-outline" size={16} color="#fff" />
+                <Text style={styles.heroBtnSecondaryText}>Learn More</Text>
+              </Pressable>
             </View>
           </Animated.View>
 
-          {/* Decorative car silhouettes */}
-          <View style={styles.heroDecoRow}>
+          <Animated.View style={[styles.heroDecoRow, { opacity: fadeAnim }]}>
             {['car-side', 'car-estate', 'truck', 'car-sports'].map((icon, i) => (
-              <Animated.View key={i} style={{ opacity: fadeAnim }}>
-                <MaterialCommunityIcons name={icon} size={28} color="rgba(255,255,255,0.15)" />
-              </Animated.View>
+              <MaterialCommunityIcons key={i} name={icon} size={24} color="rgba(255,255,255,0.1)" />
             ))}
-          </View>
-        </View>
+          </Animated.View>
+        </LinearGradient>
 
-        {/* ===== STATS BAR ===== */}
-        <View style={styles.statsBar}>
+        {/* ===== STATS ===== */}
+        <LinearGradient colors={[PRIMARY, PRIMARY + 'e6']} style={styles.statsBar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           {STATS.map((stat, i) => (
             <View key={i} style={styles.statItem}>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
-        </View>
+        </LinearGradient>
 
-        {/* ===== ABOUT SECTION ===== */}
+        {/* ===== ABOUT ===== */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="information" size={22} color="#1b4965" />
+            <LinearGradient colors={[PRIMARY + '20', PRIMARY + '08']} style={styles.sectionIconBg}>
+              <MaterialCommunityIcons name="information-outline" size={18} color={PRIMARY} />
+            </LinearGradient>
             <Text style={styles.sectionTitle}>About Us</Text>
           </View>
           <Text style={styles.aboutText}>{BRAND.fullDesc}</Text>
           <View style={styles.aboutChips}>
-            <Chip icon="map-marker" style={styles.aboutChip} textStyle={styles.aboutChipText}>Kabul, Afghanistan</Chip>
-            <Chip icon="clock-outline" style={styles.aboutChip} textStyle={styles.aboutChipText}>Open 7 Days</Chip>
-            <Chip icon="phone" style={styles.aboutChip} textStyle={styles.aboutChipText}>+93 700 000 000</Chip>
+            {[
+              { icon: 'map-marker-outline', text: 'Kabul, Afghanistan' },
+              { icon: 'clock-outline', text: 'Open 7 Days' },
+              { icon: 'phone-outline', text: '+93 700 000 000' },
+            ].map((c, i) => (
+              <View key={i} style={styles.aboutChip}>
+                <MaterialCommunityIcons name={c.icon} size={14} color={PRIMARY} />
+                <Text style={styles.aboutChipText}>{c.text}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* ===== FEATURES GRID ===== */}
-        <View style={[styles.section, { backgroundColor: '#f0f4f8' }]}>
+        {/* ===== FEATURES ===== */}
+        <View style={[styles.section, { backgroundColor: '#f5f7fb' }]}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="star-four-points" size={22} color="#1b4965" />
+            <LinearGradient colors={[ACCENT + '25', ACCENT + '08']} style={styles.sectionIconBg}>
+              <MaterialCommunityIcons name="star-four-points" size={18} color={ACCENT} />
+            </LinearGradient>
             <Text style={styles.sectionTitle}>Why Choose Us</Text>
           </View>
           <View style={styles.featuresGrid}>
             {FEATURES.map((f, i) => (
               <Animated.View key={i} style={[styles.featureCard, { opacity: fadeAnim }]}>
-                <View style={[styles.featureIcon, { backgroundColor: f.color + '15' }]}>
-                  <MaterialCommunityIcons name={f.icon} size={28} color={f.color} />
-                </View>
+                <LinearGradient colors={[f.color + '18', f.color + '06']} style={styles.featureIcon}>
+                  <MaterialCommunityIcons name={f.icon} size={24} color={f.color} />
+                </LinearGradient>
                 <Text style={styles.featureTitle}>{f.title}</Text>
                 <Text style={styles.featureDesc}>{f.desc}</Text>
               </Animated.View>
@@ -164,16 +166,18 @@ export default function HomeScreen({ navigation }) {
         {/* ===== VEHICLE TYPES ===== */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="car-multiple" size={22} color="#1b4965" />
+            <LinearGradient colors={[PRIMARY + '20', PRIMARY + '08']} style={styles.sectionIconBg}>
+              <MaterialCommunityIcons name="car-multiple" size={18} color={PRIMARY} />
+            </LinearGradient>
             <Text style={styles.sectionTitle}>Vehicle Categories</Text>
           </View>
           <Text style={styles.sectionSubtitle}>We deal in all types of vehicles to match your needs</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleTypesRow}>
             {VEHICLE_TYPES.map((vt, i) => (
-              <Pressable key={i} style={[styles.vehicleTypeCard, { borderColor: vt.color + '40' }]}>
-                <View style={[styles.vehicleTypeIcon, { backgroundColor: vt.color + '12' }]}>
-                  <MaterialCommunityIcons name={vt.icon} size={36} color={vt.color} />
-                </View>
+              <Pressable key={i} style={styles.vehicleTypeCard}>
+                <LinearGradient colors={[vt.color + '15', vt.color + '05']} style={styles.vehicleTypeIcon}>
+                  <MaterialCommunityIcons name={vt.icon} size={32} color={vt.color} />
+                </LinearGradient>
                 <Text style={[styles.vehicleTypeName, { color: vt.color }]}>{vt.name}</Text>
               </Pressable>
             ))}
@@ -181,96 +185,92 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* ===== SERVICES ===== */}
-        <View style={[styles.section, { backgroundColor: '#f0f4f8' }]}>
+        <View style={[styles.section, { backgroundColor: '#f5f7fb' }]}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="cog" size={22} color="#1b4965" />
+            <LinearGradient colors={[PRIMARY + '20', PRIMARY + '08']} style={styles.sectionIconBg}>
+              <MaterialCommunityIcons name="cog-outline" size={18} color={PRIMARY} />
+            </LinearGradient>
             <Text style={styles.sectionTitle}>Our Services</Text>
           </View>
           {SERVICES.map((svc, i) => (
-            <Card key={i} style={styles.serviceCard} mode="elevated">
-              <Card.Content style={styles.serviceContent}>
-                <View style={[styles.serviceIcon, { backgroundColor: '#1b4965' + '12' }]}>
-                  <MaterialCommunityIcons name={svc.icon} size={24} color="#1b4965" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.serviceTitle}>{svc.title}</Text>
-                  <Text style={styles.serviceDesc}>{svc.desc}</Text>
-                </View>
-              </Card.Content>
-            </Card>
+            <View key={i} style={styles.serviceCard}>
+              <LinearGradient colors={[PRIMARY + '15', PRIMARY + '05']} style={styles.serviceIcon}>
+                <MaterialCommunityIcons name={svc.icon} size={22} color={PRIMARY} />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.serviceTitle}>{svc.title}</Text>
+                <Text style={styles.serviceDesc}>{svc.desc}</Text>
+              </View>
+            </View>
           ))}
         </View>
 
         {/* ===== SALE TYPES ===== */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="tag-multiple" size={22} color="#1b4965" />
+            <LinearGradient colors={[ACCENT + '25', ACCENT + '08']} style={styles.sectionIconBg}>
+              <MaterialCommunityIcons name="tag-multiple-outline" size={18} color={ACCENT} />
+            </LinearGradient>
             <Text style={styles.sectionTitle}>Sale Types</Text>
           </View>
           <Text style={styles.sectionSubtitle}>We offer multiple ways to buy and sell vehicles</Text>
-          <View style={{ gap: 12, marginTop: 8 }}>
+          <View style={{ gap: 10, marginTop: 8 }}>
             {[
-              { name: 'Container One Key', desc: 'Direct purchase with single key handover — simple and fast', icon: 'key', color: '#e65100' },
-              { name: 'Exchange Car', desc: 'Trade your current vehicle and pay the difference', icon: 'swap-horizontal-bold', color: '#1565c0' },
-              { name: 'Licensed Car', desc: 'Full documentation with traffic department transfer', icon: 'file-certificate', color: '#2e7d32' },
+              { name: 'Container One Key', desc: 'Direct purchase with single key handover — simple and fast', icon: 'key-variant', color: '#f59e0b' },
+              { name: 'Exchange Car', desc: 'Trade your current vehicle and pay the difference', icon: 'swap-horizontal-bold', color: '#3b82f6' },
+              { name: 'Licensed Car', desc: 'Full documentation with traffic department transfer', icon: 'file-certificate-outline', color: '#10b981' },
             ].map((st, i) => (
-              <Card key={i} style={[styles.saleTypeCard, { borderLeftColor: st.color, borderLeftWidth: 4 }]} mode="elevated">
-                <Card.Content style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                  <View style={[styles.saleTypeIcon, { backgroundColor: st.color + '15' }]}>
-                    <MaterialCommunityIcons name={st.icon} size={28} color={st.color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.saleTypeName, { color: st.color }]}>{st.name}</Text>
-                    <Text style={styles.saleTypeDesc}>{st.desc}</Text>
-                  </View>
-                </Card.Content>
-              </Card>
+              <View key={i} style={styles.saleTypeCard}>
+                <LinearGradient colors={[st.color + '18', st.color + '06']} style={styles.saleTypeIcon}>
+                  <MaterialCommunityIcons name={st.icon} size={24} color={st.color} />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.saleTypeName, { color: st.color }]}>{st.name}</Text>
+                  <Text style={styles.saleTypeDesc}>{st.desc}</Text>
+                </View>
+              </View>
             ))}
           </View>
         </View>
 
-        {/* ===== CTA SECTION ===== */}
-        <View style={styles.ctaSection}>
-          <MaterialCommunityIcons name="account-lock" size={40} color="#fff" />
+        {/* ===== CTA ===== */}
+        <LinearGradient colors={[PRIMARY, DARK]} style={styles.ctaSection} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={styles.ctaIconCircle}>
+            <MaterialCommunityIcons name="account-lock-outline" size={32} color={ACCENT} />
+          </View>
           <Text style={styles.ctaTitle}>Staff Portal</Text>
           <Text style={styles.ctaDesc}>Sign in to access the full management dashboard — vehicles, sales, inventory, reports and more.</Text>
-          <Button
-            mode="contained"
-            onPress={() => navigation.navigate('Login')}
-            style={styles.ctaBtn}
-            contentStyle={{ height: 52 }}
-            labelStyle={{ fontSize: 16, fontWeight: '700' }}
-            buttonColor="#fff"
-            textColor="#1b4965"
-            icon="login"
-          >
-            Sign In to Dashboard
-          </Button>
-        </View>
+          <Pressable onPress={() => navigation.navigate('Login')}>
+            <LinearGradient colors={['#fff', '#f0f0f0']} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+              <MaterialCommunityIcons name="login" size={18} color={PRIMARY} />
+              <Text style={styles.ctaBtnText}>Sign In to Dashboard</Text>
+            </LinearGradient>
+          </Pressable>
+        </LinearGradient>
 
         {/* ===== FOOTER ===== */}
         <View style={styles.footer}>
           <View style={styles.footerLogoRow}>
-            <MaterialCommunityIcons name="car-sports" size={24} color="#c8963e" />
+            <MaterialCommunityIcons name="car-sports" size={22} color={ACCENT} />
             <Text style={styles.footerBrand}>Niazi Khpalwak Motor Puranchi</Text>
           </View>
-          <Divider style={{ backgroundColor: '#333', marginVertical: 12 }} />
+          <View style={[styles.footerDivider, { marginVertical: 14 }]} />
           <View style={styles.footerLinks}>
             <Pressable style={styles.footerLink}>
-              <MaterialCommunityIcons name="map-marker" size={16} color="#999" />
+              <MaterialCommunityIcons name="map-marker-outline" size={14} color="#777" />
               <Text style={styles.footerLinkText}>Kabul, Afghanistan</Text>
             </Pressable>
             <Pressable style={styles.footerLink} onPress={() => Linking.openURL('tel:+93700000000')}>
-              <MaterialCommunityIcons name="phone" size={16} color="#999" />
+              <MaterialCommunityIcons name="phone-outline" size={14} color="#777" />
               <Text style={styles.footerLinkText}>+93 700 000 000</Text>
             </Pressable>
             <Pressable style={styles.footerLink}>
-              <MaterialCommunityIcons name="email" size={16} color="#999" />
+              <MaterialCommunityIcons name="email-outline" size={14} color="#777" />
               <Text style={styles.footerLinkText}>info@easyvate.com</Text>
             </Pressable>
           </View>
-          <Divider style={{ backgroundColor: '#333', marginVertical: 12 }} />
-          <Text style={styles.footerCopy}>© {new Date().getFullYear()} Easyvate Car Selling Platform</Text>
+          <View style={[styles.footerDivider, { marginVertical: 14 }]} />
+          <Text style={styles.footerCopy}>{new Date().getFullYear()} Easyvate Car Selling Platform</Text>
           <Text style={styles.footerDev}>Developed by Niaz Mohammad Doostyar</Text>
         </View>
 
@@ -284,76 +284,81 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
 
   // Hero
-  hero: { backgroundColor: '#0d1b2a', paddingTop: 70, paddingBottom: 30, paddingHorizontal: 24, minHeight: H * 0.6, justifyContent: 'center' },
-  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13, 27, 42, 0.85)' },
+  hero: { paddingTop: 70, paddingBottom: 30, paddingHorizontal: 24, minHeight: H * 0.6, justifyContent: 'center' },
+  decoCircle: { position: 'absolute', borderRadius: 999, },
   heroContent: { alignItems: 'center', zIndex: 2 },
-  logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#1b4965', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#c8963e', marginBottom: 20, shadowColor: '#c8963e', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 15 },
-  heroTitle: { fontSize: 32, fontWeight: '900', color: '#fff', letterSpacing: 1, textAlign: 'center' },
-  heroTagline: { fontSize: 18, fontWeight: '600', color: '#c8963e', letterSpacing: 2, marginTop: 4, textTransform: 'uppercase' },
-  heroLine: { width: 60, height: 3, backgroundColor: '#c8963e', borderRadius: 2, marginVertical: 16 },
-  heroDesc: { fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 21, maxWidth: 300 },
+  logoCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: ACCENT, marginBottom: 20, shadowColor: ACCENT, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 15 },
+  heroTitle: { fontSize: 30, fontWeight: '900', color: '#fff', letterSpacing: 0.5, textAlign: 'center' },
+  heroTagline: { fontSize: 16, fontWeight: '700', color: ACCENT, letterSpacing: 3, marginTop: 4, textTransform: 'uppercase' },
+  heroLine: { width: 50, height: 3, backgroundColor: ACCENT, borderRadius: 2, marginVertical: 16 },
+  heroDesc: { fontSize: 14, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 21, maxWidth: 300 },
   heroBtnRow: { flexDirection: 'row', gap: 12, marginTop: 28 },
-  heroBtnPrimary: { borderRadius: 12, backgroundColor: '#c8963e', minWidth: 130 },
-  heroBtnSecondary: { borderRadius: 12, borderColor: 'rgba(255,255,255,0.4)', minWidth: 130 },
+  heroBtnPrimary: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
+  heroBtnPrimaryText: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  heroBtnSecondary: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  heroBtnSecondaryText: { fontSize: 13, fontWeight: '600', color: '#fff' },
   heroDecoRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30, paddingHorizontal: 20, zIndex: 2 },
 
   // Stats
-  statsBar: { flexDirection: 'row', backgroundColor: '#1b4965', paddingVertical: 18, paddingHorizontal: 8 },
+  statsBar: { flexDirection: 'row', paddingVertical: 18, paddingHorizontal: 8 },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '900', color: '#c8963e' },
-  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 2, textAlign: 'center', fontWeight: '500' },
+  statValue: { fontSize: 20, fontWeight: '900', color: ACCENT },
+  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2, textAlign: 'center', fontWeight: '500' },
 
   // Section
   section: { paddingVertical: 28, paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#0d1b2a', letterSpacing: 0.3 },
-  sectionSubtitle: { fontSize: 13, color: '#666', marginBottom: 8, lineHeight: 19 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  sectionIconBg: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 19, fontWeight: '800', color: DARK, letterSpacing: -0.2 },
+  sectionSubtitle: { fontSize: 13, color: '#888', marginBottom: 8, lineHeight: 19 },
 
   // About
-  aboutText: { fontSize: 14, color: '#444', lineHeight: 22, marginBottom: 14 },
+  aboutText: { fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 14 },
   aboutChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  aboutChip: { backgroundColor: '#e3effb' },
-  aboutChipText: { fontSize: 12, color: '#1b4965' },
+  aboutChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PRIMARY + '0c', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  aboutChipText: { fontSize: 12, color: PRIMARY, fontWeight: '600' },
 
   // Features
-  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
-  featureCard: { width: (W - 52) / 2, backgroundColor: '#fff', borderRadius: 14, padding: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
-  featureIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  featureTitle: { fontSize: 14, fontWeight: '700', color: '#0d1b2a', marginBottom: 3 },
-  featureDesc: { fontSize: 11, color: '#666', lineHeight: 16 },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  featureCard: { width: (W - 50) / 2, backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  featureIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  featureTitle: { fontSize: 13, fontWeight: '700', color: DARK, marginBottom: 3, letterSpacing: -0.1 },
+  featureDesc: { fontSize: 11, color: '#888', lineHeight: 16 },
 
   // Vehicle Types
-  vehicleTypesRow: { paddingVertical: 8, gap: 12 },
-  vehicleTypeCard: { width: 100, height: 110, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
-  vehicleTypeIcon: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  vehicleTypeName: { fontSize: 13, fontWeight: '700' },
+  vehicleTypesRow: { paddingVertical: 8, gap: 10 },
+  vehicleTypeCard: { width: 96, height: 108, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  vehicleTypeIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  vehicleTypeName: { fontSize: 12, fontWeight: '700' },
 
   // Services
-  serviceCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 10 },
-  serviceContent: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  serviceIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  serviceTitle: { fontSize: 14, fontWeight: '700', color: '#0d1b2a' },
-  serviceDesc: { fontSize: 12, color: '#666', lineHeight: 17, marginTop: 2 },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  serviceIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  serviceTitle: { fontSize: 14, fontWeight: '700', color: DARK },
+  serviceDesc: { fontSize: 12, color: '#888', lineHeight: 17, marginTop: 2 },
 
   // Sale Types
-  saleTypeCard: { backgroundColor: '#fff', borderRadius: 12, elevation: 1 },
-  saleTypeIcon: { width: 50, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  saleTypeName: { fontSize: 15, fontWeight: '700' },
-  saleTypeDesc: { fontSize: 12, color: '#666', lineHeight: 17, marginTop: 2 },
+  saleTypeCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 14, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  saleTypeIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  saleTypeName: { fontSize: 14, fontWeight: '700' },
+  saleTypeDesc: { fontSize: 12, color: '#888', lineHeight: 17, marginTop: 2 },
 
   // CTA
-  ctaSection: { backgroundColor: '#1b4965', paddingVertical: 40, paddingHorizontal: 24, alignItems: 'center' },
-  ctaTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginTop: 12 },
-  ctaDesc: { fontSize: 13, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 20, marginTop: 8, maxWidth: 300 },
-  ctaBtn: { marginTop: 20, borderRadius: 12, minWidth: 220 },
+  ctaSection: { paddingVertical: 40, paddingHorizontal: 24, alignItems: 'center' },
+  ctaIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: ACCENT + '30' },
+  ctaTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 14, letterSpacing: -0.3 },
+  ctaDesc: { fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 20, marginTop: 8, maxWidth: 300 },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22, paddingHorizontal: 28, paddingVertical: 15, borderRadius: 14 },
+  ctaBtnText: { fontSize: 15, fontWeight: '700', color: PRIMARY },
 
   // Footer
-  footer: { backgroundColor: '#0d1b2a', paddingVertical: 28, paddingHorizontal: 24 },
+  footer: { backgroundColor: DARK, paddingVertical: 28, paddingHorizontal: 24 },
   footerLogoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  footerBrand: { fontSize: 14, fontWeight: '700', color: '#c8963e' },
+  footerBrand: { fontSize: 14, fontWeight: '700', color: ACCENT },
+  footerDivider: { height: 1, backgroundColor: '#1a2a3a' },
   footerLinks: { gap: 10 },
   footerLink: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  footerLinkText: { fontSize: 13, color: '#999' },
-  footerCopy: { fontSize: 11, color: '#666', textAlign: 'center', marginTop: 4 },
-  footerDev: { fontSize: 10, color: '#555', textAlign: 'center', marginTop: 4 },
+  footerLinkText: { fontSize: 13, color: '#777' },
+  footerCopy: { fontSize: 11, color: '#556', textAlign: 'center', marginTop: 4 },
+  footerDev: { fontSize: 10, color: '#445', textAlign: 'center', marginTop: 4 },
 });

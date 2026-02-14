@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Card, Text, Switch, Divider, List, Chip } from 'react-native-paper';
+import { Text, Switch, TouchableRipple } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useAppTheme, ACCENT_PRESETS } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,91 +12,113 @@ export default function SettingsScreen({ navigation }) {
   const { user, logout } = useAuth();
   const c = paperTheme.colors;
 
+  const initials = (user?.fullName || user?.username || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const InfoRow = ({ icon, label, value, last }) => (
+    <View>
+      <View style={styles.infoRow}>
+        <LinearGradient colors={[c.primary + '18', c.primary + '06']} style={styles.infoIcon}>
+          <MaterialCommunityIcons name={icon} size={18} color={c.primary} />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, color: c.onSurfaceVariant, fontWeight: '500' }}>{label}</Text>
+          <Text style={{ fontSize: 14, color: c.onSurface, fontWeight: '600', marginTop: 1 }}>{value}</Text>
+        </View>
+      </View>
+      {!last && <View style={[styles.divider, { backgroundColor: c.border }]} />}
+    </View>
+  );
+
   return (
     <ScreenWrapper title="Settings" navigation={navigation}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* User Info */}
-        <Card style={[styles.card, { backgroundColor: c.primary }]}>
-          <Card.Content style={{ alignItems: 'center', paddingVertical: 20 }}>
-            <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-              <Text style={{ fontSize: 24, color: '#fff', fontWeight: '700' }}>
-                {(user?.fullName || user?.username || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-              </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* User Header */}
+        <LinearGradient colors={[c.primary, c.primary + 'cc']} style={[styles.headerCard, paperTheme.shadows?.md]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatarInner}>
+              <Text style={{ fontSize: 22, color: c.primary, fontWeight: '800' }}>{initials}</Text>
             </View>
-            <Text variant="titleMedium" style={{ fontWeight: '700', color: '#fff', marginTop: 8 }}>{user?.fullName || user?.username}</Text>
-            <Chip style={{ marginTop: 6, backgroundColor: 'rgba(255,255,255,0.2)' }} textStyle={{ color: '#fff', fontSize: 11 }}>
-              {user?.role || 'User'}
-            </Chip>
-          </Card.Content>
-        </Card>
+          </View>
+          <Text style={styles.headerName}>{user?.fullName || user?.username}</Text>
+          <View style={styles.rolePill}>
+            <MaterialCommunityIcons name="shield-check-outline" size={12} color="#fff" />
+            <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>{user?.role || 'User'}</Text>
+          </View>
+        </LinearGradient>
 
         {/* Appearance */}
-        <Card style={[styles.card, { backgroundColor: c.surface }]}>
-          <Card.Content>
-            <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 12 }}>Appearance</Text>
+        <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Appearance</Text>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View>
-                <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface }}>Dark Mode</Text>
-                <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>Switch between light and dark theme</Text>
-              </View>
-              <Switch value={isDark} onValueChange={setIsDark} />
+          <View style={styles.toggleRow}>
+            <LinearGradient colors={[c.primary + '18', c.primary + '06']} style={styles.toggleIcon}>
+              <MaterialCommunityIcons name={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'} size={20} color={c.primary} />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface }}>Dark Mode</Text>
+              <Text style={{ fontSize: 12, color: c.onSurfaceVariant, marginTop: 1 }}>Switch between light and dark</Text>
             </View>
+            <Switch value={isDark} onValueChange={setIsDark} trackColor={{ false: c.border, true: c.primary + '60' }} thumbColor={isDark ? c.primary : '#f4f4f5'} />
+          </View>
 
-            <Divider style={{ marginBottom: 12 }} />
-            <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface, marginBottom: 8 }}>Accent Color</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {Object.entries(ACCENT_PRESETS).map(([key, preset]) => (
-                <Pressable key={key} style={{ alignItems: 'center' }} onPress={() => setAccentKey(key)}>
-                  <View
-                    style={[
-                      styles.colorDot,
-                      { backgroundColor: preset.primary },
-                      accentKey === key && { borderWidth: 3, borderColor: c.onSurface },
-                    ]}
-                  />
-                  <Text variant="labelSmall" style={{ color: c.onSurfaceVariant, fontSize: 8, marginTop: 2 }}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Card.Content>
-        </Card>
+          <View style={[styles.divider, { backgroundColor: c.border, marginVertical: 14 }]} />
+
+          <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface, marginBottom: 10 }}>Accent Color</Text>
+          <View style={styles.colorRow}>
+            {Object.entries(ACCENT_PRESETS).map(([key, preset]) => (
+              <Pressable key={key} style={{ alignItems: 'center' }} onPress={() => setAccentKey(key)}>
+                <View style={[styles.colorDot, { backgroundColor: preset.primary }, accentKey === key && styles.colorSelected]}>
+                  {accentKey === key && <MaterialCommunityIcons name="check" size={16} color="#fff" />}
+                </View>
+                <Text style={{ color: c.onSurfaceVariant, fontSize: 9, marginTop: 4, fontWeight: accentKey === key ? '700' : '500' }}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
 
         {/* App Info */}
-        <Card style={[styles.card, { backgroundColor: c.surface }]}>
-          <Card.Content>
-            <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 12 }}>About</Text>
-            <List.Item title="App Name" description="Niazi Khpalwak Motor Puranchi"
-              left={props => <List.Icon {...props} icon="car-sports" />} />
-            <Divider />
-            <List.Item title="Version" description="1.0.0"
-              left={props => <List.Icon {...props} icon="information" />} />
-            <Divider />
-            <List.Item title="Platform" description="React Native (Expo)"
-              left={props => <List.Icon {...props} icon="cellphone" />} />
-            <Divider />
-            <List.Item title="Developer" description="Niaz Mohammad Doostyar"
-              left={props => <List.Icon {...props} icon="account" />} />
-          </Card.Content>
-        </Card>
+        <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>About</Text>
+          <InfoRow icon="car-sports" label="App Name" value="Niazi Khpalwak Motor Puranchi" />
+          <InfoRow icon="information-outline" label="Version" value="1.0.0" />
+          <InfoRow icon="cellphone" label="Platform" value="React Native (Expo)" />
+          <InfoRow icon="account-outline" label="Developer" value="Niaz Mohammad Doostyar" last />
+        </View>
 
         {/* Logout */}
-        <Card style={[styles.card, { backgroundColor: '#ffebee' }]} onPress={logout}>
-          <Card.Content style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}>
-            <List.Icon icon="logout" color="#c62828" />
-            <Text variant="bodyMedium" style={{ fontWeight: '700', color: '#c62828' }}>Sign Out</Text>
-          </Card.Content>
-        </Card>
+        <TouchableRipple onPress={logout} borderless style={[styles.logoutBtn, { backgroundColor: c.error + '10' }, paperTheme.shadows?.sm]}>
+          <View style={styles.logoutInner}>
+            <LinearGradient colors={[c.error + '25', c.error + '08']} style={styles.logoutIcon}>
+              <MaterialCommunityIcons name="logout" size={20} color={c.error} />
+            </LinearGradient>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: c.error }}>Sign Out</Text>
+          </View>
+        </TouchableRipple>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 40, gap: 12 },
-  card: { borderRadius: 12, elevation: 1 },
-  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  colorDot: { width: 32, height: 32, borderRadius: 16 },
+  scroll: { padding: 16, paddingBottom: 40, gap: 14 },
+  headerCard: { borderRadius: 20, padding: 28, alignItems: 'center' },
+  avatarRing: { width: 68, height: 68, borderRadius: 34, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' },
+  avatarInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  headerName: { fontSize: 18, fontWeight: '800', color: '#fff', marginTop: 12, letterSpacing: -0.3 },
+  rolePill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 },
+  section: { borderRadius: 16, padding: 18, overflow: 'hidden' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toggleIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  divider: { height: 1 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  colorDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  colorSelected: { borderWidth: 3, borderColor: 'rgba(255,255,255,0.8)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  infoIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  logoutBtn: { borderRadius: 16, overflow: 'hidden' },
+  logoutInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 10 },
+  logoutIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

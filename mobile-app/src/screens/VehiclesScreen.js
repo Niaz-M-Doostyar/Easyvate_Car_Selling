@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Searchbar, FAB, Card, Text, IconButton, Menu, Divider, Chip } from 'react-native-paper';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, TouchableRipple } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -56,36 +58,47 @@ export default function VehiclesScreen({ navigation }) {
   });
 
   const renderVehicle = ({ item }) => (
-    <Card style={[styles.card, { backgroundColor: c.surface }]} mode="elevated" onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })}>
-      <Card.Content style={styles.cardContent}>
-        <View style={styles.cardLeft}>
+    <TouchableRipple
+      onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })}
+      style={[styles.card, { backgroundColor: c.card }, paperTheme.shadows?.sm]}
+      borderless
+    >
+      <View style={styles.cardInner}>
+        {/* Vehicle icon */}
+        <LinearGradient
+          colors={[c.primary + '20', c.primary + '08']}
+          style={styles.cardIcon}
+        >
+          <MaterialCommunityIcons name="car-side" size={22} color={c.primary} />
+        </LinearGradient>
+        {/* Info */}
+        <View style={styles.cardInfo}>
           <View style={styles.cardHeader}>
-            <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, flex: 1 }} numberOfLines={1}>
+            <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>
               {item.manufacturer} {item.model}
             </Text>
             <StatusChip label={item.status} />
           </View>
-          <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginTop: 2 }}>
+          <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]} numberOfLines={1}>
             {item.vehicleId} • {item.year} • {item.category} • {item.color}
           </Text>
           <View style={styles.priceRow}>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>Cost: {formatCurrency(item.totalCostPKR || item.totalCost)}</Text>
-            <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.success }}>
-              {formatCurrency(item.sellingPrice)}
-            </Text>
+            <Text style={[styles.costText, { color: c.onSurfaceVariant }]}>Cost: {formatCurrency(item.totalCostPKR || item.totalCost)}</Text>
+            <Text style={[styles.priceText, { color: c.success }]}>{formatCurrency(item.sellingPrice)}</Text>
           </View>
         </View>
+        {/* Actions */}
         <View style={styles.actions}>
-          <IconButton icon="eye" size={20} onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })} />
+          <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })} style={styles.actionBtn} />
           {item.status !== 'Sold' && (
             <>
-              <IconButton icon="pencil" size={20} onPress={() => navigation.navigate('VehicleForm', { vehicle: item })} />
-              <IconButton icon="delete" size={20} iconColor={c.error} onPress={() => setDeleteId(item.id)} />
+              <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('VehicleForm', { vehicle: item })} style={styles.actionBtn} />
+              <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
             </>
           )}
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </TouchableRipple>
   );
 
   return (
@@ -114,13 +127,15 @@ export default function VehiclesScreen({ navigation }) {
           value={search}
           onChangeText={setSearch}
           placeholder="Search vehicles..."
-          style={[styles.searchbar, { backgroundColor: c.surfaceVariant }]}
-          inputStyle={{ fontSize: 14 }}
+          style={[styles.searchbar, { backgroundColor: c.surfaceVariant, borderColor: c.border }]}
+          inputStyle={styles.searchInput}
+          iconColor={c.onSurfaceVariant}
+          placeholderTextColor={c.onSurfaceVariant + '80'}
         />
       </View>
       {statusFilter !== 'All' && (
         <View style={styles.chipRow}>
-          <Chip icon="filter" onClose={() => setStatusFilter('All')} style={{ marginLeft: 16 }}>{statusFilter}</Chip>
+          <Chip icon="filter" onClose={() => setStatusFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{statusFilter}</Chip>
         </View>
       )}
 
@@ -131,6 +146,7 @@ export default function VehiclesScreen({ navigation }) {
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchVehicles} colors={[c.primary]} />}
         ListEmptyComponent={<EmptyState loading={loading} message="No vehicles found" icon="🚗" />}
+        showsVerticalScrollIndicator={false}
       />
 
       <ConfirmDialog
@@ -147,15 +163,23 @@ export default function VehiclesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  filterRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  searchbar: { borderRadius: 12, elevation: 0, height: 44 },
-  chipRow: { paddingBottom: 8 },
-  list: { padding: 16, paddingTop: 4, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 12, elevation: 1 },
-  cardContent: { flexDirection: 'row', alignItems: 'flex-start' },
-  cardLeft: { flex: 1 },
+  filterRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
+  searchbar: { borderRadius: 16, elevation: 0, height: 48, borderWidth: 1 },
+  searchInput: { fontSize: 14, marginLeft: -4 },
+  chipRow: { paddingBottom: 6, paddingHorizontal: 16 },
+  filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
+  list: { padding: 16, paddingTop: 6, gap: 10, paddingBottom: 90 },
+  card: { borderRadius: 16, overflow: 'hidden' },
+  cardInner: { flexDirection: 'row', alignItems: 'flex-start', padding: 14, gap: 12 },
+  cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+  cardInfo: { flex: 1 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  actions: { flexDirection: 'column', alignItems: 'center', marginLeft: 4, marginTop: -8 },
-  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16 },
+  cardTitle: { fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: -0.2 },
+  cardMeta: { fontSize: 12, marginTop: 3, fontWeight: '400' },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  costText: { fontSize: 12, fontWeight: '500' },
+  priceText: { fontSize: 15, fontWeight: '800' },
+  actions: { marginTop: -4, marginRight: -8 },
+  actionBtn: { margin: 0, width: 34, height: 34 },
+  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16, elevation: 4 },
 });

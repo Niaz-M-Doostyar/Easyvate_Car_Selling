@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Searchbar, FAB, Card, Text, IconButton, Chip, Avatar } from 'react-native-paper';
+import { Searchbar, FAB, Text, IconButton, TouchableRipple } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -44,46 +46,62 @@ export default function EmployeesScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <Card style={[styles.card, { backgroundColor: c.surface }]} mode="elevated"
-      onPress={() => navigation.navigate('EmployeeForm', { employee: item })}>
-      <Card.Content style={styles.row}>
-        <Avatar.Text size={44} label={getInitials(item.fullName)}
-          style={{ backgroundColor: c.primary }} labelStyle={{ fontSize: 16 }} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface }}>{item.fullName}</Text>
-          <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{item.position || 'Employee'} • {item.phoneNumber}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+    <TouchableRipple
+      onPress={() => navigation.navigate('EmployeeForm', { employee: item })}
+      style={[styles.card, { backgroundColor: c.card }, paperTheme.shadows?.sm]}
+      borderless
+    >
+      <View style={styles.cardInner}>
+        <LinearGradient colors={[c.primary + '20', c.primary + '08']} style={styles.avatar}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: c.primary }}>{getInitials(item.fullName)}</Text>
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.cardTitle, { color: c.onSurface }]}>{item.fullName}</Text>
+          <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.position || 'Employee'} • {item.phoneNumber}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <StatusChip label={item.status || 'Active'} />
-            <Text variant="bodySmall" style={{ color: c.primary, fontWeight: '600' }}>{formatCurrency(item.salary || 0, 'AFN')}/mo</Text>
+            <View style={[styles.salaryBadge, { backgroundColor: c.primary + '12' }]}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: c.primary }}>{formatCurrency(item.salary || 0, 'AFN')}/mo</Text>
+            </View>
           </View>
         </View>
-        <View style={{ flexDirection: 'row' }}>
-          <IconButton icon="pencil" size={18} onPress={() => navigation.navigate('EmployeeForm', { employee: item })} />
-          <IconButton icon="delete" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} />
+        <View style={styles.actionsCol}>
+          <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('EmployeeForm', { employee: item })} style={styles.actionBtn} />
+          <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </TouchableRipple>
   );
 
   return (
     <ScreenWrapper title="Employees" navigation={navigation}
       fab={<FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff" onPress={() => navigation.navigate('EmployeeForm')} />}>
       <View style={styles.filterRow}>
-        <Searchbar value={search} onChangeText={setSearch} placeholder="Search employees..." style={[styles.searchbar, { backgroundColor: c.surfaceVariant }]} inputStyle={{ fontSize: 14 }} />
+        <Searchbar value={search} onChangeText={setSearch} placeholder="Search employees..."
+          style={[styles.searchbar, { backgroundColor: c.surfaceVariant, borderColor: c.border }]}
+          inputStyle={styles.searchInput} iconColor={c.onSurfaceVariant} />
       </View>
       <FlatList data={filtered} keyExtractor={i => String(i.id)} renderItem={renderItem} contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} colors={[c.primary]} />}
-        ListEmptyComponent={<EmptyState loading={loading} message="No employees found" icon="👷" />} />
+        ListEmptyComponent={<EmptyState loading={loading} message="No employees found" icon="👷" />}
+        showsVerticalScrollIndicator={false} />
       <ConfirmDialog visible={!!deleteId} title="Delete Employee" message="Delete this employee?" onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  filterRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  searchbar: { borderRadius: 12, elevation: 0, height: 44 },
-  list: { padding: 16, paddingTop: 4, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 12, elevation: 1 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16 },
+  filterRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
+  searchbar: { borderRadius: 16, elevation: 0, height: 48, borderWidth: 1 },
+  searchInput: { fontSize: 14, marginLeft: -4 },
+  list: { padding: 16, paddingTop: 6, gap: 10, paddingBottom: 90 },
+  card: { borderRadius: 16, overflow: 'hidden' },
+  cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  cardMeta: { fontSize: 12, marginTop: 2, fontWeight: '400' },
+  salaryBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
+  actionsCol: { marginRight: -8 },
+  actionBtn: { margin: 0, width: 34, height: 34 },
+  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16, elevation: 4 },
 });

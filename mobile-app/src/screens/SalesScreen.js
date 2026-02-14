@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, TextInput as RNTextInput } from 'react-native';
-import { Searchbar, FAB, Card, Text, IconButton, Menu, Chip, ProgressBar, Button, Portal, Dialog } from 'react-native-paper';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, ProgressBar, Button, Portal, Dialog, TouchableRipple } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -59,52 +61,52 @@ export default function SalesScreen({ navigation }) {
     return m && (typeFilter === 'All' || x.saleType === typeFilter);
   });
 
-  const getPaymentColor = (remaining) => {
-    if (remaining <= 0) return '#4caf50';
-    return '#ff9800';
-  };
-
   const renderItem = ({ item }) => {
     const remaining = Number(item.remainingAmount || 0);
     const total = Number(item.sellingPrice || 1);
     const paid = total - remaining;
     const progress = Math.min(paid / total, 1);
     const veh = item.Vehicle ? `${item.Vehicle.manufacturer} ${item.Vehicle.model} (${item.Vehicle.year})` : 'N/A';
+    const isPaid = remaining <= 0;
 
     return (
-      <Card style={[styles.card, { backgroundColor: c.surface }]} mode="elevated"
-        onPress={() => navigation.navigate('SaleDetail', { sale: item })}>
-        <Card.Content>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text variant="labelSmall" style={{ color: c.primary, fontWeight: '700' }}>{item.saleId || '-'}</Text>
-                <StatusChip label={item.saleType || 'Sale'} />
+      <TouchableRipple
+        onPress={() => navigation.navigate('SaleDetail', { sale: item })}
+        style={[styles.card, { backgroundColor: c.card }, paperTheme.shadows?.sm]}
+        borderless
+      >
+        <View style={styles.cardInner}>
+          <LinearGradient
+            colors={isPaid ? [c.success + '20', c.success + '08'] : [c.warning + '20', c.warning + '08']}
+            style={styles.cardIcon}
+          >
+            <MaterialCommunityIcons name={isPaid ? 'check-circle-outline' : 'clock-outline'} size={22} color={isPaid ? c.success : c.warning} />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.saleId, { color: c.primary }]}>{item.saleId || '-'}</Text>
+              <StatusChip label={item.saleType || 'Sale'} />
+            </View>
+            <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>{veh}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.Customer?.fullName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+              <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPrice)}</Text>
+              <View style={[styles.payBadge, { backgroundColor: isPaid ? c.success + '12' : c.warning + '12' }]}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: isPaid ? c.success : c.warning }}>
+                  {isPaid ? '✓ Paid' : `${formatCurrency(remaining)} left`}
+                </Text>
               </View>
-              <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginTop: 4 }} numberOfLines={1}>{veh}</Text>
-              <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{item.Customer?.fullName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text variant="bodyMedium" style={{ fontWeight: '800', color: c.onSurface }}>{formatCurrency(item.sellingPrice)}</Text>
-              <Chip style={{ marginTop: 4, backgroundColor: remaining <= 0 ? '#e8f5e9' : '#fff3e0' }}
-                textStyle={{ fontSize: 10, fontWeight: '700', color: getPaymentColor(remaining) }}>
-                {remaining <= 0 ? '✓ Paid' : `${formatCurrency(remaining)} left`}
-              </Chip>
+            <ProgressBar progress={progress} color={isPaid ? c.success : c.warning} style={styles.progress} />
+            <View style={styles.actionsRow}>
+              <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('SaleDetail', { sale: item })} style={styles.actionBtn} />
+              {remaining > 0 && <IconButton icon="cash" size={18} iconColor={c.success} onPress={() => { setPayDialog(item); setPayAmount(String(remaining)); }} style={styles.actionBtn} />}
+              <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('SaleForm', { sale: item })} style={styles.actionBtn} />
+              <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
             </View>
           </View>
-
-          {/* Payment progress bar */}
-          <ProgressBar progress={progress} color={getPaymentColor(remaining)} style={{ marginTop: 8, borderRadius: 4, height: 4 }} />
-
-          {/* Actions */}
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4, gap: -4 }}>
-            <IconButton icon="eye" size={18} onPress={() => navigation.navigate('SaleDetail', { sale: item })} />
-            {remaining > 0 && <IconButton icon="cash" size={18} iconColor="#4caf50" onPress={() => { setPayDialog(item); setPayAmount(String(remaining)); }} />}
-            <IconButton icon="pencil" size={18} onPress={() => navigation.navigate('SaleForm', { sale: item })} />
-            <IconButton icon="delete" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} />
-          </View>
-        </Card.Content>
-      </Card>
+        </View>
+      </TouchableRipple>
     );
   };
 
@@ -118,70 +120,52 @@ export default function SalesScreen({ navigation }) {
       fab={<FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff" onPress={() => navigation.navigate('SaleForm')} />}
     >
       <View style={styles.filterRow}>
-        <Searchbar value={search} onChangeText={setSearch} placeholder="Search sales..." style={[styles.searchbar, { backgroundColor: c.surfaceVariant }]} inputStyle={{ fontSize: 14 }} />
+        <Searchbar value={search} onChangeText={setSearch} placeholder="Search sales..."
+          style={[styles.searchbar, { backgroundColor: c.surfaceVariant, borderColor: c.border }]}
+          inputStyle={styles.searchInput} iconColor={c.onSurfaceVariant} />
       </View>
-      {typeFilter !== 'All' && <View style={{ paddingLeft: 16, paddingBottom: 8 }}><Chip icon="filter" onClose={() => setTypeFilter('All')}>{typeFilter}</Chip></View>}
+      {typeFilter !== 'All' && <View style={{ paddingLeft: 16, paddingBottom: 6 }}><Chip icon="filter" onClose={() => setTypeFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{typeFilter}</Chip></View>}
 
       <FlatList data={filtered} keyExtractor={i => String(i.id)} renderItem={renderItem} contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} colors={[c.primary]} />}
-        ListEmptyComponent={<EmptyState loading={loading} message="No sales found" icon="🚗" />} />
+        ListEmptyComponent={<EmptyState loading={loading} message="No sales found" icon="🚗" />}
+        showsVerticalScrollIndicator={false} />
 
-      <ConfirmDialog visible={!!deleteId} title="Delete Sale" message="This will un-sell the vehicle and delete all related records (commissions, ledger entries, etc.)" onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
+      <ConfirmDialog visible={!!deleteId} title="Delete Sale" message="This will un-sell the vehicle and delete all related records." onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
 
-      {/* Payment Dialog */}
       <Portal>
-        <Dialog visible={!!payDialog} onDismiss={() => setPayDialog(null)} style={{ borderRadius: 16 }}>
-          <Dialog.Title>Record Payment</Dialog.Title>
+        <Dialog visible={!!payDialog} onDismiss={() => setPayDialog(null)} style={[styles.dialog, { backgroundColor: c.card }]}>
+          <Dialog.Title style={styles.dialogTitle}>Record Payment</Dialog.Title>
           <Dialog.Content>
             {payDialog && (
-              <View style={{ gap: 8 }}>
-                <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>
-                  Remaining: {formatCurrency(payDialog.remainingAmount)}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                  <Button compact mode="outlined" onPress={() => setPayAmount(String(payDialog.remainingAmount))}>Full</Button>
-                  <Button compact mode="outlined" onPress={() => setPayAmount(String(Math.round(payDialog.remainingAmount / 2)))}>½</Button>
-                  <Button compact mode="outlined" onPress={() => setPayAmount(String(Math.round(payDialog.remainingAmount / 3)))}>⅓</Button>
+              <View style={{ gap: 12 }}>
+                <Text style={{ color: c.onSurfaceVariant, fontSize: 13 }}>Remaining: {formatCurrency(payDialog.remainingAmount)}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Button compact mode="outlined" onPress={() => setPayAmount(String(payDialog.remainingAmount))} style={styles.presetBtn}>Full</Button>
+                  <Button compact mode="outlined" onPress={() => setPayAmount(String(Math.round(payDialog.remainingAmount / 2)))} style={styles.presetBtn}>½</Button>
+                  <Button compact mode="outlined" onPress={() => setPayAmount(String(Math.round(payDialog.remainingAmount / 3)))} style={styles.presetBtn}>⅓</Button>
                 </View>
-                <View style={{ borderWidth: 1, borderColor: c.outline, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }}>
-                  <Text variant="labelSmall" style={{ color: c.onSurfaceVariant }}>Amount (AFN)</Text>
-                  <Text variant="headlineSmall" style={{ fontWeight: '700', color: c.primary }}
-                    onPress={() => {}}
-                  >{payAmount || '0'}</Text>
-                </View>
-                {/* Simple amount input - using native TextInput to avoid Paper styling issues */}
-                <View style={{ borderWidth: 1, borderColor: c.outline, borderRadius: 8, padding: 12 }}>
-                  <Text variant="labelSmall" style={{ color: c.onSurfaceVariant, marginBottom: 4 }}>Enter Amount</Text>
+                <View style={[styles.inputBox, { borderColor: c.border }]}>
+                  <Text style={{ color: c.onSurfaceVariant, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>Amount (AFN)</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: c.onSurface, marginRight: 4 }}>؋</Text>
-                    <View style={{ flex: 1 }}>
-                      <RNTextInput
-                        value={payAmount}
-                        onChangeText={setPayAmount}
-                        keyboardType="numeric"
-                        style={{ fontSize: 16, fontWeight: '700', color: c.onSurface, padding: 0 }}
-                        placeholder="0"
-                        placeholderTextColor={c.onSurfaceVariant}
-                      />
-                    </View>
+                    <RNTextInput value={payAmount} onChangeText={setPayAmount} keyboardType="numeric"
+                      style={{ flex: 1, fontSize: 18, fontWeight: '800', color: c.onSurface, padding: 0 }}
+                      placeholder="0" placeholderTextColor={c.onSurfaceVariant + '60'} />
                   </View>
                 </View>
-                <View style={{ borderWidth: 1, borderColor: c.outline, borderRadius: 8, padding: 12, marginTop: 4 }}>
-                  <Text variant="labelSmall" style={{ color: c.onSurfaceVariant, marginBottom: 4 }}>Note (optional)</Text>
-                  {React.createElement(require('react-native').TextInput, {
-                    value: payNote,
-                    onChangeText: setPayNote,
-                    style: { fontSize: 14, color: c.onSurface, padding: 0 },
-                    placeholder: 'Payment note...',
-                    placeholderTextColor: c.onSurfaceVariant,
-                  })}
+                <View style={[styles.inputBox, { borderColor: c.border }]}>
+                  <Text style={{ color: c.onSurfaceVariant, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>Note (optional)</Text>
+                  <RNTextInput value={payNote} onChangeText={setPayNote}
+                    style={{ fontSize: 14, color: c.onSurface, padding: 0 }}
+                    placeholder="Payment note..." placeholderTextColor={c.onSurfaceVariant + '60'} />
                 </View>
               </View>
             )}
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setPayDialog(null)}>Cancel</Button>
-            <Button mode="contained" onPress={handlePay} loading={paying} disabled={paying}>Pay</Button>
+          <Dialog.Actions style={styles.dialogActions}>
+            <Button onPress={() => setPayDialog(null)} style={styles.dialogBtn}>Cancel</Button>
+            <Button mode="contained" onPress={handlePay} loading={paying} disabled={paying} style={styles.dialogBtn}>Pay</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -190,9 +174,27 @@ export default function SalesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  filterRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  searchbar: { borderRadius: 12, elevation: 0, height: 44 },
-  list: { padding: 16, paddingTop: 4, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 12, elevation: 1 },
-  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16 },
+  filterRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
+  searchbar: { borderRadius: 16, elevation: 0, height: 48, borderWidth: 1 },
+  searchInput: { fontSize: 14, marginLeft: -4 },
+  filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
+  list: { padding: 16, paddingTop: 6, gap: 10, paddingBottom: 90 },
+  card: { borderRadius: 16, overflow: 'hidden' },
+  cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'flex-start' },
+  cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+  saleId: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  cardTitle: { fontSize: 15, fontWeight: '700', marginTop: 3, letterSpacing: -0.2 },
+  cardMeta: { fontSize: 12, marginTop: 2, fontWeight: '400' },
+  priceText: { fontSize: 16, fontWeight: '800' },
+  payBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
+  progress: { height: 4, borderRadius: 2, marginTop: 8, backgroundColor: '#00000008' },
+  actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2, marginRight: -8 },
+  actionBtn: { margin: 0, width: 34, height: 34 },
+  fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16, elevation: 4 },
+  dialog: { borderRadius: 24 },
+  dialogTitle: { fontWeight: '700', fontSize: 18 },
+  dialogActions: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
+  dialogBtn: { borderRadius: 14 },
+  presetBtn: { borderRadius: 12 },
+  inputBox: { borderWidth: 1.5, borderRadius: 14, padding: 12 },
 });

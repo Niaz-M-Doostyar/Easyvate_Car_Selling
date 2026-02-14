@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Button, Divider, ActivityIndicator } from 'react-native-paper';
+import { Text, ActivityIndicator, TouchableRipple, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -8,16 +10,16 @@ import { formatCurrency } from '../utils/constants';
 import apiClient from '../api/client';
 
 const REPORT_TYPES = [
-  { key: 'sales', label: 'Sales Report', icon: '📊', color: '#1565c0', endpoint: '/reports/sales' },
-  { key: 'vehicles', label: 'Vehicle Inventory', icon: '🚗', color: '#6a1b9a', endpoint: '/reports/vehicles' },
-  { key: 'financial', label: 'Financial Overview', icon: '🏦', color: '#283593', endpoint: '/reports/financial' },
-  { key: 'profit-loss', label: 'Profit & Loss', icon: '📈', color: '#e65100', endpoint: '/reports/profit-loss' },
-  { key: 'customer-transactions', label: 'Customer Transactions', icon: '👥', color: '#00838f', endpoint: '/reports/customer-transactions' },
-  { key: 'commission', label: 'Commission Report', icon: '💎', color: '#ad1457', endpoint: '/reports/commission' },
-  { key: 'daily', label: 'Daily Report', icon: '📋', color: '#2e7d32', endpoint: '/reports/daily' },
-  { key: 'monthly', label: 'Monthly Report', icon: '📅', color: '#4e342e', endpoint: '/reports/monthly' },
-  { key: 'yearly', label: 'Yearly Report', icon: '📆', color: '#bf360c', endpoint: '/reports/yearly' },
-  { key: 'balance-breakdown', label: 'Balance Breakdown', icon: '💰', color: '#1b5e20', endpoint: '/reports/balance-breakdown' },
+  { key: 'sales', label: 'Sales Report', icon: 'chart-bar', color: '#3b82f6', endpoint: '/reports/sales' },
+  { key: 'vehicles', label: 'Vehicle Inventory', icon: 'car-side', color: '#8b5cf6', endpoint: '/reports/vehicles' },
+  { key: 'financial', label: 'Financial Overview', icon: 'bank-outline', color: '#1e40af', endpoint: '/reports/financial' },
+  { key: 'profit-loss', label: 'Profit & Loss', icon: 'chart-timeline-variant-shimmer', color: '#f59e0b', endpoint: '/reports/profit-loss' },
+  { key: 'customer-transactions', label: 'Customer Transactions', icon: 'account-group-outline', color: '#06b6d4', endpoint: '/reports/customer-transactions' },
+  { key: 'commission', label: 'Commission Report', icon: 'diamond-stone', color: '#ec4899', endpoint: '/reports/commission' },
+  { key: 'daily', label: 'Daily Report', icon: 'clipboard-text-outline', color: '#10b981', endpoint: '/reports/daily' },
+  { key: 'monthly', label: 'Monthly Report', icon: 'calendar-month-outline', color: '#78716c', endpoint: '/reports/monthly' },
+  { key: 'yearly', label: 'Yearly Report', icon: 'calendar-star', color: '#ef4444', endpoint: '/reports/yearly' },
+  { key: 'balance-breakdown', label: 'Balance Breakdown', icon: 'wallet-outline', color: '#059669', endpoint: '/reports/balance-breakdown' },
 ];
 
 export default function ReportsScreen({ navigation }) {
@@ -38,7 +40,6 @@ export default function ReportsScreen({ navigation }) {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       const { data } = await apiClient.get(report.endpoint, { params });
-      // Keep the full response structure (may include data, summary, etc.)
       setReportData(data);
     } catch (e) {
       console.log(e.message);
@@ -48,27 +49,31 @@ export default function ReportsScreen({ navigation }) {
   };
 
   const renderReportGrid = () => (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       {/* Date filters */}
-      <Card style={[styles.card, { backgroundColor: c.surface }]}>
-        <Card.Content>
-          <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>Date Range (Optional)</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}><FormField label="From" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" /></View>
-            <View style={{ flex: 1 }}><FormField label="To" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" /></View>
-          </View>
-        </Card.Content>
-      </Card>
+      <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <LinearGradient colors={[c.primary + '20', c.primary + '08']} style={styles.sectionIcon}>
+            <MaterialCommunityIcons name="calendar-range" size={18} color={c.primary} />
+          </LinearGradient>
+          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Date Range (Optional)</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1 }}><FormField label="From" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" /></View>
+          <View style={{ flex: 1 }}><FormField label="To" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" /></View>
+        </View>
+      </View>
 
       <View style={styles.grid}>
         {REPORT_TYPES.map(r => (
-          <Card key={r.key} style={[styles.reportCard, { backgroundColor: r.color + '12' }]}
-            onPress={() => loadReport(r)}>
-            <Card.Content style={{ alignItems: 'center', paddingVertical: 16 }}>
-              <Text style={{ fontSize: 28 }}>{r.icon}</Text>
-              <Text variant="bodySmall" style={{ fontWeight: '700', color: r.color, textAlign: 'center', marginTop: 6 }}>{r.label}</Text>
-            </Card.Content>
-          </Card>
+          <TouchableRipple key={r.key} borderless style={[styles.reportCard, { backgroundColor: c.card }, paperTheme.shadows?.sm]} onPress={() => loadReport(r)}>
+            <View style={styles.reportCardInner}>
+              <LinearGradient colors={[r.color + '22', r.color + '08']} style={styles.reportIcon}>
+                <MaterialCommunityIcons name={r.icon} size={24} color={r.color} />
+              </LinearGradient>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: r.color, textAlign: 'center', marginTop: 8, letterSpacing: -0.1 }}>{r.label}</Text>
+            </View>
+          </TouchableRipple>
         ))}
       </View>
     </View>
@@ -78,19 +83,19 @@ export default function ReportsScreen({ navigation }) {
     if (!reportData) return null;
     if (reportData.error) {
       return (
-        <Card style={[styles.card, { backgroundColor: '#ffebee' }]}>
-          <Card.Content style={{ alignItems: 'center', paddingVertical: 20 }}>
-            <Text style={{ fontSize: 32 }}>⚠️</Text>
-            <Text variant="bodyMedium" style={{ color: '#c62828', marginTop: 8 }}>{reportData.error}</Text>
-          </Card.Content>
-        </Card>
+        <View style={[styles.section, { backgroundColor: c.error + '10' }, paperTheme.shadows?.sm]}>
+          <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+            <LinearGradient colors={[c.error + '20', c.error + '08']} style={styles.errorCircle}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={28} color={c.error} />
+            </LinearGradient>
+            <Text style={{ color: c.error, marginTop: 10, fontSize: 14, fontWeight: '600', textAlign: 'center' }}>{reportData.error}</Text>
+          </View>
+        </View>
       );
     }
 
-    // Render different formats based on data structure
     const data = reportData.report || reportData.summary || reportData;
 
-    // Key-value pairs (skip internal keys like 'success')
     if (typeof data === 'object' && !Array.isArray(data)) {
       const skipKeys = ['success', 'error', 'statusCode', 'timestamp'];
       const entries = Object.entries(data).filter(([k, v]) => !skipKeys.includes(k) && (typeof v !== 'object' || v === null));
@@ -99,81 +104,85 @@ export default function ReportsScreen({ navigation }) {
 
       return (
         <View style={{ gap: 12 }}>
-          {/* Summary KPIs */}
           {entries.length > 0 && (
-            <Card style={[styles.card, { backgroundColor: c.surface }]}>
-              <Card.Content>
-                <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>Summary</Text>
-                {entries.map(([k, v], i) => (
-                  <View key={k}>
-                    <View style={styles.fieldRow}>
-                      <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, flex: 1 }}>{formatLabel(k)}</Text>
-                      <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface }}>{formatValue(v)}</Text>
-                    </View>
-                    {i < entries.length - 1 && <Divider style={{ marginVertical: 2 }} />}
+            <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+              <Text style={[styles.sectionTitle, { color: c.onSurface, marginBottom: 10 }]}>Summary</Text>
+              {entries.map(([k, v], i) => (
+                <View key={k}>
+                  <View style={styles.fieldRow}>
+                    <Text style={{ fontSize: 13, color: c.onSurfaceVariant, flex: 1 }}>{formatLabel(k)}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: c.onSurface }}>{formatValue(v)}</Text>
                   </View>
-                ))}
-              </Card.Content>
-            </Card>
+                  {i < entries.length - 1 && <View style={[styles.divider, { backgroundColor: c.border }]} />}
+                </View>
+              ))}
+            </View>
           )}
 
-          {/* Nested objects */}
           {nested.map(([k, v]) => (
-            <Card key={k} style={[styles.card, { backgroundColor: c.surface }]}>
-              <Card.Content>
-                <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>{formatLabel(k)}</Text>
-                {Object.entries(v).filter(([, val]) => typeof val !== 'object').map(([nk, nv], i) => (
-                  <View key={nk} style={styles.fieldRow}>
-                    <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, flex: 1 }}>{formatLabel(nk)}</Text>
-                    <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface }}>{formatValue(nv)}</Text>
-                  </View>
-                ))}
-              </Card.Content>
-            </Card>
+            <View key={k} style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+              <Text style={[styles.sectionTitle, { color: c.onSurface, marginBottom: 10 }]}>{formatLabel(k)}</Text>
+              {Object.entries(v).filter(([, val]) => typeof val !== 'object').map(([nk, nv]) => (
+                <View key={nk} style={styles.fieldRow}>
+                  <Text style={{ fontSize: 13, color: c.onSurfaceVariant, flex: 1 }}>{formatLabel(nk)}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: c.onSurface }}>{formatValue(nv)}</Text>
+                </View>
+              ))}
+            </View>
           ))}
 
-          {/* Arrays as tables */}
           {arrays.map(([k, arr]) => arr.length > 0 && (
-            <Card key={k} style={[styles.card, { backgroundColor: c.surface }]}>
-              <Card.Content>
-                <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>{formatLabel(k)} ({arr.length})</Text>
-                {arr.slice(0, 20).map((row, i) => (
-                  <View key={i}>
-                    <View style={[styles.fieldRow, { paddingVertical: 4 }]}>
-                      <Text variant="bodySmall" style={{ color: c.onSurface, flex: 1 }} numberOfLines={1}>
-                        {row.name || row.fullName || row.personName || row.saleId || row.manufacturer || `#${i + 1}`}
-                      </Text>
-                      <Text variant="bodySmall" style={{ fontWeight: '600', color: c.primary }}>
-                        {formatValue(row.amount || row.total || row.profit || row.salary || row.count || row.balance || '')}
-                      </Text>
-                    </View>
-                    {i < Math.min(arr.length, 20) - 1 && <Divider />}
+            <View key={k} style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={[styles.sectionTitle, { color: c.onSurface, flex: 1 }]}>{formatLabel(k)}</Text>
+                <View style={[styles.countBadge, { backgroundColor: c.primary + '15' }]}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: c.primary }}>{arr.length}</Text>
+                </View>
+              </View>
+              {arr.slice(0, 20).map((row, i) => (
+                <View key={i}>
+                  <View style={[styles.fieldRow, { paddingVertical: 8 }]}>
+                    <Text style={{ color: c.onSurface, flex: 1, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
+                      {row.name || row.fullName || row.personName || row.saleId || row.manufacturer || `#${i + 1}`}
+                    </Text>
+                    <Text style={{ fontWeight: '700', color: c.primary, fontSize: 13 }}>
+                      {formatValue(row.amount || row.total || row.profit || row.salary || row.count || row.balance || '')}
+                    </Text>
                   </View>
-                ))}
-              </Card.Content>
-            </Card>
+                  {i < Math.min(arr.length, 20) - 1 && <View style={[styles.divider, { backgroundColor: c.border }]} />}
+                </View>
+              ))}
+            </View>
           ))}
         </View>
       );
     }
 
-    return <Text variant="bodyMedium" style={{ color: c.onSurfaceVariant, textAlign: 'center' }}>No data available</Text>;
+    return <Text style={{ color: c.onSurfaceVariant, textAlign: 'center', fontSize: 14 }}>No data available</Text>;
   };
 
   return (
     <ScreenWrapper title="Reports" navigation={navigation}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {!selected ? renderReportGrid() : (
           <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Button icon="arrow-left" onPress={() => { setSelected(null); setReportData(null); }}>Back</Button>
-              <Text variant="titleMedium" style={{ fontWeight: '700', color: selected.color, flex: 1 }}>{selected.icon} {selected.label}</Text>
-              <Button onPress={() => loadReport(selected)}>Refresh</Button>
+            {/* Report header */}
+            <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TouchableRipple borderless onPress={() => { setSelected(null); setReportData(null); }} style={styles.backBtn}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color={c.onSurface} />
+                </TouchableRipple>
+                <LinearGradient colors={[selected.color + '22', selected.color + '08']} style={styles.headerIcon}>
+                  <MaterialCommunityIcons name={selected.icon} size={20} color={selected.color} />
+                </LinearGradient>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: selected.color, flex: 1 }}>{selected.label}</Text>
+                <IconButton icon="refresh" size={20} iconColor={c.onSurfaceVariant} onPress={() => loadReport(selected)} style={{ margin: 0, width: 36, height: 36 }} />
+              </View>
             </View>
             {loading ? (
               <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                 <ActivityIndicator size="large" color={c.primary} />
-                <Text variant="bodyMedium" style={{ color: c.onSurfaceVariant, marginTop: 12 }}>Loading report...</Text>
+                <Text style={{ color: c.onSurfaceVariant, marginTop: 12, fontSize: 14 }}>Loading report...</Text>
               </View>
             ) : renderReportData()}
           </View>
@@ -198,8 +207,17 @@ function formatValue(val) {
 
 const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 40 },
-  card: { borderRadius: 12, elevation: 1 },
+  section: { borderRadius: 16, padding: 16, overflow: 'hidden' },
+  sectionIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 15, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  reportCard: { width: '47%', borderRadius: 12, elevation: 0 },
+  reportCard: { width: '47%', borderRadius: 16, overflow: 'hidden' },
+  reportCardInner: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 10 },
+  reportIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  headerIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  errorCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  divider: { height: 1 },
+  countBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
 });
