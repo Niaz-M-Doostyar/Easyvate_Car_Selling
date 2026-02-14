@@ -23,7 +23,7 @@ export default function CustomersScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/customers');
-      setCustomers(Array.isArray(data) ? data : data.customers || []);
+      setCustomers(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 

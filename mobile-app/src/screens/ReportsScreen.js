@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
-import { Card, Text, Button, Divider, SegmentedButtons, DataTable, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Card, Text, Button, Divider, ActivityIndicator } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -8,16 +8,16 @@ import { formatCurrency } from '../utils/constants';
 import apiClient from '../api/client';
 
 const REPORT_TYPES = [
-  { key: 'sales-summary', label: 'Sales Summary', icon: '📊', color: '#1565c0', endpoint: '/reports/sales-summary' },
-  { key: 'revenue', label: 'Revenue', icon: '💰', color: '#2e7d32', endpoint: '/reports/revenue' },
-  { key: 'profit-analysis', label: 'Profit Analysis', icon: '📈', color: '#e65100', endpoint: '/reports/profit-analysis' },
-  { key: 'inventory', label: 'Inventory Status', icon: '🚗', color: '#6a1b9a', endpoint: '/reports/inventory' },
-  { key: 'customer-report', label: 'Customer Report', icon: '👥', color: '#00838f', endpoint: '/reports/customer-report' },
-  { key: 'employee-report', label: 'Employee Report', icon: '👷', color: '#4e342e', endpoint: '/reports/employee-report' },
-  { key: 'financial-overview', label: 'Financial Overview', icon: '🏦', color: '#283593', endpoint: '/reports/financial-overview' },
-  { key: 'commission-report', label: 'Commission Report', icon: '💎', color: '#ad1457', endpoint: '/reports/commission-report' },
-  { key: 'loan-report', label: 'Loan Report', icon: '💳', color: '#bf360c', endpoint: '/reports/loan-report' },
-  { key: 'attendance-report', label: 'Attendance Report', icon: '📋', color: '#1b5e20', endpoint: '/reports/attendance-report' },
+  { key: 'sales', label: 'Sales Report', icon: '📊', color: '#1565c0', endpoint: '/reports/sales' },
+  { key: 'vehicles', label: 'Vehicle Inventory', icon: '🚗', color: '#6a1b9a', endpoint: '/reports/vehicles' },
+  { key: 'financial', label: 'Financial Overview', icon: '🏦', color: '#283593', endpoint: '/reports/financial' },
+  { key: 'profit-loss', label: 'Profit & Loss', icon: '📈', color: '#e65100', endpoint: '/reports/profit-loss' },
+  { key: 'customer-transactions', label: 'Customer Transactions', icon: '👥', color: '#00838f', endpoint: '/reports/customer-transactions' },
+  { key: 'commission', label: 'Commission Report', icon: '💎', color: '#ad1457', endpoint: '/reports/commission' },
+  { key: 'daily', label: 'Daily Report', icon: '📋', color: '#2e7d32', endpoint: '/reports/daily' },
+  { key: 'monthly', label: 'Monthly Report', icon: '📅', color: '#4e342e', endpoint: '/reports/monthly' },
+  { key: 'yearly', label: 'Yearly Report', icon: '📆', color: '#bf360c', endpoint: '/reports/yearly' },
+  { key: 'balance-breakdown', label: 'Balance Breakdown', icon: '💰', color: '#1b5e20', endpoint: '/reports/balance-breakdown' },
 ];
 
 export default function ReportsScreen({ navigation }) {
@@ -38,10 +38,11 @@ export default function ReportsScreen({ navigation }) {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       const { data } = await apiClient.get(report.endpoint, { params });
+      // Keep the full response structure (may include data, summary, etc.)
       setReportData(data);
     } catch (e) {
       console.log(e.message);
-      setReportData({ error: e.response?.data?.error || 'Failed to load report' });
+      setReportData({ error: typeof e.response?.data?.error === 'string' ? e.response.data.error : e.response?.data?.error?.message || e.message || 'Failed to load report' });
     }
     setLoading(false);
   };
@@ -89,11 +90,12 @@ export default function ReportsScreen({ navigation }) {
     // Render different formats based on data structure
     const data = reportData.report || reportData.summary || reportData;
 
-    // Key-value pairs
+    // Key-value pairs (skip internal keys like 'success')
     if (typeof data === 'object' && !Array.isArray(data)) {
-      const entries = Object.entries(data).filter(([k, v]) => typeof v !== 'object' || v === null);
-      const nested = Object.entries(data).filter(([k, v]) => typeof v === 'object' && v !== null && !Array.isArray(v));
-      const arrays = Object.entries(data).filter(([k, v]) => Array.isArray(v));
+      const skipKeys = ['success', 'error', 'statusCode', 'timestamp'];
+      const entries = Object.entries(data).filter(([k, v]) => !skipKeys.includes(k) && (typeof v !== 'object' || v === null));
+      const nested = Object.entries(data).filter(([k, v]) => !skipKeys.includes(k) && typeof v === 'object' && v !== null && !Array.isArray(v));
+      const arrays = Object.entries(data).filter(([k, v]) => !skipKeys.includes(k) && Array.isArray(v));
 
       return (
         <View style={{ gap: 12 }}>

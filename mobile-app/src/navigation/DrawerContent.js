@@ -8,7 +8,7 @@ import { useAppTheme } from '../contexts/ThemeContext';
 
 export default function DrawerContent(props) {
   const { user, logout } = useAuth();
-  const { isDark, toggleDark, paperTheme } = useAppTheme();
+  const { isDark, setIsDark, paperTheme } = useAppTheme();
   const c = paperTheme.colors;
 
   const initials = (user?.fullName || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -35,11 +35,11 @@ export default function DrawerContent(props) {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableRipple onPress={toggleDark} style={styles.darkRow}>
+        <TouchableRipple onPress={setIsDark} style={styles.darkRow}>
           <View style={styles.darkRowInner}>
             <MaterialCommunityIcons name={isDark ? 'weather-night' : 'white-balance-sunny'} size={22} color={c.primary} />
             <Text style={[styles.darkLabel, { color: c.onSurface }]}>Dark Mode</Text>
-            <Switch value={isDark} onValueChange={toggleDark} color={c.primary} />
+            <Switch value={isDark} onValueChange={setIsDark} color={c.primary} />
           </View>
         </TouchableRipple>
 

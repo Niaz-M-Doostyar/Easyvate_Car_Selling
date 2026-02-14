@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Divider, DataTable, Chip, Button, SegmentedButtons } from 'react-native-paper';
+import { Card, Text, Divider, Chip } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import SummaryCard from '../components/SummaryCard';
@@ -19,9 +19,9 @@ export default function VehicleDetailScreen({ navigation, route }) {
 
   useEffect(() => {
     if (!vehicle) return;
-    apiClient.get(`/vehicles/${vehicle.id}/costs`).then(r => setCosts(r.data || [])).catch(() => {});
-    apiClient.get(`/vehicles/${vehicle.id}/sharing`).then(r => setSharing(r.data || [])).catch(() => {});
-    apiClient.get(`/vehicles/${vehicle.id}/history`).then(r => setHistory(r.data || [])).catch(() => {});
+    apiClient.get(`/vehicles/${vehicle.id}/costs`).then(r => { const d = r.data; setCosts(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []); }).catch(() => {});
+    apiClient.get(`/vehicles/${vehicle.id}/sharing`).then(r => { const d = r.data; setSharing(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []); }).catch(() => {});
+    apiClient.get(`/vehicles/${vehicle.id}/history`).then(r => { const d = r.data; setHistory(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []); }).catch(() => {});
   }, [vehicle]);
 
   if (!vehicle) return null;

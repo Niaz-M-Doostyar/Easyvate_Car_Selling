@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0d1b2a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.easyvate.carselling"
@@ -27,7 +29,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-file-system"
+      "expo-file-system",
+      "expo-font"
     ]
   }
 }

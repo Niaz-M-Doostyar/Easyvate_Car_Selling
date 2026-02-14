@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Appbar, Text } from 'react-native-paper';
 import { useAppTheme } from '../contexts/ThemeContext';
 
-export default function ScreenWrapper({ title, navigation, children, actions, subtitle, fab, back }) {
+export default function ScreenWrapper({ title, navigation, children, actions, fab, back }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
 
@@ -19,7 +19,6 @@ export default function ScreenWrapper({ title, navigation, children, actions, su
         ) : null}
         <Appbar.Content
           title={title}
-          subtitle={subtitle}
           titleStyle={{ fontSize: 18, fontWeight: '700' }}
         />
         {actions}

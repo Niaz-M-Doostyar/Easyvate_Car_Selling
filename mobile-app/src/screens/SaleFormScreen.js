@@ -52,9 +52,9 @@ export default function SaleFormScreen({ navigation, route }) {
           apiClient.get('/vehicles'),
           apiClient.get('/customers'),
         ]);
-        const vList = Array.isArray(vRes.data) ? vRes.data : vRes.data.vehicles || [];
+        const vList = Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [];
         setVehicles(vList.filter(v => ['Available', 'Reserved'].includes(v.status) || (editing && v.id === editing.vehicleId)));
-        setCustomers(Array.isArray(cRes.data) ? cRes.data : cRes.data.customers || []);
+        setCustomers(Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : []);
       } catch (e) { console.log(e); }
     };
     loadDropdowns();
@@ -89,8 +89,8 @@ export default function SaleFormScreen({ navigation, route }) {
     const e = {};
     if (!form.vehicleId) e.vehicleId = 'Vehicle is required';
     if (!form.customerId) e.customerId = 'Customer is required';
-    if (!validatePrice(form.sellingPrice)) e.sellingPrice = 'Valid price required';
-    if (!validatePrice(form.downPayment)) e.downPayment = 'Valid price required';
+    if (!form.sellingPrice || Number(form.sellingPrice) <= 0) e.sellingPrice = 'Valid price required';
+    if (form.downPayment && validatePrice(form.downPayment)) e.downPayment = 'Valid price required';
     if (form.saleType === 'Exchange Car') {
       if (!form.exchVehicleManufacturer) e.exchVehicleManufacturer = 'Required';
       if (!form.exchVehicleModel) e.exchVehicleModel = 'Required';
@@ -122,7 +122,7 @@ export default function SaleFormScreen({ navigation, route }) {
   };
 
   const vehicleOptions = vehicles.map(v => ({ label: `${v.manufacturer} ${v.model} (${v.year}) - ${v.status}`, value: String(v.id) }));
-  const customerOptions = customers.map(c => ({ label: c.fullName, value: String(c.id) }));
+  const customerOptions = customers.map(cust => ({ label: cust.fullName, value: String(cust.id) }));
 
   const STEPS = form.saleType === 'Exchange Car' ? ['Sale Info', 'Seller', 'Exchange Vehicle', 'Notes'] :
     form.saleType === 'Licensed Car' ? ['Sale Info', 'Seller', 'License', 'Notes'] :
@@ -142,7 +142,7 @@ export default function SaleFormScreen({ navigation, route }) {
         ))}
       </View>
 
-      <PickerField label="Vehicle *" value={form.vehicleId} options={vehicleOptions.map(o => o.label)}
+      <PickerField label="Vehicle *" value={vehicleOptions.find(o => o.value === form.vehicleId)?.label || ''} options={vehicleOptions.map(o => o.label)}
         onSelect={(v) => {
           const opt = vehicleOptions.find(o => o.label === v);
           if (opt) set('vehicleId', opt.value);

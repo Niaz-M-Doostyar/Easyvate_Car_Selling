@@ -24,7 +24,7 @@ export default function VehiclesScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/vehicles');
-      setVehicles(data.vehicles || data || []);
+      setVehicles(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) {
       console.log('Fetch vehicles error:', e.message);
     } finally {

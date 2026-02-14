@@ -29,15 +29,16 @@ export default function CurrencyScreen({ navigation }) {
     try {
       const [rRes, hRes] = await Promise.all([
         apiClient.get('/currency/rates'),
-        apiClient.get('/currency').catch(() => ({ data: [] })),
+        apiClient.get('/currency/exchanges').catch(() => ({ data: { data: [] } })),
       ]);
-      const r = rRes.data?.rates || rRes.data || {};
+      const r = rRes.data?.data || rRes.data?.rates || rRes.data || {};
       setRates({
-        usdToAfn: String(r.usdToAfn || r.USD_AFN || ''),
-        pkrToAfn: String(r.pkrToAfn || r.PKR_AFN || ''),
-        usdToPkr: String(r.usdToPkr || r.USD_PKR || ''),
+        usdToAfn: String(r['USD-AFN'] || r.usdToAfn || ''),
+        pkrToAfn: String(r['PKR-AFN'] || r.pkrToAfn || ''),
+        usdToPkr: String(r['USD-PKR'] || r.usdToPkr || ''),
       });
-      setHistory(Array.isArray(hRes.data) ? hRes.data : hRes.data?.exchanges || []);
+      const hData = hRes.data?.data || hRes.data;
+      setHistory(Array.isArray(hData) ? hData : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 

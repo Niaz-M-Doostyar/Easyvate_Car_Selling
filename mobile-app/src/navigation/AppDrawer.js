@@ -185,6 +185,7 @@ export default function AppDrawer() {
         drawerStyle: { backgroundColor: paperTheme.colors.surface, width: 300 },
         drawerActiveTintColor: paperTheme.colors.primary,
         drawerInactiveTintColor: paperTheme.colors.onSurfaceVariant,
+        overlayColor: 'rgba(0,0,0,0.5)',
       }}
     >
       {NAV_ITEMS.filter(item => item.access === null || allowed.includes(item.access)).map((item) => (

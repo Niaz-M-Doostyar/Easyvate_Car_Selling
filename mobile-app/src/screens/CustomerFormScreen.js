@@ -43,10 +43,10 @@ export default function CustomerFormScreen({ navigation, route }) {
 
   const validate = () => {
     const e = {};
-    if (!validateRequired(form.fullName)) e.fullName = 'Name is required';
-    if (!validateRequired(form.fatherName)) e.fatherName = 'Father name is required';
-    if (!validatePhone(form.phoneNumber)) e.phoneNumber = 'Valid phone is required';
-    if (!validateRequired(form.province)) e.province = 'Province is required';
+    if (validateRequired(form.fullName, 'Name')) e.fullName = 'Name is required';
+    if (validateRequired(form.fatherName, 'Father name')) e.fatherName = 'Father name is required';
+    if (form.phoneNumber && validatePhone(form.phoneNumber)) e.phoneNumber = 'Valid phone is required';
+    if (validateRequired(form.province, 'Province')) e.province = 'Province is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };

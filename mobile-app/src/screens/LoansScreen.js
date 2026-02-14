@@ -27,7 +27,7 @@ export default function LoansScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/loans');
-      setLoans(Array.isArray(data) ? data : data.loans || []);
+      setLoans(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 

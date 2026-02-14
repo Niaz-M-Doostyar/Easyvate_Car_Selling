@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TextInput as RNTextInput } from 'react-native';
 import { Searchbar, FAB, Card, Text, IconButton, Menu, Chip, ProgressBar, Button, Portal, Dialog } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
@@ -27,7 +27,7 @@ export default function SalesScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/sales');
-      setSales(Array.isArray(data) ? data : data.sales || []);
+      setSales(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 
@@ -155,14 +155,14 @@ export default function SalesScreen({ navigation }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: c.onSurface, marginRight: 4 }}>؋</Text>
                     <View style={{ flex: 1 }}>
-                      {React.createElement(require('react-native').TextInput, {
-                        value: payAmount,
-                        onChangeText: setPayAmount,
-                        keyboardType: 'numeric',
-                        style: { fontSize: 16, fontWeight: '700', color: c.onSurface, padding: 0 },
-                        placeholder: '0',
-                        placeholderTextColor: c.onSurfaceVariant,
-                      })}
+                      <RNTextInput
+                        value={payAmount}
+                        onChangeText={setPayAmount}
+                        keyboardType="numeric"
+                        style={{ fontSize: 16, fontWeight: '700', color: c.onSurface, padding: 0 }}
+                        placeholder="0"
+                        placeholderTextColor={c.onSurfaceVariant}
+                      />
                     </View>
                   </View>
                 </View>

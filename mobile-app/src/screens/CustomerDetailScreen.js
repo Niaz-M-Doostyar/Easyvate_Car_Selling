@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
-import { Text, Card, Divider, List, SegmentedButtons, Button, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, Card, Divider, SegmentedButtons, IconButton } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -32,8 +32,8 @@ export default function CustomerDetailScreen({ navigation, route }) {
           apiClient.get(`/ledger/customer/${customer.id}`).catch(() => ({ data: [] })),
           apiClient.get(`/sales?customerId=${customer.id}`).catch(() => ({ data: [] })),
         ]);
-        setLedger(Array.isArray(ledRes.data) ? ledRes.data : ledRes.data?.entries || []);
-        setPurchases(Array.isArray(purRes.data) ? purRes.data : purRes.data?.sales || []);
+        setLedger(Array.isArray(ledRes.data?.data) ? ledRes.data.data : Array.isArray(ledRes.data) ? ledRes.data : []);
+        setPurchases(Array.isArray(purRes.data?.data) ? purRes.data.data : Array.isArray(purRes.data) ? purRes.data : []);
       } catch (e) { console.log(e); }
       setLoading(false);
     };
@@ -96,7 +96,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
     purchases.length === 0 ? <EmptyState loading={loading} message="No purchases" icon="🚗" /> :
     <View style={{ gap: 8 }}>
       {purchases.map((s, i) => (
-        <Card key={i} style={[styles.card, { backgroundColor: c.surface }]} onPress={() => navigation.navigate('SaleDetail', { sale: s })}>
+        <Card key={i} style={[styles.card, { backgroundColor: c.surface }]} onPress={() => navigation.navigate('Sales', { screen: 'SaleDetail', params: { sale: s } })}>
           <Card.Content>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{s.Vehicle?.manufacturer} {s.Vehicle?.model}</Text>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
-import { Text, Card, Divider, SegmentedButtons, ProgressBar, Button, Chip, DataTable } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, Card, Divider, SegmentedButtons, ProgressBar, Button, Chip } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -34,9 +34,9 @@ export default function SaleDetailScreen({ navigation, route }) {
           apiClient.get(`/sales/${sale.id}`),
           apiClient.get(`/sales/${sale.id}/payments`).catch(() => ({ data: { payments: [] } })),
         ]);
-        setDetail(sRes.data?.sale || sRes.data);
+        setDetail(sRes.data?.data || sRes.data);
         const pData = pRes.data;
-        setPayments(Array.isArray(pData) ? pData : pData?.payments || pData?.entries || []);
+        setPayments(Array.isArray(pData?.data) ? pData.data : Array.isArray(pData) ? pData : []);
       } catch (e) { console.log(e); }
       setLoading(false);
     };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { TextInput, HelperText, Text } from 'react-native-paper';
+import { TextInput, HelperText } from 'react-native-paper';
 import { useAppTheme } from '../contexts/ThemeContext';
 
 export default function FormField({ label, value, onChangeText, error, multiline, keyboardType, secureTextEntry, disabled, right, left, style, numberOfLines, placeholder }) {

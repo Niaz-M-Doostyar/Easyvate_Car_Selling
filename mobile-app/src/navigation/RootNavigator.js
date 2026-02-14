@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { ActivityIndicator, View } from 'react-native';
+import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import AppDrawer from './AppDrawer';
 
@@ -39,7 +40,10 @@ export default function RootNavigator() {
         {user ? (
           <Stack.Screen name="Main" component={AppDrawer} />
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} options={{ animationTypeForReplace: 'pop' }} />
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ animationTypeForReplace: 'push' }} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

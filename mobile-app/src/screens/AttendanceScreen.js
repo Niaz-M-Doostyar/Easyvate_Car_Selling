@@ -26,7 +26,7 @@ export default function AttendanceScreen({ navigation }) {
       if (monthFilter) params.month = monthFilter;
       if (yearFilter) params.year = yearFilter;
       const { data } = await apiClient.get('/attendance', { params });
-      setRecords(Array.isArray(data) ? data : data.records || data.attendance || []);
+      setRecords(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, [monthFilter, yearFilter]);
 

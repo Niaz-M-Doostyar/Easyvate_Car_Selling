@@ -14,7 +14,7 @@ export default function LedgerFormScreen({ navigation, route }) {
   const c = paperTheme.colors;
 
   const [form, setForm] = useState({
-    type: 'Capital Investment',
+    type: 'Income',
     description: '', amount: '', currency: 'AFN',
     date: new Date().toISOString().split('T')[0],
     notes: '',
@@ -25,7 +25,7 @@ export default function LedgerFormScreen({ navigation, route }) {
   useEffect(() => {
     if (editing) {
       setForm({
-        type: editing.type || 'Capital Investment',
+        type: editing.type || 'Income',
         description: editing.description || '',
         amount: String(Math.abs(editing.amount || editing.credit || editing.debit || 0)),
         currency: editing.currency || 'AFN',

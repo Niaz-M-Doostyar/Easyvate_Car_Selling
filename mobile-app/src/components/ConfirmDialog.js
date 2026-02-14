@@ -1,5 +1,5 @@
 import React from 'react';
-import { Portal, Dialog, Button, Text, Paragraph } from 'react-native-paper';
+import { Portal, Dialog, Button, Text } from 'react-native-paper';
 
 export default function ConfirmDialog({ visible, title, message, onConfirm, onDismiss, confirmLabel, destructive }) {
   return (
@@ -7,7 +7,7 @@ export default function ConfirmDialog({ visible, title, message, onConfirm, onDi
       <Dialog visible={visible} onDismiss={onDismiss} style={{ borderRadius: 16 }}>
         <Dialog.Title>{title || 'Confirm'}</Dialog.Title>
         <Dialog.Content>
-          <Paragraph>{message || 'Are you sure?'}</Paragraph>
+          <Text variant="bodyMedium">{message || 'Are you sure?'}</Text>
         </Dialog.Content>
         <Dialog.Actions>
           <Button onPress={onDismiss}>Cancel</Button>

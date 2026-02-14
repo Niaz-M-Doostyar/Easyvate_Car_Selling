@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Card, Text, Switch, Divider, List, Chip } from 'react-native-paper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useAppTheme, ACCENT_PRESETS } from '../contexts/ThemeContext';
@@ -45,19 +45,18 @@ export default function SettingsScreen({ navigation }) {
             <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface, marginBottom: 8 }}>Accent Color</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {Object.entries(ACCENT_PRESETS).map(([key, preset]) => (
-                <View key={key} style={{ alignItems: 'center' }}>
+                <Pressable key={key} style={{ alignItems: 'center' }} onPress={() => setAccentKey(key)}>
                   <View
                     style={[
                       styles.colorDot,
                       { backgroundColor: preset.primary },
                       accentKey === key && { borderWidth: 3, borderColor: c.onSurface },
                     ]}
-                    onTouchEnd={() => setAccentKey(key)}
                   />
                   <Text variant="labelSmall" style={{ color: c.onSurfaceVariant, fontSize: 8, marginTop: 2 }}>
                     {key.charAt(0).toUpperCase() + key.slice(1)}
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </Card.Content>
@@ -68,7 +67,7 @@ export default function SettingsScreen({ navigation }) {
           <Card.Content>
             <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 12 }}>About</Text>
             <List.Item title="App Name" description="Niazi Khpalwak Motor Puranchi"
-              left={props => <List.Icon {...props} icon="car-sport" />} />
+              left={props => <List.Icon {...props} icon="car-sports" />} />
             <Divider />
             <List.Item title="Version" description="1.0.0"
               left={props => <List.Icon {...props} icon="information" />} />

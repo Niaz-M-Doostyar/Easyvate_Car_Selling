@@ -27,7 +27,7 @@ export default function LedgerScreen({ navigation }) {
         apiClient.get('/ledger/showroom/balance').catch(() => ({ data: {} })),
       ]);
       const eData = eRes.data;
-      setEntries(Array.isArray(eData) ? eData : eData.entries || eData.ledger || []);
+      setEntries(Array.isArray(eData?.data) ? eData.data : Array.isArray(eData) ? eData : []);
       setBalance(bRes.data);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);

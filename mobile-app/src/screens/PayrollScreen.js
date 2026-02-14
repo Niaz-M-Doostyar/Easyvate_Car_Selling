@@ -24,7 +24,7 @@ export default function PayrollScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/payroll');
-      setRecords(Array.isArray(data) ? data : data.records || data.payrolls || []);
+      setRecords(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 

@@ -28,7 +28,7 @@ export default function AttendanceFormScreen({ navigation, route }) {
 
   useEffect(() => {
     apiClient.get('/employees').then(({ data }) => {
-      setEmployees(Array.isArray(data) ? data : data.employees || []);
+      setEmployees(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     }).catch(() => {});
   }, []);
 

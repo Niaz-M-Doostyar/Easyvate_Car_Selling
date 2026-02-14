@@ -38,10 +38,10 @@ export default function EmployeeFormScreen({ navigation, route }) {
 
   const validate = () => {
     const e = {};
-    if (!validateRequired(form.fullName)) e.fullName = 'Name required';
-    if (!validateRequired(form.fatherName)) e.fatherName = 'Father name required';
-    if (!validatePhone(form.phoneNumber)) e.phoneNumber = 'Valid phone required';
-    if (!validateRequired(form.position)) e.position = 'Position required';
+    if (validateRequired(form.fullName, 'Name')) e.fullName = 'Name required';
+    if (validateRequired(form.fatherName, 'Father name')) e.fatherName = 'Father name required';
+    if (form.phoneNumber && validatePhone(form.phoneNumber)) e.phoneNumber = 'Valid phone required';
+    if (validateRequired(form.position, 'Position')) e.position = 'Position required';
     if (!form.salary || Number(form.salary) <= 0) e.salary = 'Valid salary required';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -75,7 +75,7 @@ export default function EmployeeFormScreen({ navigation, route }) {
           <Divider style={{ marginVertical: 16 }} />
           <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12, color: c.onSurface }}>Employment Details</Text>
           <PickerField label="Position *" value={form.position} options={POSITIONS} onSelect={v => set('position', v)} error={errors.position} />
-          <FormField label="Monthly Salary (AFN) *" value={form.salary} onChangeText={v => set('salary', v)} keyboardType="numeric" error={errors.salary} left="؋" />
+          <FormField label="Monthly Salary (AFN) *" value={form.salary} onChangeText={v => set('salary', v)} keyboardType="numeric" error={errors.salary} />
           <PickerField label="Status" value={form.status} options={STATUSES} onSelect={v => set('status', v)} />
           <FormField label="Hire Date" value={form.hireDate} onChangeText={v => set('hireDate', v)} placeholder="YYYY-MM-DD" />
 

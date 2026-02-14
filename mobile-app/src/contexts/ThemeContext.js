@@ -62,10 +62,12 @@ export function ThemeProvider({ children }) {
         surfaceVariant: isDark ? '#1e1e1e' : '#f5f5f5',
         background: isDark ? '#0a0a0a' : '#fafafa',
         elevation: {
-          level0: 'transparent',
+          level0: isDark ? '#12121200' : '#ffffff00',
           level1: isDark ? '#1e1e1e' : '#ffffff',
           level2: isDark ? '#232323' : '#f5f5f5',
           level3: isDark ? '#2a2a2a' : '#eeeeee',
+          level4: isDark ? '#2f2f2f' : '#e0e0e0',
+          level5: isDark ? '#353535' : '#d6d6d6',
         },
         card: isDark ? '#1e1e1e' : '#ffffff',
         border: isDark ? '#333' : '#e0e0e0',

@@ -11,7 +11,7 @@ const STATUS_COLORS = {
   // Employee
   Active: 'success', Inactive: 'error',
   // Loan
-  Open: 'warning',
+  Active: 'success', Overdue: 'error',
   // Payroll
   // Generic
   success: 'success', error: 'error', warning: 'warning', info: 'info',

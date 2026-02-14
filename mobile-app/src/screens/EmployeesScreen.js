@@ -21,7 +21,7 @@ export default function EmployeesScreen({ navigation }) {
     setLoading(true);
     try {
       const { data } = await apiClient.get('/employees');
-      setEmployees(Array.isArray(data) ? data : data.employees || []);
+      setEmployees(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) { console.log(e.message); } finally { setLoading(false); }
   }, []);
 

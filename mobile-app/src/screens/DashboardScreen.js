@@ -32,12 +32,12 @@ export default function DashboardScreen({ navigation }) {
         apiClient.get('/employees').catch(() => ({ data: [] })),
       ]);
       setData({
-        vehicles: vRes.data.vehicles || vRes.data || [],
-        customers: Array.isArray(cRes.data) ? cRes.data : cRes.data.customers || [],
-        sales: sRes.data.sales || sRes.data || [],
-        loans: lRes.data.loans || lRes.data || [],
+        vehicles: Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [],
+        customers: Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : [],
+        sales: Array.isArray(sRes.data?.data) ? sRes.data.data : Array.isArray(sRes.data) ? sRes.data : [],
+        loans: Array.isArray(lRes.data?.data) ? lRes.data.data : Array.isArray(lRes.data) ? lRes.data : [],
         balance: bRes.data || {},
-        employees: Array.isArray(eRes.data) ? eRes.data : eRes.data.employees || [],
+        employees: Array.isArray(eRes.data?.data) ? eRes.data.data : Array.isArray(eRes.data) ? eRes.data : [],
       });
     } catch (e) {
       console.log('Dashboard fetch error:', e.message);
@@ -53,7 +53,7 @@ export default function DashboardScreen({ navigation }) {
   const totalProfit = sales.reduce((s, x) => s + Number(x.profit || 0), 0);
   const totalCommission = sales.reduce((s, x) => s + Number(x.commission || 0), 0);
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
-  const openLoans = loans.filter(l => l.status === 'Open').length;
+  const openLoans = loans.filter(l => l.status === 'Active').length;
   const soldVehicles = vehicles.filter(v => v.status === 'Sold').length;
 
   const statusCounts = {};
@@ -78,7 +78,7 @@ export default function DashboardScreen({ navigation }) {
             <Text variant="headlineSmall" style={[styles.greeting, { color: c.onSurface }]}>{greeting}, {firstName}!</Text>
             <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>Here's your business overview</Text>
           </View>
-          <MaterialCommunityIcons name="car-sport" size={36} color={c.primary} />
+          <MaterialCommunityIcons name="car-sports" size={36} color={c.primary} />
         </View>
 
         {/* KPI Cards */}
@@ -161,7 +161,7 @@ export default function DashboardScreen({ navigation }) {
           <Card.Content>
             <View style={styles.quickGrid}>
               {[
-                { label: 'New Vehicle', icon: 'car-plus', screen: 'Vehicles', params: { screen: 'VehicleForm' } },
+                { label: 'New Vehicle', icon: 'plus-circle', screen: 'Vehicles', params: { screen: 'VehicleForm' } },
                 { label: 'New Sale', icon: 'cart-plus', screen: 'Sales', params: { screen: 'SaleForm' } },
                 { label: 'Add Customer', icon: 'account-plus', screen: 'Customers', params: { screen: 'CustomerForm' } },
                 { label: 'Reports', icon: 'chart-bar', screen: 'Reports' },
