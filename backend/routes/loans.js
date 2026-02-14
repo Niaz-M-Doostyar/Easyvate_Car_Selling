@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { personName, amount, currency, borrowDate, type, notes } = req.body;
-    const amountInPKR = toAFN(amount, currency || 'AFN');
+    const amountInPKR = await toAFN(amount, currency || 'AFN');
 
     const loan = await Loan.create({
       personName,

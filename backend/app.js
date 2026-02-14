@@ -63,7 +63,7 @@ const initializeApp = async () => {
     console.log('✓ Database connection successful');
 
     if (config.FEATURES.AUTO_SYNC_DB) {
-      await sequelize.sync({ alter: true });
+      await sequelize.sync({ force: false });
       console.log('✓ Database models synchronized');
     }
 
