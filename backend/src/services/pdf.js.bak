@@ -1,0 +1,583 @@
+const fs = require('fs');
+const path = require('path');
+const PDFDocument = require('pdfkit');
+
+const ensureDir = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+};
+
+// ── Helper: draw a bordered table row ──────────────────────────────
+function drawTableRow(doc, y, cols, rowHeight, options = {}) {
+  const { fill, bold, fontSize: fs2 } = options;
+  if (fill) {
+    doc.save().rect(cols[0].x, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill(fill).restore();
+  }
+  cols.forEach((col) => {
+    doc.rect(col.x, y, col.width, rowHeight).stroke('#333');
+    doc.fontSize(fs2 || 9)
+      .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+      .text(col.text || '', col.x + 3, y + (rowHeight - (fs2 || 9)) / 2, {
+        width: col.width - 6,
+        align: col.align || 'center',
+        lineBreak: false,
+      });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  1. EXCHANGE CAR BILL  (تبادله)
+// ═══════════════════════════════════════════════════════════════════
+function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
+  ensureDir(outputDir);
+  const fileName = `exchange_bill_${sale.saleId}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 30 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    const pageW = 595.28;
+    const m = 30;
+    const contentW = pageW - 2 * m;
+
+    // ── Header ──
+    doc.fontSize(18).font('Helvetica-Bold').text('Niazi Khpalwak Motor Puranchi', m, 25, { align: 'center', width: contentW });
+    doc.fontSize(10).font('Helvetica').text('0700008983 - 0700008982', m, 48, { align: 'center', width: contentW });
+    doc.fontSize(8).text('Address: Kandahar Bazaar, Purani Road, Kok Nakhja', m, 62, { align: 'center', width: contentW });
+    doc.moveDown(0.3);
+
+    // Title
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#1a237e')
+      .text('EXCHANGE CAR BILL', m, 80, { align: 'center', width: contentW });
+    doc.fillColor('#000');
+
+    // Bill info line
+    doc.fontSize(9).font('Helvetica')
+      .text(`Bill No: ${sale.saleId}`, m, 100)
+      .text(`Page: ${sale.id}`, m + contentW - 120, 100, { width: 120, align: 'right' })
+      .text(`Date: ${new Date(sale.saleDate).toLocaleDateString()}`, m + contentW / 2 - 60, 100, { width: 120, align: 'center' });
+
+    // ── Table ──
+    const startY = 120;
+    const rh = 22;
+    const colW = contentW / 4;
+    const c1 = m, c2 = m + colW, c3 = m + 2 * colW, c4 = m + 3 * colW;
+
+    // Header row
+    drawTableRow(doc, startY, [
+      { x: c1, width: colW, text: 'Buyer Info' },
+      { x: c2, width: colW, text: 'Vehicle Specs' },
+      { x: c3, width: colW, text: 'Exchanger Info' },
+      { x: c4, width: colW, text: 'Exchange Vehicle' },
+    ], rh, { fill: '#e3f2fd', bold: true, fontSize: 10 });
+
+    // Sub-header
+    const sh = startY + rh;
+    drawTableRow(doc, sh, [
+      { x: c1, width: colW, text: '(Buyer / Kharkhawnki)' },
+      { x: c2, width: colW, text: '(Motor Mushakhasat)' },
+      { x: c3, width: colW, text: '(Seller / Ranboonki)' },
+      { x: c4, width: colW, text: '(Exchange Motor)' },
+    ], 16, { fill: '#f5f5f5', fontSize: 7 });
+
+    const dataStart = sh + 16;
+    const rows = [
+      [customer.fullName || '', `Category: ${vehicle.category || ''}`, sale.sellerName || '', `Category: ${sale.exchVehicleCategory || ''}`],
+      [customer.fatherName || '', `Manufacturer: ${vehicle.manufacturer || ''}`, sale.sellerFatherName || '', `Manufacturer: ${sale.exchVehicleManufacturer || ''}`],
+      [customer.province || '', `Model: ${vehicle.model || ''}`, sale.sellerProvince || '', `Model: ${sale.exchVehicleModel || ''}`],
+      [customer.district || '', `Year: ${vehicle.year || ''}`, sale.sellerDistrict || '', `Year: ${sale.exchVehicleYear || ''}`],
+      [customer.village || '', `Color: ${vehicle.color || ''}`, sale.sellerVillage || '', `Color: ${sale.exchVehicleColor || ''}`],
+      [customer.currentAddress || '', `Engine: ${vehicle.engineNumber || ''}`, sale.sellerAddress || '', `Engine: ${sale.exchVehicleEngine || ''}`],
+      [customer.nationalIdNumber || '', `Chassis: ${vehicle.chassisNumber || ''}`, sale.sellerIdNumber || '', `Chassis: ${sale.exchVehicleChassis || ''}`],
+      [customer.phoneNumber || '', `Fuel: ${vehicle.fuelType || ''}`, sale.sellerPhone || '', `Fuel: ${sale.exchVehicleFuelType || ''}`],
+      ['', `Plate: ${vehicle.plateNo || ''}`, '', `Plate: ${sale.exchVehiclePlateNo || ''}`],
+      ['', `Transmission: ${vehicle.transmission || ''}`, '', `Transmission: ${sale.exchVehicleTransmission || ''}`],
+      ['', `Steering: ${vehicle.steering || ''}`, '', `Steering: ${sale.exchVehicleSteering || ''}`],
+      ['', `Monolithic/Cut: ${vehicle.monolithicCut || ''}`, '', `Monolithic/Cut: ${sale.exchVehicleMonolithicCut || ''}`],
+    ];
+
+    const labels = ['Name', 'Father Name', 'Province', 'District / Wali', 'Village', 'Address', 'ID Number', 'Phone', '', '', '', ''];
+
+    rows.forEach((row, i) => {
+      const y = dataStart + i * rh;
+      const lbl = labels[i];
+      drawTableRow(doc, y, [
+        { x: c1, width: colW, text: lbl ? `${lbl}: ${row[0]}` : row[0] },
+        { x: c2, width: colW, text: row[1] },
+        { x: c3, width: colW, text: lbl ? `${lbl}: ${row[2]}` : row[2] },
+        { x: c4, width: colW, text: row[3] },
+      ], rh);
+    });
+
+    // ── Price Section ──
+    let py = dataStart + rows.length * rh + 15;
+    doc.fontSize(11).font('Helvetica-Bold')
+      .text(`Price / Kimmat: ${Number(sale.sellingPrice || 0).toLocaleString()} AFN`, m, py);
+    py += 18;
+    doc.fontSize(10).font('Helvetica')
+      .text(`Price Difference: ${Number(sale.priceDifference || 0).toLocaleString()} AFN (paid by ${sale.priceDifferencePaidBy || 'Buyer'})`, m, py);
+
+    // ── Terms & Conditions ──
+    py += 30;
+    doc.fontSize(9).font('Helvetica-Bold').text('Terms & Conditions:', m, py);
+    py += 14;
+    const terms = [
+      '1: Both vehicles are exchanged with traffic responsibility from this date onward to the new owner.',
+      '2: The exchange is done with mutual consent and agreement.',
+      '3: Vehicles are delivered after checking, and both parties are satisfied.',
+      '4: Both parties must take warranty from each other. The showroom has no responsibility.',
+      '5: The showroom commission of trade law is 2% from buyer and 1% from seller.',
+      '6: Buying and selling of Bait-ul-Maal vehicles is strictly prohibited.',
+    ];
+    doc.font('Helvetica').fontSize(8);
+    terms.forEach((t) => { doc.text(t, m, py, { width: contentW }); py += 13; });
+
+    // ── Signatures ──
+    py += 20;
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Buyer Thumbprint / Sign', m, py, { width: contentW / 3 });
+    doc.text('Showroom Stamp', m + contentW / 3, py, { width: contentW / 3, align: 'center' });
+    doc.text('Seller Thumbprint / Sign', m + 2 * contentW / 3, py, { width: contentW / 3, align: 'right' });
+    py += 14;
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Witness: ${sale.witnessName1 || '_______________'}`, m, py + 20, { width: contentW / 2 });
+    doc.text(`Witness: ${sale.witnessName2 || '_______________'}`, m + contentW / 2, py + 20, { width: contentW / 2, align: 'right' });
+
+    doc.end();
+    stream.on('finish', () => resolve({ filePath, fileName }));
+    stream.on('error', reject);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  2. CONTAINER ONE KEY BILL  (کانتینري یوه کیلي موټر)
+// ═══════════════════════════════════════════════════════════════════
+function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
+  ensureDir(outputDir);
+  const fileName = `container_bill_${sale.saleId}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 30 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    const pageW = 595.28;
+    const m = 30;
+    const contentW = pageW - 2 * m;
+
+    // ── Header ──
+    doc.fontSize(18).font('Helvetica-Bold').text('Niazi Khpalwak Motor Puranchi', m, 25, { align: 'center', width: contentW });
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#0d47a1')
+      .text('Container One Key Vehicle', m, 48, { align: 'center', width: contentW });
+    doc.fillColor('#000');
+    doc.fontSize(9).font('Helvetica')
+      .text('0700000213', m, 64, { align: 'center', width: contentW });
+    doc.fontSize(8).text('Address: Kandahar Bazaar, Purani Road, Kok Nakhja', m, 76, { align: 'center', width: contentW });
+
+    // Bill info
+    doc.fontSize(9)
+      .text(`Office No: ${sale.saleId}`, m, 92)
+      .text(`Page: ${sale.id}`, m + contentW - 100, 92, { width: 100, align: 'right' })
+      .text(`Date: ${new Date(sale.saleDate).toLocaleDateString()}`, m + contentW / 2 - 60, 92, { width: 120, align: 'center' });
+
+    // ── Table ──
+    const startY = 112;
+    const rh = 22;
+    const colW = contentW / 3;
+    const c1 = m, c2 = m + colW, c3 = m + 2 * colW;
+
+    // Header
+    drawTableRow(doc, startY, [
+      { x: c1, width: colW, text: 'Buyer Info (Kharkhawnki)' },
+      { x: c2, width: colW, text: 'Vehicle Specs (Motor)' },
+      { x: c3, width: colW, text: 'Seller Info (Ranboonki)' },
+    ], rh, { fill: '#e3f2fd', bold: true, fontSize: 10 });
+
+    const dataStart = startY + rh;
+    const labels = ['Name', 'Father Name', 'Province', 'District / Wali', 'Village', 'Address / Residence', 'ID / Tazkira No.', 'Phone No.'];
+    const vehLabels = ['Type', 'Color', 'Model', 'Engine', 'Chassis', 'Fuel Type', 'Plate / Scotch', 'ID Number'];
+    const vehVals = [
+      vehicle.category || '',
+      vehicle.color || '',
+      `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim(),
+      vehicle.engineNumber || '',
+      vehicle.chassisNumber || '',
+      `${vehicle.fuelType || ''} / ${vehicle.engineType || ''}`.trim(),
+      vehicle.plateNo || vehicle.monolithicCut || '',
+      vehicle.vehicleId || '',
+    ];
+    const buyerVals = [
+      customer.fullName || '',
+      customer.fatherName || '',
+      customer.province || '',
+      customer.district || '',
+      customer.village || '',
+      customer.currentAddress || '',
+      customer.nationalIdNumber || '',
+      customer.phoneNumber || '',
+    ];
+    const sellerVals = [
+      sale.sellerName || '',
+      sale.sellerFatherName || '',
+      sale.sellerProvince || '',
+      sale.sellerDistrict || '',
+      sale.sellerVillage || '',
+      sale.sellerAddress || '',
+      sale.sellerIdNumber || '',
+      sale.sellerPhone || '',
+    ];
+
+    for (let i = 0; i < 8; i++) {
+      const y = dataStart + i * rh;
+      drawTableRow(doc, y, [
+        { x: c1, width: colW, text: `${labels[i]}: ${buyerVals[i]}` },
+        { x: c2, width: colW, text: `${vehLabels[i]}: ${vehVals[i]}` },
+        { x: c3, width: colW, text: `${labels[i]}: ${sellerVals[i]}` },
+      ], rh);
+    }
+
+    // ── Price ──
+    let py = dataStart + 8 * rh + 12;
+    doc.fontSize(12).font('Helvetica-Bold')
+      .text(`Price / Kimmat: ${Number(sale.sellingPrice || 0).toLocaleString()} AFN`, m, py);
+
+    // ── Terms ──
+    py += 28;
+    doc.fontSize(9).font('Helvetica-Bold').text('Terms & Conditions:', m, py);
+    py += 14;
+    const terms = [
+      '1: The mentioned vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN which is shown above.',
+      '2: The mentioned vehicle\'s traffic responsibility from this date (' + new Date(sale.saleDate).toLocaleDateString() + ') onward is with the buyer.',
+      '3: The mentioned vehicle has no legal documents, it is only one key.',
+      '4: The vehicle has been fully checked and approved, seller has no complaint right.',
+      '5: The theft responsibility of the vehicle is on the buyer.',
+      '6: Buyer and seller must take warranty from each other. The showroom has no guarantee right.',
+      '7: The showroom is only a witness for the record.',
+      '8: Commission dispute will be handled by showroom rules.',
+      '9: The commission of trade law is 2% from buyer and 1% from seller.',
+    ];
+    doc.font('Helvetica').fontSize(7.5);
+    terms.forEach((t) => { doc.text(t, m, py, { width: contentW }); py += 12; });
+
+    // ── Notes ──
+    py += 8;
+    doc.fontSize(9).font('Helvetica');
+    doc.text(`Note: ${sale.notes || '___________________________________________________________'}`, m, py, { width: contentW });
+    py += 14;
+    doc.text(`Second Note: ${sale.note2 || '___________________________________________________________'}`, m, py, { width: contentW });
+
+    // ── Signatures ──
+    py += 25;
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Buyer Thumbprint / Sign', m, py, { width: contentW / 3 });
+    doc.text('Showroom Stamp', m + contentW / 3, py, { width: contentW / 3, align: 'center' });
+    doc.text('Seller Thumbprint / Sign', m + 2 * contentW / 3, py, { width: contentW / 3, align: 'right' });
+    py += 18;
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Witness: ${sale.witnessName1 || '_______________'}`, m, py, { width: contentW / 2 });
+    doc.text(`Witness: ${sale.witnessName2 || '_______________'}`, m + contentW / 2, py, { width: contentW / 2, align: 'right' });
+
+    doc.end();
+    stream.on('finish', () => resolve({ filePath, fileName }));
+    stream.on('error', reject);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  3. LICENSED CAR BILL  (اسناد دار هفتر مکمل)
+// ═══════════════════════════════════════════════════════════════════
+function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
+  ensureDir(outputDir);
+  const fileName = `licensed_bill_${sale.saleId}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 30 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    const pageW = 595.28;
+    const m = 30;
+    const contentW = pageW - 2 * m;
+
+    // ── Header ──
+    doc.fontSize(18).font('Helvetica-Bold').text('Niazi Khpalwak Motor Puranchi', m, 25, { align: 'center', width: contentW });
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#1b5e20')
+      .text('Licensed / Documented Vehicle (Title)', m, 48, { align: 'center', width: contentW });
+    doc.fillColor('#000');
+    doc.fontSize(9).font('Helvetica')
+      .text('0700008983 - 0700008982', m, 64, { align: 'center', width: contentW });
+    doc.fontSize(8).text('Address: Kandahar Bazaar, Purani Road, Kok Nakhja', m, 76, { align: 'center', width: contentW });
+
+    // Bill info
+    doc.fontSize(9)
+      .text(`Bill No: ${sale.saleId}`, m, 92)
+      .text(`Page: ${sale.id}`, m + contentW - 100, 92, { width: 100, align: 'right' })
+      .text(`Date: ${new Date(sale.saleDate).toLocaleDateString()}`, m + contentW / 2 - 60, 92, { width: 120, align: 'center' });
+
+    // ── Table ──
+    const startY = 112;
+    const rh = 22;
+    const colW = contentW / 3;
+    const c1 = m, c2 = m + colW, c3 = m + 2 * colW;
+
+    // Header
+    drawTableRow(doc, startY, [
+      { x: c1, width: colW, text: 'Buyer Info (Kharkhawnki)' },
+      { x: c2, width: colW, text: 'Vehicle Specs (Motor)' },
+      { x: c3, width: colW, text: 'Seller Info (Ranboonki)' },
+    ], rh, { fill: '#e8f5e9', bold: true, fontSize: 10 });
+
+    const dataStart = startY + rh;
+    const labels = ['Name', 'Father Name', 'Province', 'District / Wali', 'Village', 'Residence', 'Scotch / Plate', 'ID Number', 'Phone No.'];
+    const vehLabels = ['Type', 'Color', 'Model', 'Engine', 'Chassis', 'Fuel Type', 'Plate / Scotch', 'ID Number', 'Phone'];
+    const vehVals = [
+      vehicle.category || '',
+      vehicle.color || '',
+      `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim(),
+      vehicle.engineNumber || '',
+      vehicle.chassisNumber || '',
+      `${vehicle.fuelType || ''} / ${vehicle.engineType || ''}`.trim(),
+      vehicle.plateNo || '',
+      vehicle.vehicleLicense || vehicle.vehicleId || '',
+      vehicle.monolithicCut || '',
+    ];
+    const buyerVals = [
+      customer.fullName || '',
+      customer.fatherName || '',
+      customer.province || '',
+      customer.district || '',
+      customer.village || '',
+      customer.currentAddress || '',
+      '',
+      customer.nationalIdNumber || '',
+      customer.phoneNumber || '',
+    ];
+    const sellerVals = [
+      sale.sellerName || '',
+      sale.sellerFatherName || '',
+      sale.sellerProvince || '',
+      sale.sellerDistrict || '',
+      sale.sellerVillage || '',
+      sale.sellerAddress || '',
+      '',
+      sale.sellerIdNumber || '',
+      sale.sellerPhone || '',
+    ];
+
+    for (let i = 0; i < 9; i++) {
+      const y = dataStart + i * rh;
+      drawTableRow(doc, y, [
+        { x: c1, width: colW, text: `${labels[i]}: ${buyerVals[i]}` },
+        { x: c2, width: colW, text: `${vehLabels[i]}: ${vehVals[i]}` },
+        { x: c3, width: colW, text: `${labels[i]}: ${sellerVals[i]}` },
+      ], rh);
+    }
+
+    // ── Price & Transfer Date ──
+    let py = dataStart + 9 * rh + 12;
+    doc.fontSize(12).font('Helvetica-Bold')
+      .text(`Price / Kimmat: ${Number(sale.sellingPrice || 0).toLocaleString()} AFN`, m, py);
+    py += 20;
+    doc.fontSize(10).font('Helvetica')
+      .text(`Traffic Transfer Date: ${sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toLocaleDateString() : '____/____/________'}`, m, py);
+
+    // ── Terms ──
+    py += 25;
+    doc.fontSize(9).font('Helvetica-Bold').text('Terms & Conditions:', m, py);
+    py += 14;
+    const terms = [
+      '1: The mentioned vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN.',
+      '2: The mentioned vehicle\'s traffic responsibility until (' + (sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toLocaleDateString() : '___') + ') is with the buyer.',
+      '  After that date (' + new Date(sale.saleDate).toLocaleDateString() + ') onward, responsibility transfers to the new owner.',
+      '3: The mentioned vehicle has no legal documents, it is only a one key vehicle.',
+      '4: Vehicle has been fully checked. After delivery, seller has no complaint right.',
+      '5: The theft responsibility of the vehicle is on the buyer.',
+      '6: Buyer and seller must take warranty with each other. The showroom has no guarantee.',
+      '7: The showroom is only a witness for the record.',
+      '8: Commission dispute will be handled as per showroom commission rules.',
+      '9: Commission of trade law: 2% from buyer and 1% from seller.',
+    ];
+    doc.font('Helvetica').fontSize(7.5);
+    terms.forEach((t) => { doc.text(t, m, py, { width: contentW }); py += 12; });
+
+    // ── Notes ──
+    py += 6;
+    doc.fontSize(9).font('Helvetica');
+    doc.text(`Note: ${sale.notes || '___________________________________________________________'}`, m, py, { width: contentW });
+    py += 14;
+    doc.text(`Second Note: ${sale.note2 || '___________________________________________________________'}`, m, py, { width: contentW });
+
+    // ── Signatures ──
+    py += 22;
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Buyer Thumbprint / Sign', m, py, { width: contentW / 3 });
+    doc.text('Showroom Stamp', m + contentW / 3, py, { width: contentW / 3, align: 'center' });
+    doc.text('Seller Thumbprint / Sign', m + 2 * contentW / 3, py, { width: contentW / 3, align: 'right' });
+    py += 18;
+    doc.font('Helvetica').fontSize(8);
+    doc.text(`Witness: ${sale.witnessName1 || '_______________'}`, m, py, { width: contentW / 2 });
+    doc.text(`Witness: ${sale.witnessName2 || '_______________'}`, m + contentW / 2, py, { width: contentW / 2, align: 'right' });
+
+    doc.end();
+    stream.on('finish', () => resolve({ filePath, fileName }));
+    stream.on('error', reject);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  Main dispatcher — calls the right PDF generator based on saleType
+// ═══════════════════════════════════════════════════════════════════
+const generateSaleInvoicePdf = async (sale, vehicle, customer, outputDir) => {
+  const saleType = sale.saleType || 'Container One Key';
+
+  switch (saleType) {
+    case 'Exchange Car':
+      return generateExchangeCarPdf(sale, vehicle, customer, outputDir);
+    case 'Licensed Car':
+      return generateLicensedCarPdf(sale, vehicle, customer, outputDir);
+    case 'Container One Key':
+    default:
+      return generateContainerOneKeyPdf(sale, vehicle, customer, outputDir);
+  }
+};
+
+const generateFinancialReportPdf = async (reportData, outputDir) => {
+  ensureDir(outputDir);
+  const timestamp = Date.now();
+  const fileName = `financial_report_${timestamp}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // Header
+    doc.fontSize(22).text('Easyvate Car Showroom', { align: 'center' });
+    doc.fontSize(18).text('Financial Report', { align: 'center' });
+    doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // Summary Section
+    doc.fontSize(14).fillColor('#1e40af').text('Financial Summary');
+    doc.moveDown(0.5);
+    doc.fillColor('#000');
+
+    const summaryTable = [
+      ['Total Revenue', `AFN ${(reportData.revenue || 0).toLocaleString()}`],
+      ['Total Expenses', `AFN ${(reportData.expenses || 0).toLocaleString()}`],
+      ['Net Profit', `AFN ${(reportData.profit || 0).toLocaleString()}`],
+      ['Vehicles Sold', reportData.vehiclesSold || 0],
+      ['Total Commission', `AFN ${(reportData.commission || 0).toLocaleString()}`]
+    ];
+
+    summaryTable.forEach(([label, value]) => {
+      doc.fontSize(11).text(`${label}: ${value}`);
+    });
+    doc.moveDown(1.5);
+
+    // Owner Balance Section
+    doc.fontSize(14).fillColor('#1e40af').text('Balance Breakdown');
+    doc.moveDown(0.5);
+    doc.fillColor('#000');
+
+    const balanceTable = [
+      ['Showroom Balance', `AFN ${(reportData.showroomBalance || 0).toLocaleString()}`],
+      ["Owner's Share", `AFN ${(reportData.ownerBalance || 0).toLocaleString()}`],
+      ["Shared Persons' Total", `AFN ${(reportData.sharedTotal || 0).toLocaleString()}`]
+    ];
+
+    balanceTable.forEach(([label, value]) => {
+      doc.fontSize(11).text(`${label}: ${value}`);
+    });
+    doc.moveDown(1.5);
+
+    // Shared Persons Breakdown
+    if (reportData.sharedPersons && reportData.sharedPersons.length > 0) {
+      doc.fontSize(14).fillColor('#1e40af').text('Shared Persons Breakdown');
+      doc.moveDown(0.5);
+      doc.fillColor('#000');
+
+      reportData.sharedPersons.forEach(person => {
+        doc.fontSize(11).text(`${person.personName || 'Unknown'}: AFN ${Number(person.total || 0).toLocaleString()}`);
+      });
+      doc.moveDown(1.5);
+    }
+
+    // Monthly Breakdown if available
+    if (reportData.monthlyData && reportData.monthlyData.length > 0) {
+      doc.fontSize(14).fillColor('#1e40af').text('Monthly Summary');
+      doc.moveDown(0.5);
+      doc.fillColor('#000');
+
+      const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      reportData.monthlyData.forEach(m => {
+        doc.fontSize(11).text(`${monthNames[m.month]} ${m.year}: Income AFN ${m.income.toLocaleString()} | Expenses AFN ${m.expenses.toLocaleString()} | Net AFN ${(m.income - m.expenses).toLocaleString()}`);
+      });
+    }
+
+    // Footer
+    doc.moveDown(3);
+    doc.fontSize(9).fillColor('#666').text('This report is automatically generated by Easyvate Car Management System', { align: 'center' });
+
+    doc.end();
+
+    doc.end();
+
+    stream.on('finish', () => resolve({ filePath, fileName }));
+    stream.on('error', reject);
+  });
+};
+
+const generateVehiclePdf = async (vehicle, outputDir) => {
+  ensureDir(outputDir);
+  const fileName = `vehicle_${vehicle.vehicleId}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    doc.fontSize(20).text('Vehicle Information', { align: 'center' });
+    doc.moveDown();
+
+    const rows = [
+      ['Vehicle ID', vehicle.vehicleId],
+      ['Category', vehicle.category],
+      ['Manufacturer', vehicle.manufacturer],
+      ['Model', vehicle.model],
+      ['Year', vehicle.year],
+      ['Color', vehicle.color],
+      ['Chassis/VIN', vehicle.chassisNumber],
+      ['Engine Number', vehicle.engineNumber],
+      ['Engine Type', vehicle.engineType],
+      ['Fuel Type', vehicle.fuelType],
+      ['Transmission', vehicle.transmission],
+      ['Mileage', vehicle.mileage],
+      ['Plate No.', vehicle.plateNo],
+      ['Vehicle License', vehicle.vehicleLicense],
+      ['Steering', vehicle.steering],
+      ['Monolithic/Cut', vehicle.monolithicCut],
+      ['Status', vehicle.status],
+      ['Selling Price (AFN)', vehicle.sellingPrice],
+      ['Total Cost (AFN)', vehicle.totalCostPKR]
+    ];
+
+    rows.forEach(([label, value]) => {
+      doc.fontSize(12).text(`${label}: ${value ?? ''}`);
+    });
+
+    doc.end();
+    stream.on('finish', () => resolve({ filePath, fileName }));
+    stream.on('error', reject);
+  });
+};
+
+module.exports = { generateVehiclePdf, generateSaleInvoicePdf, generateFinancialReportPdf };
