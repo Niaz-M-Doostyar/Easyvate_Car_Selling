@@ -1,19 +1,19 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem,
-  Chip, useTheme, alpha, TextField, Button, Tabs, Tab, Divider, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, Tooltip,
+  Chip, useTheme, alpha, TextField, Button, Divider, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Tooltip,
 } from '@mui/material';
 import {
   Assessment, TrendingUp, TrendingDown, AccountBalance, DirectionsCar, People,
   PictureAsPdf, CalendarMonth, BarChart, PieChart, ShowChart, MonetizationOn,
-  AttachMoney, Receipt, Download, Refresh,
+  AttachMoney, Receipt, Refresh, Timeline, Groups, DateRange,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
-import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
+import { formatCurrency } from '@/utils/currency';
 
 const REPORT_TYPES = [
   { value: 'sales', label: 'Sales Report', icon: <ShowChart />, desc: 'Vehicle sales, revenue, and profit analysis' },
@@ -23,6 +23,9 @@ const REPORT_TYPES = [
   { value: 'commission', label: 'Commission Report', icon: <MonetizationOn />, desc: 'Commission distribution by person' },
   { value: 'daily', label: 'Daily Summary', icon: <CalendarMonth />, desc: 'Daily snapshot of operations' },
   { value: 'monthly', label: 'Monthly Trends', icon: <TrendingUp />, desc: 'Monthly aggregated performance' },
+  { value: 'yearly', label: 'Yearly Trends', icon: <Timeline />, desc: 'Year-over-year performance comparison' },
+  { value: 'balance-breakdown', label: 'Balance Breakdown', icon: <Groups />, desc: 'Owner & shared persons balance' },
+  { value: 'customer-transactions', label: 'Customer Ledger', icon: <People />, desc: 'Customer transaction history' },
 ];
 
 const PERIOD_OPTIONS = [
@@ -31,6 +34,7 @@ const PERIOD_OPTIONS = [
   { value: 'month', label: 'This Month' },
   { value: 'quarter', label: 'This Quarter' },
   { value: 'year', label: 'This Year' },
+  { value: 'all', label: 'All Time' },
   { value: 'custom', label: 'Custom Range' },
 ];
 
@@ -43,6 +47,7 @@ function getDateRange(period) {
     case 'month': return { startDate: new Date(y, m, 1).toISOString().slice(0, 10), endDate: now.toISOString().slice(0, 10) };
     case 'quarter': return { startDate: new Date(y, m - (m % 3), 1).toISOString().slice(0, 10), endDate: now.toISOString().slice(0, 10) };
     case 'year': return { startDate: new Date(y, 0, 1).toISOString().slice(0, 10), endDate: now.toISOString().slice(0, 10) };
+    case 'all': return { startDate: '2020-01-01', endDate: new Date(y + 1, 11, 31).toISOString().slice(0, 10) };
     default: return { startDate: '', endDate: '' };
   }
 }
@@ -68,14 +73,24 @@ export default function ReportsPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [reportType, setReportType] = useState('sales');
   const [period, setPeriod] = useState('month');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => getDateRange('month').startDate);
+  const [dateTo, setDateTo] = useState(() => getDateRange('month').endDate);
   const [reportData, setReportData] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [monthlyYear, setMonthlyYear] = useState(new Date().getFullYear());
+  const [yearlyStartYear, setYearlyStartYear] = useState(new Date().getFullYear() - 5);
+  const [yearlyEndYear, setYearlyEndYear] = useState(new Date().getFullYear());
   const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
+  // Load customers for customer-transactions report
+  useEffect(() => {
+    apiClient.get('/customers').then(res => setCustomers(res.data.data || res.data || [])).catch(() => {});
+  }, []);
+
+  // Set date range when period changes
   useEffect(() => {
     if (period !== 'custom') {
       const range = getDateRange(period);
@@ -84,7 +99,8 @@ export default function ReportsPage() {
     }
   }, [period]);
 
-  useEffect(() => { fetchReport(); }, [reportType]);
+  // Fetch on reportType change
+  useEffect(() => { fetchReport(); }, [reportType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchReport = async () => {
     setLoading(true);
@@ -94,11 +110,23 @@ export default function ReportsPage() {
       const params = {};
       if (reportType === 'monthly') {
         params.year = monthlyYear;
+      } else if (reportType === 'yearly') {
+        params.startYear = yearlyStartYear;
+        params.endYear = yearlyEndYear;
       } else if (reportType === 'daily') {
         params.date = dailyDate;
+      } else if (reportType === 'customer-transactions') {
+        if (selectedCustomerId) params.customerId = selectedCustomerId;
+        const { startDate, endDate } = period !== 'custom' ? getDateRange(period) : { startDate: dateFrom, endDate: dateTo };
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+      } else if (reportType === 'balance-breakdown') {
+        // No date params needed
       } else {
-        if (dateFrom) params.startDate = dateFrom;
-        if (dateTo) params.endDate = dateTo;
+        // Compute dates fresh from period to avoid stale state
+        const { startDate, endDate } = period !== 'custom' ? getDateRange(period) : { startDate: dateFrom, endDate: dateTo };
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
       }
 
       const res = await apiClient.get(`/reports/${reportType}`, { params });
@@ -145,9 +173,9 @@ export default function ReportsPage() {
           title="Sales Details" data={Array.isArray(reportData) ? reportData : []} loading={false}
           columns={[
             { id: 'vehicle', label: 'Vehicle', format: (_, row) => row.vehicle ? `${row.vehicle.manufacturer} ${row.vehicle.model}` : '-' },
-            { id: 'customer', label: 'Customer', format: (_, row) => row.customer?.name || '-' },
+            { id: 'customer', label: 'Customer', format: (_, row) => row.customer?.fullName || row.customer?.name || '-' },
             { id: 'sellingPrice', label: 'Selling Price', format: (v) => formatCurrency(v), bold: true },
-            { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" color="success.main" fontWeight={600}>{formatCurrency(v)}</Typography> },
+            { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" color={Number(v) >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>{formatCurrency(v)}</Typography> },
             { id: 'commission', label: 'Commission', format: (v) => formatCurrency(v) },
             { id: 'saleDate', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
@@ -163,7 +191,7 @@ export default function ReportsPage() {
     const cards = [
       { label: 'Total Income', value: formatCurrency(summary.totalIncome), color: theme.palette.success.main, icon: <TrendingUp /> },
       { label: 'Total Expenses', value: formatCurrency(summary.totalExpenses), color: theme.palette.error.main, icon: <TrendingDown /> },
-      { label: 'Net Profit', value: formatCurrency(summary.netProfit), color: theme.palette.info.main, icon: <AccountBalance /> },
+      { label: 'Net Profit', value: formatCurrency(summary.netProfit), color: summary.netProfit >= 0 ? theme.palette.success.main : theme.palette.error.main, icon: <AccountBalance /> },
       { label: 'Transactions', value: summary.transactionCount, color: theme.palette.warning.main, icon: <Receipt /> },
     ];
     return (
@@ -176,8 +204,8 @@ export default function ReportsPage() {
           columns={[
             { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={['Income', 'Vehicle Sale'].includes(v) ? 'success' : 'error'} variant="outlined" />, exportFormat: (v) => v },
             { id: 'personName', label: 'Person', format: (v) => v || '-' },
-            { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-            { id: 'amountInPKR', label: 'In AFN', format: (v) => `${Number(v).toLocaleString()}` },
+            { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
+            { id: 'amountInPKR', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
             { id: 'description', label: 'Description', format: (v) => v || '-' },
             { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
@@ -296,7 +324,7 @@ export default function ReportsPage() {
                     <TableRow key={d.personName}>
                       <TableCell sx={{ fontWeight: 600 }}>{d.personName}</TableCell>
                       <TableCell align="center">{d.count}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>{Number(d.totalCommission).toLocaleString()}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>{formatCurrency(d.totalCommission)}</TableCell>
                       <TableCell align="right">{totalCommission > 0 ? ((d.totalCommission / totalCommission) * 100).toFixed(1) : 0}%</TableCell>
                     </TableRow>
                   ))}
@@ -325,7 +353,7 @@ export default function ReportsPage() {
         <Grid item xs={12}>
           <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none', mt: 1 }}>
             <CardContent>
-              <Typography variant="h6" fontWeight={700} gutterBottom>Daily Overview — {new Date(dailyDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Typography>
+              <Typography variant="h6" fontWeight={700} gutterBottom>Daily Overview — {new Date(dailyDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Net Cash Flow</Typography>
@@ -369,9 +397,119 @@ export default function ReportsPage() {
             { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" fontWeight={600} color={v >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
             { id: 'income', label: 'Income', format: (v) => formatCurrency(v), hiddenOnMobile: true },
             { id: 'expenses', label: 'Expenses', format: (v) => formatCurrency(v), hiddenOnMobile: true },
-            { id: 'netProfit', label: 'Net', format: (v) => <Typography variant="body2" fontWeight={600} color={v >= 0 ? 'success.main' : 'error.main'}>{Number(v).toLocaleString()}</Typography> },
+            { id: 'netProfit', label: 'Net', format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
           ]}
           emptyMessage="No data for selected year"
+        />
+      </>
+    );
+  };
+
+  // ─── YEARLY TRENDS ─────────────────────────────
+  const renderYearlyReport = () => {
+    if (!reportData) return null;
+    const data = Array.isArray(reportData) ? reportData : [];
+    const totalRevenue = data.reduce((s, y) => s + (y.revenue || 0), 0);
+    const totalProfit = data.reduce((s, y) => s + (y.netProfit || 0), 0);
+    return (
+      <>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={6} md={3}><SummaryCard label="Years" value={`${yearlyStartYear}–${yearlyEndYear}`} color={theme.palette.primary.main} icon={<DateRange />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Sales" value={data.reduce((s, y) => s + y.salesCount, 0)} color={theme.palette.info.main} icon={<Receipt />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Revenue" value={formatCurrency(totalRevenue)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Net Profit" value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} /></Grid>
+        </Grid>
+        <EnhancedDataTable
+          title={`Yearly Performance — ${yearlyStartYear} to ${yearlyEndYear}`}
+          data={data} loading={false}
+          columns={[
+            { id: 'year', label: 'Year' },
+            { id: 'salesCount', label: 'Sales', format: (v) => v || 0 },
+            { id: 'revenue', label: 'Revenue', format: (v) => formatCurrency(v), bold: true },
+            { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
+            { id: 'income', label: 'Income', format: (v) => formatCurrency(v), hiddenOnMobile: true },
+            { id: 'expenses', label: 'Expenses', format: (v) => formatCurrency(v), hiddenOnMobile: true },
+            { id: 'netProfit', label: 'Net', format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
+          ]}
+          emptyMessage="No data for selected year range"
+        />
+      </>
+    );
+  };
+
+  // ─── BALANCE BREAKDOWN ─────────────────────────
+  const renderBalanceBreakdown = () => {
+    if (!summary) return null;
+    const d = summary;
+    return (
+      <>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={6} md={3}><SummaryCard label="Showroom Balance" value={formatCurrency(d.showroomBalance)} color={theme.palette.primary.main} icon={<AccountBalance />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Owner Balance" value={formatCurrency(d.ownerBalance)} color={d.ownerBalance >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<AttachMoney />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Shared" value={formatCurrency(d.sharedTotal)} color={theme.palette.warning.main} icon={<Groups />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Partners" value={d.sharedPersons?.length || 0} color={theme.palette.info.main} icon={<People />} theme={theme} /></Grid>
+        </Grid>
+        <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight={700} gutterBottom>Shared Persons Breakdown</Typography>
+            <TableContainer sx={{ overflow: 'auto', maxHeight: '50vh' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><b>Person</b></TableCell>
+                    <TableCell align="center"><b>Transactions</b></TableCell>
+                    <TableCell align="right"><b>Balance (AFN)</b></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(!d.sharedPersons || d.sharedPersons.length === 0) ? (
+                    <TableRow><TableCell colSpan={3} align="center"><Typography color="text.secondary" py={2}>No shared persons data</Typography></TableCell></TableRow>
+                  ) : d.sharedPersons.map((p) => (
+                    <TableRow key={p.personName}>
+                      <TableCell sx={{ fontWeight: 600 }}>{p.personName}</TableCell>
+                      <TableCell align="center">{p.transactionCount}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>{formatCurrency(p.balance)}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Owner (Remaining)</TableCell>
+                    <TableCell />
+                    <TableCell align="right" sx={{ fontWeight: 700, color: d.ownerBalance >= 0 ? theme.palette.success.main : theme.palette.error.main }}>{formatCurrency(d.ownerBalance)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </>
+    );
+  };
+
+  // ─── CUSTOMER TRANSACTIONS ─────────────────────
+  const renderCustomerTransactions = () => {
+    if (!reportData) return null;
+    const data = Array.isArray(reportData) ? reportData : [];
+    const totalReceived = data.filter(t => ['Received', 'Sale', 'Installment'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
+    const totalPaid = data.filter(t => ['Paid', 'Loan'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
+    return (
+      <>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={6} md={3}><SummaryCard label="Transactions" value={data.length} color={theme.palette.primary.main} icon={<Receipt />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Received" value={formatCurrency(totalReceived)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} color={theme.palette.error.main} icon={<TrendingDown />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Net" value={formatCurrency(totalReceived - totalPaid)} color={theme.palette.info.main} icon={<AccountBalance />} theme={theme} /></Grid>
+        </Grid>
+        <EnhancedDataTable
+          title="Customer Transactions" data={data} loading={false}
+          columns={[
+            { id: 'customer', label: 'Customer', format: (v) => v?.fullName || v?.name || '-' },
+            { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={['Received', 'Sale', 'Installment'].includes(v) ? 'success' : 'warning'} variant="outlined" />, exportFormat: (v) => v },
+            { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
+            { id: 'amountInPKR', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
+            { id: 'purpose', label: 'Purpose', format: (v) => v || '-' },
+            { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
+          ]}
+          emptyMessage="No customer transactions found"
         />
       </>
     );
@@ -397,6 +535,9 @@ export default function ReportsPage() {
       case 'commission': return renderCommissionReport();
       case 'daily': return renderDailySummary();
       case 'monthly': return renderMonthlyReport();
+      case 'yearly': return renderYearlyReport();
+      case 'balance-breakdown': return renderBalanceBreakdown();
+      case 'customer-transactions': return renderCustomerTransactions();
       default: return null;
     }
   };
@@ -449,6 +590,59 @@ export default function ReportsPage() {
                   InputProps={{ inputProps: { min: 2020, max: 2099 } }}
                 />
               </Grid>
+            ) : reportType === 'yearly' ? (
+              <>
+                <Grid item xs={6} sm={3}>
+                  <TextField fullWidth size="small" label="Start Year" type="number" value={yearlyStartYear}
+                    onChange={(e) => setYearlyStartYear(parseInt(e.target.value) || new Date().getFullYear() - 5)}
+                    InputProps={{ inputProps: { min: 2015, max: 2099 } }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <TextField fullWidth size="small" label="End Year" type="number" value={yearlyEndYear}
+                    onChange={(e) => setYearlyEndYear(parseInt(e.target.value) || new Date().getFullYear())}
+                    InputProps={{ inputProps: { min: 2015, max: 2099 } }}
+                  />
+                </Grid>
+              </>
+            ) : reportType === 'balance-breakdown' ? (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Balance breakdown shows the current overall balances — no date filter needed.
+                </Typography>
+              </Grid>
+            ) : reportType === 'customer-transactions' ? (
+              <>
+                <Grid item xs={12} sm={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Customer</InputLabel>
+                    <Select value={selectedCustomerId} label="Customer" onChange={(e) => setSelectedCustomerId(e.target.value)}>
+                      <MenuItem value="">All Customers</MenuItem>
+                      {customers.map((c) => <MenuItem key={c.id} value={c.id}>{c.fullName || c.name}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Period</InputLabel>
+                    <Select value={period} label="Period" onChange={(e) => setPeriod(e.target.value)}>
+                      {PERIOD_OPTIONS.map((p) => <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6} sm={2}>
+                  <TextField fullWidth size="small" label="From" type="date" value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); setPeriod('custom'); }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={2}>
+                  <TextField fullWidth size="small" label="To" type="date" value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); setPeriod('custom'); }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+              </>
             ) : (
               <>
                 <Grid item xs={12} sm={3}>
@@ -473,7 +667,7 @@ export default function ReportsPage() {
                 </Grid>
               </>
             )}
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={reportType === 'balance-breakdown' ? 6 : 3}>
               <Button fullWidth variant="contained" startIcon={<Refresh />} onClick={fetchReport} disabled={loading}>
                 Generate Report
               </Button>

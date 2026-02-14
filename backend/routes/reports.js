@@ -7,6 +7,9 @@ const ShowroomLedger = require('../models/ShowroomLedger');
 const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
 
+// Helper: safely parse a numeric value, returning 0 for null/undefined/NaN
+const safeNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+
 router.get('/vehicles', async (req, res) => {
   try {
     const { status, startDate, endDate } = req.query;
@@ -52,9 +55,9 @@ router.get('/sales', async (req, res) => {
 
     const summary = {
       totalSales: sales.length,
-      totalRevenue: sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0),
-      totalProfit: sales.reduce((sum, s) => sum + parseFloat(s.profit), 0),
-      totalCommission: sales.reduce((sum, s) => sum + parseFloat(s.commission), 0)
+      totalRevenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+      totalProfit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
+      totalCommission: sales.reduce((sum, s) => sum + safeNum(s.commission), 0)
     };
     
     res.json({ data: sales, summary });
@@ -77,11 +80,11 @@ router.get('/financial', async (req, res) => {
     
     const income = transactions
       .filter(t => ['Income', 'Vehicle Sale'].includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
       
     const expenses = transactions
       .filter(t => ['Expense', 'Vehicle Purchase', 'Salary'].includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
     const summary = {
       totalIncome: income,
@@ -134,11 +137,11 @@ router.get('/profit-loss', async (req, res) => {
       }
     });
     
-    const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0);
-    const totalCost = sales.reduce((sum, s) => sum + parseFloat(s.totalCost), 0);
+    const totalRevenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0);
+    const totalCost = sales.reduce((sum, s) => sum + safeNum(s.totalCost), 0);
     const totalExpenses = ledger
       .filter(t => ['Expense', 'Salary'].includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
     const grossProfit = totalRevenue - totalCost;
     const netProfit = grossProfit - totalExpenses;
@@ -180,12 +183,12 @@ router.get('/daily', async (req, res) => {
     res.json({
       data: {
         sales: sales.length,
-        revenue: sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
         transactions: ledger.length,
         cashIn: ledger.filter(t => ['Income', 'Vehicle Sale'].includes(t.type))
-          .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0),
+          .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0),
         cashOut: ledger.filter(t => ['Expense', 'Vehicle Purchase', 'Salary'].includes(t.type))
-          .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0)
+          .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0)
       }
     });
   } catch (error) {
@@ -201,9 +204,9 @@ router.get('/export-pdf', async (req, res) => {
 
     // Get sales data
     const sales = await Sale.findAll();
-    const revenue = sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0);
-    const profit = sales.reduce((sum, s) => sum + parseFloat(s.profit), 0);
-    const commission = sales.reduce((sum, s) => sum + parseFloat(s.commission), 0);
+    const revenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0);
+    const profit = sales.reduce((sum, s) => sum + safeNum(s.profit), 0);
+    const commission = sales.reduce((sum, s) => sum + safeNum(s.commission), 0);
 
     // Get showroom balance
     const incomeTypes = ['Income', 'Vehicle Sale', 'Loan Received'];
@@ -211,9 +214,9 @@ router.get('/export-pdf', async (req, res) => {
     
     const ledger = await ShowroomLedger.findAll();
     const income = ledger.filter(t => incomeTypes.includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
     const showroomBalance = income - expenses;
 
@@ -225,7 +228,7 @@ router.get('/export-pdf', async (req, res) => {
       raw: true
     });
 
-    const sharedTotal = sharedPersons.reduce((sum, p) => sum + Number(p.total || 0), 0);
+    const sharedTotal = sharedPersons.reduce((sum, p) => sum + safeNum(p.total), 0);
     const ownerBalance = showroomBalance - sharedTotal;
 
     // Prepare report data (values already in AFN base currency)
@@ -282,17 +285,17 @@ router.get('/monthly', async (req, res) => {
       const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
 
       const income = ledger.filter(t => incomeTypes.includes(t.type))
-        .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
       const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-        .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
 
       months.push({
         month,
         monthName: new Date(targetYear, month - 1).toLocaleString('default', { month: 'long' }),
         year: targetYear,
         salesCount: sales.length,
-        revenue: sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0),
-        profit: sales.reduce((sum, s) => sum + parseFloat(s.profit), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+        profit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
         income,
         expenses,
         netProfit: income - expenses
@@ -336,15 +339,15 @@ router.get('/yearly', async (req, res) => {
       const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
 
       const income = ledger.filter(t => incomeTypes.includes(t.type))
-        .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
       const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-        .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
 
       years.push({
         year,
         salesCount: sales.length,
-        revenue: sales.reduce((sum, s) => sum + parseFloat(s.sellingPrice), 0),
-        profit: sales.reduce((sum, s) => sum + parseFloat(s.profit), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+        profit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
         income,
         expenses,
         netProfit: income - expenses
@@ -364,7 +367,7 @@ router.get('/commission', async (req, res) => {
     const where = {};
     
     if (startDate && endDate) {
-      where.createdAt = { [Op.between]: [startDate, endDate] };
+      where.date = { [Op.between]: [startDate, endDate] };
     }
 
     const commissions = await ShowroomLedger.findAll({
@@ -387,7 +390,7 @@ router.get('/commission', async (req, res) => {
           transactions: []
         };
       }
-      grouped[name].totalCommission += parseFloat(c.amountInPKR);
+      grouped[name].totalCommission += safeNum(c.amountInPKR);
       grouped[name].count++;
       grouped[name].transactions.push({
         date: c.date,
@@ -413,9 +416,9 @@ router.get('/balance-breakdown', async (req, res) => {
     const ledger = await ShowroomLedger.findAll();
     
     const income = ledger.filter(t => incomeTypes.includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
     const showroomBalance = income - expenses;
 
@@ -431,7 +434,7 @@ router.get('/balance-breakdown', async (req, res) => {
       raw: true
     });
 
-    const sharedTotal = sharedPersons.reduce((sum, p) => sum + Number(p.total || 0), 0);
+    const sharedTotal = sharedPersons.reduce((sum, p) => sum + safeNum(p.total), 0);
     const ownerBalance = showroomBalance - sharedTotal;
 
     res.json({
@@ -441,8 +444,8 @@ router.get('/balance-breakdown', async (req, res) => {
         sharedTotal,
         sharedPersons: sharedPersons.map(p => ({
           personName: p.personName,
-          balance: Number(p.total || 0),
-          transactionCount: Number(p.count || 0)
+          balance: safeNum(p.total),
+          transactionCount: safeNum(p.count)
         }))
       }
     });

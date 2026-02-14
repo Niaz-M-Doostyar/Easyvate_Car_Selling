@@ -8,10 +8,10 @@ const ensureDir = (dirPath) => {
   }
 };
 
-// --- Constants ---
+// --- Page Constants ---
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const M = 28;
+const M = 20;
 const CW = PAGE_W - 2 * M;
 
 const COLORS = {
@@ -33,167 +33,143 @@ const COLORS = {
   licensedAccent: '#2e7d32',
 };
 
-// --- Draw car silhouette as vector art ---
+// ================================================================
+//  COMPACT DRAWING HELPERS (fit everything on 1 page)
+// ================================================================
+
 function drawCarSilhouette(doc, x, y, w, h, color) {
   doc.save();
-  var scale = Math.min(w / 120, h / 50);
-  doc.translate(x + w / 2 - 60 * scale, y + h / 2 - 20 * scale);
-  doc.scale(scale);
-
-  // Car body
-  doc.path('M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 L0,35 Z')
-    .fill(color);
-
-  // Windows
-  doc.save();
-  doc.opacity(0.3);
-  doc.path('M48,14 L25,22 L25,30 L58,30 Z').fill('#ffffff');
-  doc.path('M62,14 L62,30 L100,30 L100,22 Z').fill('#ffffff');
+  var sc = Math.min(w / 120, h / 50);
+  doc.translate(x + w / 2 - 60 * sc, y + h / 2 - 20 * sc).scale(sc);
+  doc.path('M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 L0,35 Z').fill(color);
+  doc.save().opacity(0.3);
+  doc.path('M48,14 L25,22 L25,30 L58,30 Z').fill('#fff');
+  doc.path('M62,14 L62,30 L100,30 L100,22 Z').fill('#fff');
   doc.restore();
-
-  // Wheels
-  doc.circle(25, 42, 8).fill('#1a1a1a');
-  doc.circle(25, 42, 4).fill('#444');
-  doc.circle(105, 42, 8).fill('#1a1a1a');
-  doc.circle(105, 42, 4).fill('#444');
-
+  doc.circle(25, 42, 7).fill('#1a1a1a'); doc.circle(25, 42, 3).fill('#444');
+  doc.circle(105, 42, 7).fill('#1a1a1a'); doc.circle(105, 42, 3).fill('#444');
   doc.restore();
 }
 
-// --- Professional Header ---
-function drawHeader(doc, type, saleId, saleDate, pageNum) {
-  var typeConfig = {
-    'Exchange Car': { color: COLORS.exchangeAccent, label: 'EXCHANGE CAR BILL', pashto: '\u062F \u062A\u0628\u0627\u062F\u0644\u06D0 \u0628\u0644', accent: '#e3f2fd' },
+// Compact header ~72px
+function drawCompactHeader(doc, type, saleId, saleDate) {
+  var cfgMap = {
+    'Exchange Car':      { color: COLORS.exchangeAccent, label: 'EXCHANGE CAR BILL',      pashto: '\u062F \u062A\u0628\u0627\u062F\u0644\u06D0 \u0628\u0644',   accent: '#e3f2fd' },
     'Container One Key': { color: COLORS.containerAccent, label: 'CONTAINER ONE KEY BILL', pashto: '\u06A9\u0627\u0646\u062A\u06CC\u0646\u0631\u064A \u06CC\u0648\u0647 \u06A9\u06CC\u0644\u064A \u0628\u0644', accent: '#fff3e0' },
-    'Licensed Car': { color: COLORS.licensedAccent, label: 'LICENSED VEHICLE BILL', pashto: '\u0627\u0633\u0646\u0627\u062F \u062F\u0627\u0631 \u0647\u0641\u062A\u0631 \u0645\u06A9\u0645\u0644 \u0628\u0644', accent: '#e8f5e9' },
+    'Licensed Car':      { color: COLORS.licensedAccent,  label: 'LICENSED VEHICLE BILL',  pashto: '\u0627\u0633\u0646\u0627\u062F \u062F\u0627\u0631 \u0647\u0641\u062A\u0631 \u0645\u06A9\u0645\u0644 \u0628\u0644', accent: '#e8f5e9' },
   };
-  var cfg = typeConfig[type] || typeConfig['Container One Key'];
+  var cfg = cfgMap[type] || { color: COLORS.containerAccent, label: 'SALE BILL', pashto: '', accent: '#fff3e0' };
 
-  // Dark header band
-  doc.rect(0, 0, PAGE_W, 90).fill(COLORS.headerBg);
-  // Gold accent stripe
-  doc.rect(0, 90, PAGE_W, 3).fill(COLORS.gold);
+  doc.rect(0, 0, PAGE_W, 52).fill(COLORS.headerBg);
+  doc.rect(0, 52, PAGE_W, 2).fill(COLORS.gold);
+  drawCarSilhouette(doc, 8, 6, 70, 30, COLORS.gold);
+  drawCarSilhouette(doc, PAGE_W - 78, 6, 70, 30, COLORS.gold);
 
-  // Car silhouettes on both sides
-  drawCarSilhouette(doc, 12, 15, 100, 40, COLORS.gold);
-  drawCarSilhouette(doc, PAGE_W - 112, 15, 100, 40, COLORS.gold);
+  doc.font('Helvetica-Bold').fontSize(14).fillColor(COLORS.white)
+    .text('NIAZI KHPALWAK', 80, 6, { width: PAGE_W - 160, align: 'center' });
+  doc.font('Helvetica').fontSize(7.5).fillColor('#ddd')
+    .text('Motor Puranchi \u2014 Car Showroom & Dealership', 80, 22, { width: PAGE_W - 160, align: 'center' });
+  doc.fontSize(6.5).fillColor(COLORS.gold)
+    .text('Phone: 0700008983 | 0700008982 | Kandahar Bazaar, Purani Road, Kok Nakhja', 60, 34, { width: PAGE_W - 120, align: 'center' });
+  doc.fontSize(7).fillColor('#fff')
+    .text(cfg.pashto, 60, 44, { width: PAGE_W - 120, align: 'center' });
 
-  // Business name
-  doc.font('Helvetica-Bold').fontSize(20).fillColor(COLORS.white)
-    .text('NIAZI KHPALWAK', M + 90, 14, { width: CW - 180, align: 'center' });
+  var by = 57;
+  doc.rect(M, by, CW, 18).fill(cfg.accent);
+  doc.rect(M, by, 3, 18).fill(cfg.color);
+  doc.rect(M + CW - 3, by, 3, 18).fill(cfg.color);
+  doc.font('Helvetica-Bold').fontSize(9).fillColor(cfg.color)
+    .text(cfg.label, M + 8, by + 4, { width: CW - 16, align: 'center' });
 
-  // Subtitle
-  doc.font('Helvetica').fontSize(10).fillColor('#e0e0e0')
-    .text('Motor Puranchi  -  Car Showroom & Dealership', M + 90, 37, { width: CW - 180, align: 'center' });
-
-  // Contact info row
-  doc.fontSize(8).fillColor(COLORS.gold)
-    .text('Phone: 0700008983  |  0700008982  |  Kandahar Bazaar, Purani Road, Kok Nakhja', M + 40, 55, { width: CW - 80, align: 'center' });
-
-  // Type in Pashto
-  doc.fontSize(9).fillColor('#ffffff')
-    .text(cfg.pashto, M + 40, 72, { width: CW - 80, align: 'center' });
-
-  // Bill type banner
-  var bannerY = 100;
-  doc.rect(M, bannerY, CW, 28).fill(cfg.accent);
-  doc.rect(M, bannerY, 4, 28).fill(cfg.color);
-  doc.rect(M + CW - 4, bannerY, 4, 28).fill(cfg.color);
-
-  doc.font('Helvetica-Bold').fontSize(13).fillColor(cfg.color)
-    .text(cfg.label, M + 15, bannerY + 7, { width: CW - 30, align: 'center' });
-
-  // Bill info line
-  var infoY = bannerY + 34;
-  doc.fontSize(8).font('Helvetica').fillColor(COLORS.grayText)
-    .text('Bill No: ' + saleId, M, infoY)
-    .text('Date: ' + new Date(saleDate).toLocaleDateString('en-GB'), M + CW / 3, infoY, { width: CW / 3, align: 'center' })
-    .text('Page: ' + pageNum, M + 2 * CW / 3, infoY, { width: CW / 3, align: 'right' });
-
+  var iy = by + 20;
+  doc.fontSize(6.5).font('Helvetica').fillColor(COLORS.grayText)
+    .text('Bill No: ' + saleId, M, iy)
+    .text('Date: ' + new Date(saleDate).toLocaleDateString('en-GB'), M + CW / 3, iy, { width: CW / 3, align: 'center' });
   doc.fillColor(COLORS.darkText);
-  return infoY + 20;
+  return iy + 12;
 }
 
-// --- Section Title ---
-function drawSectionTitle(doc, y, title, color) {
-  doc.rect(M, y, CW, 22).fill(color || COLORS.accent);
-  doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#ffffff')
-    .text(title, M + 10, y + 6, { width: CW - 20 });
+// Section title 16px
+function drawSection(doc, y, title, color) {
+  doc.rect(M, y, CW, 16).fill(color || COLORS.accent);
+  doc.font('Helvetica-Bold').fontSize(7).fillColor('#fff')
+    .text(title, M + 6, y + 4, { width: CW - 12 });
   doc.fillColor(COLORS.darkText);
-  return y + 22;
+  return y + 16;
 }
 
-// --- Key-Value Row ---
-function drawKVRow(doc, y, label, value) {
-  var labelWidth = 130;
-  var height = 18;
-  doc.rect(M, y, CW, height).stroke(COLORS.border);
-  doc.rect(M, y, labelWidth, height).fill('#f7f7fc').stroke(COLORS.border);
-
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORS.grayText)
-    .text(label, M + 6, y + 4.5, { width: labelWidth - 12 });
-
-  doc.font('Helvetica').fontSize(8)
-    .fillColor(COLORS.darkText)
-    .text(String(value || '\u2014'), M + labelWidth + 6, y + 4.5, { width: CW - labelWidth - 12, lineBreak: false });
-
-  doc.fillColor(COLORS.darkText);
-  return y + height;
+// Side-by-side person row 13px
+function drawPersonRow(doc, y, label, buyerVal, sellerVal, colW, bg) {
+  var h = 13, lblW = 52;
+  doc.rect(M, y, colW, h).fill(bg).stroke('#e0e0e0');
+  doc.rect(M + colW + 4, y, colW, h).fill(bg).stroke('#e0e0e0');
+  doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText)
+    .text(label, M + 3, y + 3, { width: lblW, lineBreak: false });
+  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.darkText)
+    .text(String(buyerVal || '\u2014'), M + lblW + 2, y + 3, { width: colW - lblW - 6, lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText)
+    .text(label, M + colW + 7, y + 3, { width: lblW, lineBreak: false });
+  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.darkText)
+    .text(String(sellerVal || '\u2014'), M + colW + lblW + 9, y + 3, { width: colW - lblW - 13, lineBreak: false });
+  return y + h;
 }
 
-// --- Price Badge ---
-function drawPriceBadge(doc, y, label, amount) {
-  var badgeW = CW;
-  var badgeH = 32;
-
-  doc.roundedRect(M, y, badgeW, badgeH, 4).fill(COLORS.lightGold);
-  doc.roundedRect(M, y, badgeW, badgeH, 4).stroke(COLORS.gold);
-  doc.rect(M, y, 5, badgeH).fill(COLORS.gold);
-
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.grayText)
-    .text(label, M + 15, y + 5, { width: badgeW / 2 - 20 });
-
-  doc.font('Helvetica-Bold').fontSize(16).fillColor(COLORS.primary)
-    .text(Number(amount || 0).toLocaleString() + ' AFN', M + badgeW / 2, y + 6, { width: badgeW / 2 - 15, align: 'right' });
-
-  return y + badgeH + 8;
+// Side-by-side spec row 13px
+function drawSpecRow(doc, y, l1, v1, l2, v2, colW, bg) {
+  var h = 13, lblW = 58;
+  doc.rect(M, y, colW, h).fill(bg).stroke('#e0e0e0');
+  doc.rect(M + colW + 4, y, colW, h).fill(bg).stroke('#e0e0e0');
+  doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText)
+    .text(l1, M + 3, y + 3, { width: lblW, lineBreak: false });
+  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.darkText)
+    .text(String(v1 || '\u2014'), M + lblW + 2, y + 3, { width: colW - lblW - 6, lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText)
+    .text(l2, M + colW + 7, y + 3, { width: lblW, lineBreak: false });
+  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.darkText)
+    .text(String(v2 || '\u2014'), M + colW + lblW + 9, y + 3, { width: colW - lblW - 13, lineBreak: false });
+  return y + h;
 }
 
-// --- Terms & Conditions ---
-function drawTerms(doc, y, terms, color) {
-  y = drawSectionTitle(doc, y, 'Terms & Conditions / Sharait aw Zamanat', color);
-  y += 3;
-  doc.font('Helvetica').fontSize(7);
+// Compact price badge 22px
+function drawPrice(doc, y, label, amount) {
+  var h = 22;
+  doc.roundedRect(M, y, CW, h, 3).fill(COLORS.lightGold).stroke(COLORS.gold);
+  doc.rect(M, y, 4, h).fill(COLORS.gold);
+  doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.grayText).text(label, M + 10, y + 5);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(COLORS.primary)
+    .text(Number(amount || 0).toLocaleString() + ' AFN', M + CW / 2, y + 4, { width: CW / 2 - 10, align: 'right' });
+  return y + h + 4;
+}
+
+// Compact terms 9px per line
+function drawTermsCompact(doc, y, terms, color) {
+  y = drawSection(doc, y, 'Terms & Conditions / Sharait aw Zamanat', color);
+  doc.font('Helvetica').fontSize(5.5);
   for (var i = 0; i < terms.length; i++) {
-    var bg = i % 2 === 0 ? '#fafafa' : '#ffffff';
-    doc.rect(M, y, CW, 13).fill(bg).stroke('#eee');
-    doc.fillColor(COLORS.darkText)
-      .text(terms[i], M + 8, y + 3, { width: CW - 16, lineBreak: false });
-    y += 13;
+    doc.rect(M, y, CW, 9).fill(i % 2 === 0 ? '#fafafa' : '#fff').stroke('#eee');
+    doc.fillColor(COLORS.darkText).text(terms[i], M + 5, y + 2, { width: CW - 10, lineBreak: false });
+    y += 9;
   }
-  doc.fillColor(COLORS.darkText);
-  return y + 5;
+  return y + 2;
 }
 
-// --- Notes Section ---
-function drawNotes(doc, y, note1, note2) {
+// Compact notes
+function drawNotesCompact(doc, y, note1, note2) {
   if (!note1 && !note2) return y;
-  doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.grayText)
-    .text('Notes:', M, y);
-  y += 12;
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText);
-  if (note1) { doc.text('1. ' + note1, M + 5, y, { width: CW - 10 }); y += 12; }
-  if (note2) { doc.text('2. ' + note2, M + 5, y, { width: CW - 10 }); y += 12; }
-  return y + 3;
+  doc.font('Helvetica-Bold').fontSize(6).fillColor(COLORS.grayText).text('Notes:', M, y);
+  y += 9;
+  doc.font('Helvetica').fontSize(6).fillColor(COLORS.darkText);
+  if (note1) { doc.text('1. ' + note1, M + 4, y, { width: CW - 8, lineBreak: false }); y += 9; }
+  if (note2) { doc.text('2. ' + note2, M + 4, y, { width: CW - 8, lineBreak: false }); y += 9; }
+  return y + 2;
 }
 
-// --- Signatures ---
-function drawSignatures(doc, y, witness1, witness2) {
+// Compact signatures ~42px
+function drawSignaturesCompact(doc, y, witness1, witness2) {
   doc.save();
   doc.moveTo(M, y).lineTo(M + CW, y).dash(2, { space: 2 }).stroke(COLORS.border);
   doc.restore();
-  y += 10;
-
+  y += 6;
   var colW = CW / 3;
   var sigs = [
     { x: M, label: 'Buyer Thumbprint / Sign' },
@@ -201,224 +177,137 @@ function drawSignatures(doc, y, witness1, witness2) {
     { x: M + 2 * colW, label: 'Seller Thumbprint / Sign' }
   ];
   for (var s = 0; s < sigs.length; s++) {
-    doc.roundedRect(sigs[s].x + 5, y, colW - 10, 50, 3).stroke(COLORS.border);
-    doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.grayText)
-      .text(sigs[s].label, sigs[s].x + 8, y + 36, { width: colW - 16, align: 'center' });
+    doc.roundedRect(sigs[s].x + 3, y, colW - 6, 30, 2).stroke(COLORS.border);
+    doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText)
+      .text(sigs[s].label, sigs[s].x + 5, y + 22, { width: colW - 10, align: 'center' });
   }
-
-  y += 58;
-
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText);
-  doc.text('Witness 1: ' + (witness1 || '________________________'), M, y, { width: CW / 2 - 10 });
+  y += 34;
+  doc.font('Helvetica').fontSize(6).fillColor(COLORS.darkText);
+  doc.text('Witness 1: ' + (witness1 || '________________________'), M, y, { width: CW / 2 - 5 });
   doc.text('Witness 2: ' + (witness2 || '________________________'), M + CW / 2, y, { width: CW / 2, align: 'right' });
-
-  return y + 18;
+  return y + 10;
 }
 
-// --- Footer ---
-function drawFooter(doc) {
-  doc.rect(0, PAGE_H - 30, PAGE_W, 30).fill(COLORS.headerBg);
-  doc.rect(0, PAGE_H - 33, PAGE_W, 3).fill(COLORS.gold);
-  doc.font('Helvetica').fontSize(6.5).fillColor('#aaa')
-    .text('This document is an official sale record of Niazi Khpalwak Motor Puranchi.',
-      M, PAGE_H - 22, { width: CW, align: 'center' });
-}
-
-// --- Side-by-side row helper ---
-function drawSideBySideRow(doc, y, lbl, buyerVal, sellerVal, colW, bg) {
-  var rowH = 18;
-  doc.rect(M, y, colW, rowH).fill(bg).stroke('#ddd');
-  doc.rect(M + colW + 8, y, colW, rowH).fill(bg).stroke('#ddd');
-
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.grayText)
-    .text(lbl, M + 3, y + 2, { width: 62, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText)
-    .text(String(buyerVal || '\u2014'), M + 66, y + 4, { width: colW - 70, lineBreak: false });
-
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.grayText)
-    .text(lbl, M + colW + 11, y + 2, { width: 62, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText)
-    .text(String(sellerVal || '\u2014'), M + colW + 74, y + 4, { width: colW - 78, lineBreak: false });
-
-  return y + rowH;
-}
-
-// --- Vehicle spec row (4 cols) ---
-function drawVehicleSpecRow(doc, y, label1, val1, label2, val2, colW, bg) {
-  var rowH = 18;
-  doc.rect(M, y, colW, rowH).fill(bg).stroke('#ddd');
-  doc.rect(M + colW + 8, y, colW, rowH).fill(bg).stroke('#ddd');
-
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.grayText)
-    .text(label1, M + 3, y + 2, { width: 80, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText)
-    .text(String(val1 || '\u2014'), M + 84, y + 4, { width: colW - 88, lineBreak: false });
-
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.grayText)
-    .text(label2, M + colW + 11, y + 2, { width: 80, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.darkText)
-    .text(String(val2 || '\u2014'), M + colW + 92, y + 4, { width: colW - 96, lineBreak: false });
-
-  return y + rowH;
+// Footer 20px
+function drawFooterCompact(doc) {
+  doc.rect(0, PAGE_H - 20, PAGE_W, 20).fill(COLORS.headerBg);
+  doc.rect(0, PAGE_H - 22, PAGE_W, 2).fill(COLORS.gold);
+  doc.font('Helvetica').fontSize(5.5).fillColor('#aaa')
+    .text('This document is an official sale record of Niazi Khpalwak Motor Puranchi.', M, PAGE_H - 14, { width: CW, align: 'center' });
 }
 
 
-// =================================================================
-//  1. EXCHANGE CAR BILL
-// =================================================================
+// ================================================================
+//  1. EXCHANGE CAR BILL (single page)
+// ================================================================
 function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'exchange_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
 
   return new Promise(function(resolve, reject) {
-    var doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true });
+    var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
     var stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    var y = drawHeader(doc, 'Exchange Car', sale.saleId, sale.saleDate, sale.id);
+    var y = drawCompactHeader(doc, 'Exchange Car', sale.saleId, sale.saleDate);
+    var colW = (CW - 4) / 2;
 
-    // Buyer Info
-    y = drawSectionTitle(doc, y, '  BUYER INFORMATION / D Kharidar Maloomat', COLORS.exchangeAccent);
-    var buyerFields = [
-      ['Full Name / Nom', customer.fullName],
-      ['Father Name / D Plar Nom', customer.fatherName],
-      ['Province / Welayat', customer.province],
-      ['District / Woluswali', customer.district],
-      ['Village / Kali', customer.village],
-      ['Address / Pata', customer.currentAddress],
-      ['ID / Tazkira Number', customer.nationalIdNumber],
-      ['Phone / Telephone', customer.phoneNumber]
-    ];
-    for (var i = 0; i < buyerFields.length; i++) {
-      y = drawKVRow(doc, y, buyerFields[i][0], buyerFields[i][1]);
+    // Buyer & Seller side-by-side
+    doc.rect(M, y, colW, 14).fill(COLORS.exchangeAccent);
+    doc.rect(M + colW + 4, y, colW, 14).fill('#5d4037');
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#fff')
+      .text('BUYER / Kharidar', M + 6, y + 3, { width: colW - 12 })
+      .text('EXCHANGER (SELLER) / Tabadla Koonki', M + colW + 10, y + 3, { width: colW - 16 });
+    y += 14;
+
+    var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
+    var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
+    var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
+    for (var i = 0; i < labels.length; i++) {
+      y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGray : '#fff');
     }
+    y += 4;
 
+    // Sold Vehicle & Exchange Vehicle side-by-side
+    doc.rect(M, y, colW, 14).fill('#37474f');
+    doc.rect(M + colW + 4, y, colW, 14).fill(COLORS.exchangeAccent);
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#fff')
+      .text('SOLD VEHICLE / Khartsshaway Motor', M + 6, y + 3, { width: colW - 12 })
+      .text('EXCHANGE VEHICLE / Tabadla Motor', M + colW + 10, y + 3, { width: colW - 16 });
+    y += 14;
+
+    var vehLabels = ['Manufacturer', 'Model', 'Year', 'Category', 'Color', 'Chassis', 'Engine No.', 'Fuel Type', 'Plate No.', 'Transmission', 'Steering', 'Monolithic/Cut'];
+    var soldVals = [vehicle.manufacturer, vehicle.model, vehicle.year, vehicle.category, vehicle.color, vehicle.chassisNumber, vehicle.engineNumber, vehicle.fuelType, vehicle.plateNo, vehicle.transmission, vehicle.steering, vehicle.monolithicCut];
+    var exchVals = [sale.exchVehicleManufacturer, sale.exchVehicleModel, sale.exchVehicleYear, sale.exchVehicleCategory, sale.exchVehicleColor, sale.exchVehicleChassis, sale.exchVehicleEngine, sale.exchVehicleFuelType, sale.exchVehiclePlateNo, sale.exchVehicleTransmission, sale.exchVehicleSteering, sale.exchVehicleMonolithicCut];
+    for (var j = 0; j < vehLabels.length; j++) {
+      y = drawPersonRow(doc, y, vehLabels[j], soldVals[j], exchVals[j], colW, j % 2 === 0 ? COLORS.lightBlue : '#fff');
+    }
     y += 5;
 
-    // Sold Vehicle
-    y = drawSectionTitle(doc, y, '  SOLD VEHICLE / Khartsshaway Motor', '#37474f');
-    var vehFields = [
-      ['Manufacturer / Sherkat', vehicle.manufacturer],
-      ['Model / Model', vehicle.model],
-      ['Year / Kal', vehicle.year],
-      ['Category / Dawl', vehicle.category],
-      ['Color / Rang', vehicle.color],
-      ['Chassis / Chasi', vehicle.chassisNumber],
-      ['Engine / Engine Number', vehicle.engineNumber],
-      ['Fuel / Tel Dawl', vehicle.fuelType],
-      ['Plate / Number Plate', vehicle.plateNo],
-      ['Transmission / Gearbaks', vehicle.transmission],
-      ['Steering / Steering', vehicle.steering],
-      ['Monolithic/Cut / Monolet', vehicle.monolithicCut]
-    ];
-    for (var j = 0; j < vehFields.length; j++) {
-      y = drawKVRow(doc, y, vehFields[j][0], vehFields[j][1]);
+    // Prices
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
+    if (Number(sale.priceDifference) > 0) {
+      y = drawPrice(doc, y, 'PRICE DIFFERENCE / D Qeemat Farq', sale.priceDifference);
+      doc.font('Helvetica').fontSize(6).fillColor(COLORS.grayText)
+        .text('Price difference paid by: ' + (sale.priceDifferencePaidBy || 'Buyer'), M + 8, y);
+      y += 10;
     }
-
-    y += 5;
-
-    // Exchanger Info
-    y = drawSectionTitle(doc, y, '  EXCHANGER (SELLER) / Tabadla Koonki', '#5d4037');
-    var sellerFields = [
-      ['Full Name / Nom', sale.sellerName],
-      ['Father Name / D Plar Nom', sale.sellerFatherName],
-      ['Province / Welayat', sale.sellerProvince],
-      ['District / Woluswali', sale.sellerDistrict],
-      ['Village / Kali', sale.sellerVillage],
-      ['Address / Pata', sale.sellerAddress],
-      ['ID / Tazkira Number', sale.sellerIdNumber],
-      ['Phone / Telephone', sale.sellerPhone]
-    ];
-    for (var k = 0; k < sellerFields.length; k++) {
-      y = drawKVRow(doc, y, sellerFields[k][0], sellerFields[k][1]);
-    }
-
-    y += 5;
-
-    // Exchange Vehicle
-    y = drawSectionTitle(doc, y, '  EXCHANGE VEHICLE / Tabadla Shaway Motor', COLORS.exchangeAccent);
-    var exchFields = [
-      ['Manufacturer / Sherkat', sale.exchVehicleManufacturer],
-      ['Model / Model', sale.exchVehicleModel],
-      ['Year / Kal', sale.exchVehicleYear],
-      ['Category / Dawl', sale.exchVehicleCategory],
-      ['Color / Rang', sale.exchVehicleColor],
-      ['Chassis / Chasi', sale.exchVehicleChassis],
-      ['Engine / Engine Number', sale.exchVehicleEngine],
-      ['Fuel / Tel Dawl', sale.exchVehicleFuelType],
-      ['Plate / Number Plate', sale.exchVehiclePlateNo],
-      ['Transmission / Gearbaks', sale.exchVehicleTransmission],
-      ['Steering / Steering', sale.exchVehicleSteering],
-      ['Monolithic/Cut / Monolet', sale.exchVehicleMonolithicCut]
-    ];
-    for (var e = 0; e < exchFields.length; e++) {
-      y = drawKVRow(doc, y, exchFields[e][0], exchFields[e][1]);
-    }
-
-    y += 8;
-
-    // Price
-    y = drawPriceBadge(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
-    y = drawPriceBadge(doc, y, 'PRICE DIFFERENCE / D Qeemat Farq', sale.priceDifference);
-
-    doc.font('Helvetica').fontSize(8).fillColor(COLORS.grayText)
-      .text('Price difference paid by: ' + (sale.priceDifferencePaidBy || 'Buyer'), M + 10, y);
-    y += 16;
 
     // Terms
     var terms = [
-      '1: Both vehicles are exchanged with traffic responsibility from this date onward to the new owner.',
-      '2: The exchange is done with mutual consent and agreement of both parties.',
-      '3: Vehicles delivered after full checking - both parties satisfied with condition.',
+      '1: Both vehicles exchanged \u2014 traffic responsibility from this date onward to the new owner.',
+      '2: Exchange done with mutual consent and agreement of both parties.',
+      '3: Vehicles delivered after full checking \u2014 both parties satisfied with condition.',
       '4: Both parties must take warranty from each other. Showroom has no responsibility.',
-      '5: Showroom commission of trade law: 2% from buyer, 1% from seller.',
-      '6: Buying and selling of Bait-ul-Maal vehicles is strictly prohibited.'
+      '5: Commission: 2% from buyer, 1% from seller. Buying/selling Bait-ul-Maal vehicles prohibited.'
     ];
-    y = drawTerms(doc, y, terms, COLORS.exchangeAccent);
-    y = drawNotes(doc, y, sale.notes, sale.note2);
-    y = drawSignatures(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawTermsCompact(doc, y, terms, COLORS.exchangeAccent);
+    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
 
-    drawFooter(doc);
+    drawFooterCompact(doc);
     doc.end();
     stream.on('finish', function() { resolve({ filePath: filePath, fileName: fileName }); });
     stream.on('error', reject);
   });
 }
 
-// =================================================================
-//  2. CONTAINER ONE KEY BILL
-// =================================================================
+
+// ================================================================
+//  2. CONTAINER ONE KEY BILL (single page)
+// ================================================================
 function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'container_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
 
   return new Promise(function(resolve, reject) {
-    var doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true });
+    var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
     var stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    var y = drawHeader(doc, 'Container One Key', sale.saleId, sale.saleDate, sale.id);
+    var y = drawCompactHeader(doc, 'Container One Key', sale.saleId, sale.saleDate);
+    var colW = (CW - 4) / 2;
 
-    var colW = CW / 2 - 4;
+    // Buyer & Seller side-by-side
+    doc.rect(M, y, colW, 14).fill(COLORS.containerAccent);
+    doc.rect(M + colW + 4, y, colW, 14).fill('#795548');
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#fff')
+      .text('BUYER / Kharidar', M + 6, y + 3, { width: colW - 12 })
+      .text('SELLER / Ploronki', M + colW + 10, y + 3, { width: colW - 16 });
+    y += 14;
 
-    // Buyer & Seller side by side
-    y = drawSectionTitle(doc, y, '  BUYER / Kharidar                                                                SELLER / Ploronki', COLORS.containerAccent);
     var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
     var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
     var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
-
     for (var i = 0; i < labels.length; i++) {
-      var bg = i % 2 === 0 ? COLORS.lightGray : '#ffffff';
-      y = drawSideBySideRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, bg);
+      y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGray : '#fff');
     }
+    y += 4;
 
-    y += 8;
-
-    // Vehicle Specs
-    y = drawSectionTitle(doc, y, '  VEHICLE SPECIFICATIONS / D Motor Mushakhisat', '#37474f');
-
+    // Vehicle Specs (2-col)
+    y = drawSection(doc, y, '  VEHICLE SPECIFICATIONS / D Motor Mushakhisat', '#37474f');
     var vehData = [
       ['Category', vehicle.category, 'Color', vehicle.color],
       ['Manufacturer', vehicle.manufacturer, 'Model', (vehicle.model || '') + ' (' + (vehicle.year || '') + ')'],
@@ -428,80 +317,75 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
       ['Steering', vehicle.steering, 'Monolithic/Cut', vehicle.monolithicCut],
       ['Vehicle ID', vehicle.vehicleId, 'Mileage', vehicle.mileage ? (vehicle.mileage + ' km') : '\u2014']
     ];
-
     for (var v = 0; v < vehData.length; v++) {
-      var vbg = v % 2 === 0 ? COLORS.lightBlue : '#ffffff';
-      y = drawVehicleSpecRow(doc, y, vehData[v][0], vehData[v][1], vehData[v][2], vehData[v][3], colW, vbg);
+      y = drawSpecRow(doc, y, vehData[v][0], vehData[v][1], vehData[v][2], vehData[v][3], colW, v % 2 === 0 ? COLORS.lightBlue : '#fff');
     }
-
-    y += 8;
+    y += 5;
 
     // Price
-    y = drawPriceBadge(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
-
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
     if (Number(sale.downPayment) > 0) {
-      doc.font('Helvetica').fontSize(8).fillColor(COLORS.grayText);
-      doc.text('Down Payment: ' + Number(sale.downPayment).toLocaleString() + ' AFN', M + 10, y);
+      doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.grayText);
+      doc.text('Down Payment: ' + Number(sale.downPayment).toLocaleString() + ' AFN', M + 8, y);
       doc.text('Remaining: ' + Number(sale.remainingAmount || 0).toLocaleString() + ' AFN', M + CW / 2, y);
-      y += 14;
+      y += 11;
     }
 
     // Terms
     var terms = [
       '1: The vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN as shown above.',
       '2: Traffic responsibility from (' + new Date(sale.saleDate).toLocaleDateString('en-GB') + ') onward is with the buyer.',
-      '3: The vehicle has no legal documents - only one key.',
-      '4: Vehicle fully checked and approved. Seller has no complaint right.',
-      '5: Theft responsibility is on the buyer.',
-      '6: Buyer and seller must take warranty from each other. Showroom has no guarantee.',
-      '7: The showroom is only a witness for the record.',
-      '8: Commission dispute handled by showroom rules.',
-      '9: Commission: 2% from buyer, 1% from seller.'
+      '3: The vehicle has no legal documents \u2014 only one key. Vehicle fully checked and approved.',
+      '4: Theft responsibility is on the buyer. Seller has no complaint right.',
+      '5: Buyer and seller must take warranty from each other. Showroom has no guarantee.',
+      '6: The showroom is only a witness. Commission: 2% buyer, 1% seller.'
     ];
-    y = drawTerms(doc, y, terms, COLORS.containerAccent);
-    y = drawNotes(doc, y, sale.notes, sale.note2);
-    y = drawSignatures(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawTermsCompact(doc, y, terms, COLORS.containerAccent);
+    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
 
-    drawFooter(doc);
+    drawFooterCompact(doc);
     doc.end();
     stream.on('finish', function() { resolve({ filePath: filePath, fileName: fileName }); });
     stream.on('error', reject);
   });
 }
 
-// =================================================================
-//  3. LICENSED CAR BILL
-// =================================================================
+
+// ================================================================
+//  3. LICENSED CAR BILL (single page)
+// ================================================================
 function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'licensed_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
 
   return new Promise(function(resolve, reject) {
-    var doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true });
+    var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
     var stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    var y = drawHeader(doc, 'Licensed Car', sale.saleId, sale.saleDate, sale.id);
+    var y = drawCompactHeader(doc, 'Licensed Car', sale.saleId, sale.saleDate);
+    var colW = (CW - 4) / 2;
 
-    var colW = CW / 2 - 4;
+    // Buyer & Seller side-by-side
+    doc.rect(M, y, colW, 14).fill(COLORS.licensedAccent);
+    doc.rect(M + colW + 4, y, colW, 14).fill('#4e342e');
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#fff')
+      .text('BUYER / Kharidar', M + 6, y + 3, { width: colW - 12 })
+      .text('SELLER / Ploronki', M + colW + 10, y + 3, { width: colW - 16 });
+    y += 14;
 
-    // Buyer & Seller
-    y = drawSectionTitle(doc, y, '  BUYER / Kharidar                                                                SELLER / Ploronki', COLORS.licensedAccent);
     var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
     var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
     var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
-
     for (var i = 0; i < labels.length; i++) {
-      var bg = i % 2 === 0 ? COLORS.lightGreen : '#ffffff';
-      y = drawSideBySideRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, bg);
+      y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGreen : '#fff');
     }
+    y += 4;
 
-    y += 8;
-
-    // Vehicle Specs
-    y = drawSectionTitle(doc, y, '  VEHICLE SPECIFICATIONS / D Motor Mushakhisat', '#37474f');
-
+    // Vehicle Specs (2-col)
+    y = drawSection(doc, y, '  VEHICLE SPECIFICATIONS / D Motor Mushakhisat', '#37474f');
     var vehData = [
       ['Category', vehicle.category, 'Color', vehicle.color],
       ['Manufacturer', vehicle.manufacturer, 'Model', (vehicle.model || '') + ' (' + (vehicle.year || '') + ')'],
@@ -509,32 +393,28 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
       ['Fuel Type', vehicle.fuelType, 'Engine Type', vehicle.engineType],
       ['Plate', vehicle.plateNo, 'Transmission', vehicle.transmission],
       ['Steering', vehicle.steering, 'Monolithic/Cut', vehicle.monolithicCut],
-      ['Vehicle License', vehicle.vehicleLicense || vehicle.vehicleId, 'Mileage', vehicle.mileage ? (vehicle.mileage + ' km') : '\u2014']
+      ['License', vehicle.vehicleLicense || vehicle.vehicleId, 'Mileage', vehicle.mileage ? (vehicle.mileage + ' km') : '\u2014']
     ];
-
     for (var v = 0; v < vehData.length; v++) {
-      var vbg = v % 2 === 0 ? COLORS.lightGreen : '#ffffff';
-      y = drawVehicleSpecRow(doc, y, vehData[v][0], vehData[v][1], vehData[v][2], vehData[v][3], colW, vbg);
+      y = drawSpecRow(doc, y, vehData[v][0], vehData[v][1], vehData[v][2], vehData[v][3], colW, v % 2 === 0 ? COLORS.lightGreen : '#fff');
     }
-
-    y += 8;
+    y += 5;
 
     // Price
-    y = drawPriceBadge(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
 
-    // Traffic transfer date
     if (sale.trafficTransferDate) {
-      doc.roundedRect(M, y, CW, 22, 3).fill('#e8f5e9').stroke(COLORS.licensedAccent);
-      doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.licensedAccent)
-        .text('Traffic Transfer Date: ' + new Date(sale.trafficTransferDate).toLocaleDateString('en-GB'), M + 10, y + 5, { width: CW - 20 });
-      y += 28;
+      doc.roundedRect(M, y, CW, 15, 2).fill('#e8f5e9').stroke(COLORS.licensedAccent);
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.licensedAccent)
+        .text('Traffic Transfer Date: ' + new Date(sale.trafficTransferDate).toLocaleDateString('en-GB'), M + 8, y + 4, { width: CW - 16 });
+      y += 19;
     }
 
     if (Number(sale.downPayment) > 0) {
-      doc.font('Helvetica').fontSize(8).fillColor(COLORS.grayText);
-      doc.text('Down Payment: ' + Number(sale.downPayment).toLocaleString() + ' AFN', M + 10, y);
+      doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.grayText);
+      doc.text('Down Payment: ' + Number(sale.downPayment).toLocaleString() + ' AFN', M + 8, y);
       doc.text('Remaining: ' + Number(sale.remainingAmount || 0).toLocaleString() + ' AFN', M + CW / 2, y);
-      y += 14;
+      y += 11;
     }
 
     // Terms
@@ -542,29 +422,27 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
     var saleDateStr = new Date(sale.saleDate).toLocaleDateString('en-GB');
     var terms = [
       '1: The vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN.',
-      '2: Traffic responsibility until (' + transferDateStr + ') is with the seller. After (' + saleDateStr + '), responsibility is with buyer.',
-      '3: Vehicle has complete legal documents and title.',
-      '4: Vehicle fully checked and approved. Seller has no complaint right.',
-      '5: Theft responsibility is on the buyer.',
-      '6: Buyer and seller must take warranty from each other.',
-      '7: The showroom is only a witness for this record.',
-      '8: Commission dispute handled by showroom rules.',
-      '9: Commission: 2% from buyer, 1% from seller.'
+      '2: Traffic responsibility until (' + transferDateStr + ') with seller. After (' + saleDateStr + ') with buyer.',
+      '3: Vehicle has complete legal documents and title. Fully checked and approved.',
+      '4: Theft responsibility is on the buyer. Seller has no complaint right.',
+      '5: Buyer and seller must take warranty from each other.',
+      '6: Showroom is only a witness. Commission: 2% buyer, 1% seller.'
     ];
-    y = drawTerms(doc, y, terms, COLORS.licensedAccent);
-    y = drawNotes(doc, y, sale.notes, sale.note2);
-    y = drawSignatures(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawTermsCompact(doc, y, terms, COLORS.licensedAccent);
+    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
 
-    drawFooter(doc);
+    drawFooterCompact(doc);
     doc.end();
     stream.on('finish', function() { resolve({ filePath: filePath, fileName: fileName }); });
     stream.on('error', reject);
   });
 }
 
-// =================================================================
+
+// ================================================================
 //  Main dispatcher
-// =================================================================
+// ================================================================
 var generateSaleInvoicePdf = function(sale, vehicle, customer, outputDir) {
   var saleType = sale.saleType || 'Container One Key';
   switch (saleType) {
@@ -578,9 +456,10 @@ var generateSaleInvoicePdf = function(sale, vehicle, customer, outputDir) {
   }
 };
 
-// =================================================================
+
+// ================================================================
 //  Financial Report PDF
-// =================================================================
+// ================================================================
 var generateFinancialReportPdf = function(reportData, outputDir) {
   ensureDir(outputDir);
   var timestamp = Date.now();
@@ -600,7 +479,6 @@ var generateFinancialReportPdf = function(reportData, outputDir) {
       .text('Generated: ' + new Date().toLocaleString(), 40, 38, { width: PAGE_W - 80, align: 'center' });
 
     var y = 80;
-
     doc.font('Helvetica-Bold').fontSize(14).fillColor(COLORS.accent).text('Financial Summary', 40, y);
     y += 22;
     doc.fillColor(COLORS.darkText);
@@ -643,22 +521,6 @@ var generateFinancialReportPdf = function(reportData, outputDir) {
       }
     }
 
-    if (reportData.monthlyData && reportData.monthlyData.length > 0) {
-      y += 10;
-      doc.font('Helvetica-Bold').fontSize(14).fillColor(COLORS.accent).text('Monthly Summary', 40, y);
-      y += 22;
-      doc.fillColor(COLORS.darkText);
-      var monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      for (var mi = 0; mi < reportData.monthlyData.length; mi++) {
-        var m = reportData.monthlyData[mi];
-        doc.fontSize(11).text(
-          monthNames[m.month] + ' ' + m.year + ': Income AFN ' + m.income.toLocaleString() + ' | Expenses AFN ' + m.expenses.toLocaleString() + ' | Net AFN ' + (m.income - m.expenses).toLocaleString(),
-          40, y
-        );
-        y += 16;
-      }
-    }
-
     doc.rect(0, PAGE_H - 25, PAGE_W, 25).fill(COLORS.headerBg);
     doc.font('Helvetica').fontSize(7).fillColor('#aaa')
       .text('Niazi Khpalwak Motor Puranchi  -  Automatic Financial Report', 40, PAGE_H - 18, { width: PAGE_W - 80, align: 'center' });
@@ -669,9 +531,10 @@ var generateFinancialReportPdf = function(reportData, outputDir) {
   });
 };
 
-// =================================================================
+
+// ================================================================
 //  Vehicle PDF
-// =================================================================
+// ================================================================
 var generateVehiclePdf = function(vehicle, outputDir) {
   ensureDir(outputDir);
   var fileName = 'vehicle_' + vehicle.vehicleId + '.pdf';
@@ -689,7 +552,6 @@ var generateVehiclePdf = function(vehicle, outputDir) {
       .text('Vehicle Information Card', 40, 42, { width: PAGE_W - 80, align: 'center' });
 
     var y = 80;
-
     var rows = [
       ['Vehicle ID', vehicle.vehicleId], ['Category', vehicle.category],
       ['Manufacturer', vehicle.manufacturer], ['Model', vehicle.model],
