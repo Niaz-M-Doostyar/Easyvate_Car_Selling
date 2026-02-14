@@ -228,19 +228,19 @@ router.get('/export-pdf', async (req, res) => {
     const sharedTotal = sharedPersons.reduce((sum, p) => sum + Number(p.total || 0), 0);
     const ownerBalance = showroomBalance - sharedTotal;
 
-    // Prepare report data (convert to AFN)
+    // Prepare report data (values already in AFN base currency)
     const reportData = {
-      revenue: Math.round(revenue / 3.5),
-      expenses: Math.round(expenses / 3.5),
-      profit: Math.round(profit / 3.5),
+      revenue: Math.round(revenue),
+      expenses: Math.round(expenses),
+      profit: Math.round(profit),
       vehiclesSold: sales.length,
-      commission: Math.round(commission / 3.5),
-      showroomBalance: Math.round(showroomBalance / 3.5),
-      ownerBalance: Math.round(ownerBalance / 3.5),
-      sharedTotal: Math.round(sharedTotal / 3.5),
+      commission: Math.round(commission),
+      showroomBalance: Math.round(showroomBalance),
+      ownerBalance: Math.round(ownerBalance),
+      sharedTotal: Math.round(sharedTotal),
       sharedPersons: sharedPersons.map(p => ({
         personName: p.personName,
-        total: Math.round(Number(p.total || 0) / 3.5)
+        total: Math.round(Number(p.total || 0))
       }))
     };
 

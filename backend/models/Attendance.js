@@ -15,22 +15,27 @@ const Attendance = sequelize.define('Attendance', {
       key: 'id'
     }
   },
-  date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
+  month: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    validate: { min: 1, max: 12 }
   },
-  checkIn: {
-    type: DataTypes.TIME
+  year: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    validate: { min: 2000, max: 2100 }
   },
-  checkOut: {
-    type: DataTypes.TIME
+  presentDays: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: { min: 0, max: 31 }
   },
-  status: {
-    type: DataTypes.ENUM('Present', 'Absent', 'Half Day', 'Leave', 'Holiday'),
-    allowNull: false
-  },
-  biometricId: {
-    type: DataTypes.STRING(100)
+  absentDays: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: { min: 0, max: 31 }
   },
   notes: {
     type: DataTypes.TEXT
@@ -41,7 +46,7 @@ const Attendance = sequelize.define('Attendance', {
   indexes: [
     {
       unique: true,
-      fields: ['employeeId', 'date']
+      fields: ['employeeId', 'month', 'year']
     }
   ]
 });

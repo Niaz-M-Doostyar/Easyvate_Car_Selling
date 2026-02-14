@@ -249,8 +249,9 @@ export default function ShowroomLedgerPage() {
               <FormControl fullWidth>
                 <InputLabel>Currency</InputLabel>
                 <Select value={formData.currency} label="Currency" onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
-                  <MenuItem value="AFN">🇦🇫 ؋</MenuItem>
-                  <MenuItem value="USD">🇺🇸 USD</MenuItem>
+                  <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
+                  <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
+                  <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

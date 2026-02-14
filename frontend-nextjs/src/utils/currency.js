@@ -7,7 +7,6 @@
 export const CURRENCY_SYMBOLS = {
   AFN: '؋',
   USD: '$',
-  EUR: '€',
   PKR: '₨',
 };
 
@@ -15,13 +14,12 @@ export const CURRENCY_SYMBOLS = {
 export const CURRENCY_FLAGS = {
   AFN: '🇦🇫',
   USD: '🇺🇸',
-  EUR: '🇪🇺',
   PKR: '🇵🇰',
 };
 
 /**
  * Get the symbol for a given currency code.
- * @param {string} currency - e.g. 'AFN', 'USD', 'EUR', 'PKR'
+ * @param {string} currency - e.g. 'AFN', 'USD', 'PKR'
  * @returns {string} symbol like ؋, $, €, ₨
  */
 export const getCurrencySymbol = (currency) =>

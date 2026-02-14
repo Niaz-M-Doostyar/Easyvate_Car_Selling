@@ -492,10 +492,9 @@ export default function VehiclesPage() {
                 <FormControl fullWidth>
                   <InputLabel>Base Currency</InputLabel>
                   <Select value={formData.baseCurrency} label="Base Currency" onChange={(e) => setFormData({ ...formData, baseCurrency: e.target.value })}>
-                    <MenuItem value="USD">🇺🇸 USD</MenuItem>
-                    <MenuItem value="EUR">🇪🇺 EUR</MenuItem>
-                    <MenuItem value="AFN">🇦🇫 AFN</MenuItem>
-                    <MenuItem value="PKR">🇵🇰 PKR</MenuItem>
+                    <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
+                    <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
+                    <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

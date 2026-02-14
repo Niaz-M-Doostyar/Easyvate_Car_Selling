@@ -140,13 +140,14 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
     const employee = await Employee.findByPk(payroll.employeeId);
     
     const transactionId = `TR${Date.now()}_SALARY_${payroll.id}`;
+    const amountAFN = await toAFN(parseFloat(amount), 'AFN');
     
     await LedgerTransaction.create({
       transactionId,
       transactionType: 'Salary',
       amount: parseFloat(amount),
       currency: 'AFN',
-      amountPKR: parseFloat(amount) * 3.2,
+      amountPKR: amountAFN,
       relatedEntityType: 'Payroll',
       relatedEntityId: payroll.id,
       description: `Salary payment for ${employee.fullName} - ${payroll.month}/${payroll.year}`,
@@ -158,7 +159,7 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
       type: 'Salary',
       amount: parseFloat(amount),
       currency: 'AFN',
-      amountInPKR: parseFloat(amount) * 3.2,
+      amountInPKR: amountAFN,
       description: `Salary for ${employee.fullName}`,
       date: new Date(),
       referenceId: payroll.id,

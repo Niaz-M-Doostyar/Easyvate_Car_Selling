@@ -40,7 +40,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount: parseFloat(fromAmount),
       currency: fromCurrency,
-      amountPKR: toAFN(parseFloat(fromAmount), fromCurrency),
+      amountPKR: await toAFN(parseFloat(fromAmount), fromCurrency),
       relatedEntityType: 'CurrencyExchange',
       relatedEntityId: exchange.id,
       description: `Exchange out: ${fromAmount} ${fromCurrency}`,
@@ -55,7 +55,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount: toAmount,
       currency: toCurrency,
-      amountPKR: toAFN(toAmount, toCurrency),
+      amountPKR: await toAFN(toAmount, toCurrency),
       relatedEntityType: 'CurrencyExchange',
       relatedEntityId: exchange.id,
       description: `Exchange in: ${toAmount} ${toCurrency}`,
@@ -68,7 +68,7 @@ router.post('/exchange', async (req, res) => {
       type: 'Currency Exchange',
       amount: parseFloat(fromAmount),
       currency: fromCurrency,
-      amountInPKR: -toAFN(parseFloat(fromAmount), fromCurrency), // Negative for outgoing
+      amountInPKR: -(await toAFN(parseFloat(fromAmount), fromCurrency)), // Negative for outgoing
       description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
       date: new Date(),
       referenceId: exchange.id,
@@ -80,7 +80,7 @@ router.post('/exchange', async (req, res) => {
       type: 'Currency Exchange',
       amount: toAmount,
       currency: toCurrency,
-      amountInPKR: toAFN(toAmount, toCurrency), // Positive for incoming
+      amountInPKR: await toAFN(toAmount, toCurrency), // Positive for incoming
       description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
       date: new Date(),
       referenceId: exchange.id,

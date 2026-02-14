@@ -3,17 +3,7 @@ const router = express.Router();
 const LedgerTransaction = require('../models/LedgerTransaction');
 const ShowroomLedger = require('../models/ShowroomLedger');
 const { Op, Sequelize } = require('sequelize');
-
-const exchangeRates = {
-  USD: 70,
-  PKR: 0.29,
-  AFN: 1
-};
-
-const toAFN = (amount, currency) => {
-  const rate = exchangeRates[currency] || 1;
-  return Number(amount || 0) * rate;
-};
+const { toAFN } = require('../src/services/exchangeRate');
 
 // Get all transactions
 router.get('/', async (req, res) => {
@@ -273,7 +263,7 @@ router.post('/showroom', async (req, res) => {
     const { type, personName, amount, currency, date, description } = req.body;
     
     const finalCurrency = currency || 'AFN';
-    const amountInPKR = toAFN(amount, finalCurrency);
+    const amountInPKR = await toAFN(amount, finalCurrency);
     
     const entry = await ShowroomLedger.create({
       type,
@@ -301,7 +291,7 @@ router.put('/showroom/:id', async (req, res) => {
     
     const { type, personName, amount, currency, date, description } = req.body;
     const finalCurrency = currency || entry.currency || 'AFN';
-    const amountInPKR = amount ? toAFN(amount, finalCurrency) : entry.amountInPKR;
+    const amountInPKR = amount ? await toAFN(amount, finalCurrency) : entry.amountInPKR;
     
     await entry.update({
       type: type || entry.type,
@@ -347,7 +337,7 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     const finalCurrency = currency || 'AFN';
-    const amountPKR = toAFN(amount, finalCurrency);
+    const amountPKR = await toAFN(amount, finalCurrency);
     
     const transactionId = `TR${Date.now()}`;
     
@@ -382,7 +372,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount,
       currency: fromCurrency,
-      amountPKR: toAFN(amount, fromCurrency || 'AFN'),
+      amountPKR: await toAFN(amount, fromCurrency || 'AFN'),
       description: `${description} - ${fromCurrency} to ${toCurrency}`,
       transactionDate: new Date(),
       createdBy: req.user.id

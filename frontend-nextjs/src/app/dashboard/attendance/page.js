@@ -1,39 +1,50 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
   InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment,
 } from '@mui/material';
-import { Add, EventNote, CalendarToday, Notes } from '@mui/icons-material';
+import { Add, EventNote, Notes, Assessment, Person } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 export default function AttendancePage() {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
-  const [attendance, setAttendance] = useState([]);
+  const [reports, setReports] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
   const [formData, setFormData] = useState({
-    employeeId: '', date: new Date().toISOString().split('T')[0], status: 'Present', notes: '',
+    employeeId: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    presentDays: '',
+    absentDays: '',
+    notes: '',
   });
 
   useEffect(() => {
-    fetchAttendance();
+    fetchReports();
     fetchEmployees();
   }, []);
 
-  const fetchAttendance = async () => {
+  const fetchReports = async () => {
     setLoading(true);
     try {
       const response = await apiClient.get('/attendance');
-      setAttendance(response.data.data || []);
+      setReports(response.data.data || []);
     } catch {
-      enqueueSnackbar('Failed to fetch attendance', { variant: 'error' });
+      enqueueSnackbar('Failed to fetch attendance reports', { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -46,90 +57,185 @@ export default function AttendancePage() {
     } catch { /* handled silently */ }
   };
 
+  const filteredReports = useMemo(() => {
+    let result = [...reports];
+    if (filter.month) result = result.filter((r) => r.month === filter.month);
+    if (filter.year) result = result.filter((r) => r.year === filter.year);
+    return result;
+  }, [reports, filter]);
+
+  const summary = useMemo(() => {
+    const totalPresent = filteredReports.reduce((s, r) => s + Number(r.presentDays || 0), 0);
+    const totalAbsent = filteredReports.reduce((s, r) => s + Number(r.absentDays || 0), 0);
+    return { totalPresent, totalAbsent, employees: filteredReports.length };
+  }, [filteredReports]);
+
   const handleEdit = (record) => {
-    setFormData({ employeeId: record.employeeId, date: record.date, status: record.status, notes: record.notes || '' });
+    setFormData({
+      employeeId: record.employeeId,
+      month: record.month,
+      year: record.year,
+      presentDays: record.presentDays,
+      absentDays: record.absentDays,
+      notes: record.notes || '',
+    });
     setEditingId(record.id);
     setOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this attendance record?')) return;
+    if (!window.confirm('Delete this attendance report?')) return;
     try {
       await apiClient.delete(`/attendance/${id}`);
-      enqueueSnackbar('Record deleted', { variant: 'success' });
-      fetchAttendance();
+      enqueueSnackbar('Report deleted', { variant: 'success' });
+      fetchReports();
     } catch (error) {
       enqueueSnackbar(error.response?.data?.message || 'Failed to delete', { variant: 'error' });
     }
   };
 
   const handleSubmit = async () => {
-    if (!formData.employeeId || !formData.date) {
-      enqueueSnackbar('Employee and date are required', { variant: 'warning' });
+    if (!formData.employeeId || !formData.presentDays) {
+      enqueueSnackbar('Employee and present days are required', { variant: 'warning' });
       return;
     }
     try {
-      const payload = { ...formData, employeeId: parseInt(formData.employeeId) };
+      const payload = {
+        employeeId: parseInt(formData.employeeId),
+        month: parseInt(formData.month),
+        year: parseInt(formData.year),
+        presentDays: parseInt(formData.presentDays),
+        absentDays: parseInt(formData.absentDays) || 0,
+        notes: formData.notes,
+      };
       if (editingId) {
         await apiClient.put(`/attendance/${editingId}`, payload);
-        enqueueSnackbar('Attendance updated', { variant: 'success' });
+        enqueueSnackbar('Attendance report updated', { variant: 'success' });
       } else {
         await apiClient.post('/attendance', payload);
-        enqueueSnackbar('Attendance marked', { variant: 'success' });
+        enqueueSnackbar('Attendance report added', { variant: 'success' });
       }
       setOpen(false);
       resetForm();
-      fetchAttendance();
+      fetchReports();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.message || 'Failed to save', { variant: 'error' });
+      enqueueSnackbar(error.response?.data?.error?.message || 'Failed to save', { variant: 'error' });
     }
   };
 
   const resetForm = () => {
-    setFormData({ employeeId: '', date: new Date().toISOString().split('T')[0], status: 'Present', notes: '' });
+    setFormData({
+      employeeId: '',
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      presentDays: '',
+      absentDays: '',
+      notes: '',
+    });
     setEditingId(null);
   };
 
-  const statusColorMap = { Present: 'success', Absent: 'error', 'Half Day': 'warning', Leave: 'info', Holiday: 'secondary' };
-
   const columns = [
-    { id: 'Employee', label: 'Employee', format: (v) => v?.fullName || '-', exportFormat: (v) => v?.fullName || '-' },
-    { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
     {
-      id: 'status', label: 'Status',
-      format: (v) => <Chip label={v} size="small" color={statusColorMap[v] || 'default'} />,
-      exportFormat: (v) => v,
+      id: 'employeeId', label: 'Employee', bold: true,
+      format: (v) => {
+        const emp = employees.find((e) => e.id === v);
+        return emp ? emp.fullName : '-';
+      },
+      exportFormat: (v) => {
+        const emp = employees.find((e) => e.id === v);
+        return emp ? emp.fullName : '-';
+      },
+    },
+    { id: 'month', label: 'Month', format: (v) => MONTHS[v - 1] || v },
+    { id: 'year', label: 'Year' },
+    {
+      id: 'presentDays', label: 'Present Days',
+      format: (v) => <Chip label={`${v} days`} size="small" color="success" variant="outlined" />,
+      exportFormat: (v) => `${v} days`,
+    },
+    {
+      id: 'absentDays', label: 'Absent Days',
+      format: (v) => <Chip label={`${v} days`} size="small" color="error" variant="outlined" />,
+      exportFormat: (v) => `${v} days`,
     },
     { id: 'notes', label: 'Notes', format: (v) => v || '-', hiddenOnMobile: true },
   ];
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
+  const summaryCards = [
+    { label: 'Employees Reported', value: summary.employees, color: theme.palette.primary.main, icon: <Person /> },
+    { label: 'Total Present Days', value: summary.totalPresent, color: theme.palette.success.main, icon: <EventNote /> },
+    { label: 'Total Absent Days', value: summary.totalAbsent, color: theme.palette.error.main, icon: <EventNote /> },
+  ];
+
+  const filterToolbar = (
+    <Box display="flex" gap={1.5} flexWrap="wrap">
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <InputLabel>Month</InputLabel>
+        <Select value={filter.month} label="Month" onChange={(e) => setFilter({ ...filter, month: e.target.value })}>
+          {MONTHS.map((m, i) => <MenuItem key={m} value={i + 1}>{m}</MenuItem>)}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 100 }}>
+        <InputLabel>Year</InputLabel>
+        <Select value={filter.year} label="Year" onChange={(e) => setFilter({ ...filter, year: e.target.value })}>
+          {years.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+        </Select>
+      </FormControl>
+    </Box>
+  );
 
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4" fontWeight={700}>Attendance Management</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>Track employee attendance records</Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>Monthly attendance reports for employees</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>Mark Attendance</Button>
+        <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>Add Monthly Report</Button>
       </Box>
+
+      {/* Summary Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {summaryCards.map((card) => (
+          <Grid item xs={12} md={4} key={card.label}>
+            <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
+              <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="caption" fontWeight={600} color="text.secondary">{card.label}</Typography>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: card.color, mt: 0.5 }}>{card.value}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1, borderRadius: 2, bgcolor: alpha(card.color, 0.1), color: card.color, display: 'flex' }}>
+                    {card.icon}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
       <EnhancedDataTable
         columns={columns}
-        data={attendance}
+        data={filteredReports}
         onEdit={handleEdit}
         onDelete={handleDelete}
         loading={loading}
-        title="Attendance Records"
-        emptyMessage="No attendance records found"
+        title="Monthly Attendance Reports"
+        emptyMessage="No attendance reports found for this period"
+        toolbar={filterToolbar}
       />
 
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 1 }}>
           <Box display="flex" alignItems="center" gap={1}>
-            <EventNote color="primary" />
+            <Assessment color="primary" />
             <Box>
-              <Typography variant="h6" fontWeight={700}>{editingId ? 'Edit Attendance' : 'Mark Attendance'}</Typography>
-              <Typography variant="caption" color="text.secondary">Record employee attendance for the day</Typography>
+              <Typography variant="h6" fontWeight={700}>{editingId ? 'Edit Monthly Report' : 'Add Monthly Attendance Report'}</Typography>
+              <Typography variant="caption" color="text.secondary">Record monthly present and absent days for an employee</Typography>
             </Box>
           </Box>
         </DialogTitle>
@@ -146,28 +252,49 @@ export default function AttendancePage() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                required
-                InputProps={{ startAdornment: <InputAdornment position="start"><CalendarToday fontSize="small" color="action" /></InputAdornment> }}
-              />
+              <FormControl fullWidth>
+                <InputLabel>Month</InputLabel>
+                <Select value={formData.month} label="Month" onChange={(e) => setFormData({ ...formData, month: e.target.value })}>
+                  {MONTHS.map((m, i) => <MenuItem key={m} value={i + 1}>📅 {m}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select value={formData.status} label="Status" onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                  <MenuItem value="Present">🟢 Present</MenuItem>
-                  <MenuItem value="Absent">🔴 Absent</MenuItem>
-                  <MenuItem value="Half Day">🟡 Half Day</MenuItem>
-                  <MenuItem value="Leave">🟠 Leave</MenuItem>
-                  <MenuItem value="Holiday">🟣 Holiday</MenuItem>
+                <InputLabel>Year</InputLabel>
+                <Select value={formData.year} label="Year" onChange={(e) => setFormData({ ...formData, year: e.target.value })}>
+                  {years.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Present Days"
+                type="number"
+                placeholder="e.g. 25"
+                value={formData.presentDays}
+                onChange={(e) => setFormData({ ...formData, presentDays: e.target.value })}
+                required
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="success" /></InputAdornment>,
+                  inputProps: { min: 0, max: 31 },
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Absent Days"
+                type="number"
+                placeholder="e.g. 5"
+                value={formData.absentDays}
+                onChange={(e) => setFormData({ ...formData, absentDays: e.target.value })}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="error" /></InputAdornment>,
+                  inputProps: { min: 0, max: 31 },
+                }}
+              />
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -175,7 +302,7 @@ export default function AttendancePage() {
                 label="Notes"
                 multiline
                 rows={2}
-                placeholder="Optional notes..."
+                placeholder="Optional notes about this month..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 InputProps={{ startAdornment: <InputAdornment position="start" sx={{ mt: -1 }}><Notes fontSize="small" color="action" /></InputAdornment> }}
@@ -185,8 +312,8 @@ export default function AttendancePage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => { setOpen(false); resetForm(); }}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} startIcon={editingId ? null : <EventNote />}>
-            {editingId ? 'Update' : 'Mark Attendance'}
+          <Button variant="contained" onClick={handleSubmit} startIcon={editingId ? null : <Assessment />}>
+            {editingId ? 'Update Report' : 'Save Report'}
           </Button>
         </DialogActions>
       </Dialog>

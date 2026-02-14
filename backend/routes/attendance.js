@@ -1,211 +1,131 @@
 const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
-const Payroll = require('../models/Payroll');
 const Employee = require('../models/Employee');
 const { Op } = require('sequelize');
 
-// Support both POST /mark and POST / for marking attendance
-router.post('/mark', async (req, res) => {
+// Get all monthly attendance reports
+router.get('/', async (req, res) => {
   try {
-    const { employeeId, date, status, checkIn, checkOut, notes } = req.body;
-    
-    const attendance = await Attendance.create({
-      employeeId,
-      date,
-      checkIn,
-      checkOut,
-      status,
-      notes
+    const { employeeId, month, year } = req.query;
+    const where = {};
+
+    if (employeeId) where.employeeId = employeeId;
+    if (month) where.month = month;
+    if (year) where.year = year;
+
+    const reports = await Attendance.findAll({
+      where,
+      include: [{ model: Employee }],
+      order: [['year', 'DESC'], ['month', 'DESC']]
     });
 
-    res.json({ success: true, data: attendance });
+    res.json({ data: reports });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }
 });
 
+// Create monthly attendance report
 router.post('/', async (req, res) => {
   try {
-    const { employeeId, date, status, checkIn, checkOut, notes } = req.body;
-    
-    const attendance = await Attendance.create({
+    const { employeeId, month, year, presentDays, absentDays, notes } = req.body;
+
+    if (!employeeId || !month || !year || presentDays === undefined) {
+      return res.status(400).json({ error: { message: 'Employee, month, year, and present days are required' } });
+    }
+
+    // Check if report already exists for this employee/month/year
+    const existing = await Attendance.findOne({
+      where: { employeeId, month, year }
+    });
+    if (existing) {
+      return res.status(409).json({ error: { message: 'Attendance report already exists for this employee in the selected month/year. Please edit the existing record.' } });
+    }
+
+    const report = await Attendance.create({
       employeeId,
-      date,
-      checkIn,
-      checkOut,
-      status,
+      month,
+      year,
+      presentDays: parseInt(presentDays) || 0,
+      absentDays: parseInt(absentDays) || 0,
       notes
     });
 
-    res.json({ success: true, data: attendance });
+    res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }
 });
 
-// Update attendance record
+// Update monthly attendance report
 router.put('/:id', async (req, res) => {
   try {
     const record = await Attendance.findByPk(req.params.id);
     if (!record) {
-      return res.status(404).json({ error: { message: 'Attendance record not found' } });
+      return res.status(404).json({ error: { message: 'Attendance report not found' } });
     }
-    await record.update(req.body);
+
+    const { employeeId, month, year, presentDays, absentDays, notes } = req.body;
+
+    // If changing employee/month/year, check for duplicate
+    if (employeeId !== record.employeeId || month !== record.month || year !== record.year) {
+      const existing = await Attendance.findOne({
+        where: {
+          employeeId: employeeId || record.employeeId,
+          month: month || record.month,
+          year: year || record.year,
+          id: { [Op.ne]: record.id }
+        }
+      });
+      if (existing) {
+        return res.status(409).json({ error: { message: 'Another report already exists for this employee/month/year' } });
+      }
+    }
+
+    await record.update({
+      employeeId: employeeId || record.employeeId,
+      month: month || record.month,
+      year: year || record.year,
+      presentDays: presentDays !== undefined ? parseInt(presentDays) : record.presentDays,
+      absentDays: absentDays !== undefined ? parseInt(absentDays) : record.absentDays,
+      notes: notes !== undefined ? notes : record.notes,
+    });
+
     res.json({ success: true, data: record });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }
 });
 
-// Delete attendance record
+// Delete attendance report
 router.delete('/:id', async (req, res) => {
   try {
     const record = await Attendance.findByPk(req.params.id);
     if (!record) {
-      return res.status(404).json({ error: { message: 'Attendance record not found' } });
+      return res.status(404).json({ error: { message: 'Attendance report not found' } });
     }
     await record.destroy();
-    res.json({ message: 'Attendance record deleted successfully' });
+    res.json({ message: 'Attendance report deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }
 });
 
-router.get('/', async (req, res) => {
-  try {
-    const { employeeId, startDate, endDate } = req.query;
-    const where = {};
-    
-    if (employeeId) where.employeeId = employeeId;
-    if (startDate && endDate) {
-      where.date = { [Op.between]: [startDate, endDate] };
-    }
-    
-    const attendance = await Attendance.findAll({
-      where,
-      include: [{ model: Employee }],
-      order: [['date', 'DESC']]
-    });
-
-    res.json({ data: attendance });
-  } catch (error) {
-    res.status(500).json({ error: { message: error.message } });
-  }
-});
-
+// Get attendance summary for a specific employee in a month (used by payroll)
 router.get('/summary/:employeeId/:month/:year', async (req, res) => {
   try {
     const { employeeId, month, year } = req.params;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    
-    const attendance = await Attendance.findAll({
-      where: {
-        employeeId,
-        date: { [Op.between]: [startDate, endDate] }
-      }
+
+    const report = await Attendance.findOne({
+      where: { employeeId, month, year }
     });
 
-    const summary = {
-      present: attendance.filter(a => a.status === 'Present').length,
-      absent: attendance.filter(a => a.status === 'Absent').length,
-      halfDay: attendance.filter(a => a.status === 'Half Day').length,
-      leave: attendance.filter(a => a.status === 'Leave').length
-    };
-
-    res.json({ data: summary });
-  } catch (error) {
-    res.status(500).json({ error: { message: error.message } });
-  }
-});
-
-router.post('/generate-payroll', async (req, res) => {
-  try {
-    const { employeeId, month, year } = req.body;
-    
-    const employee = await Employee.findByPk(employeeId);
-    if (!employee) {
-      return res.status(404).json({ error: { message: 'Employee not found' } });
+    if (!report) {
+      return res.json({ data: { presentDays: 0, absentDays: 0 } });
     }
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    const totalDays = endDate.getDate();
-    
-    const attendance = await Attendance.findAll({
-      where: {
-        employeeId,
-        date: { [Op.between]: [startDate, endDate] }
-      }
-    });
-
-    const presentDays = attendance.filter(a => a.status === 'Present').length;
-    const halfDays = attendance.filter(a => a.status === 'Half Day').length;
-    const absentDays = totalDays - presentDays - halfDays;
-    
-    const effectiveDays = presentDays + (halfDays * 0.5);
-    const calculatedSalary = (employee.monthlySalary / totalDays) * effectiveDays;
-    
-    const payroll = await Payroll.create({
-      employeeId,
-      month,
-      year,
-      baseSalary: employee.monthlySalary,
-      presentDays,
-      absentDays,
-      calculatedSalary,
-      commission: 0,
-      deductions: 0,
-      totalAmount: calculatedSalary,
-      status: 'Pending'
-    });
-
-    res.json({ success: true, data: payroll });
-  } catch (error) {
-    res.status(500).json({ error: { message: error.message } });
-  }
-});
-
-router.get('/payroll', async (req, res) => {
-  try {
-    const { employeeId, month, year, status } = req.query;
-    const where = {};
-    
-    if (employeeId) where.employeeId = employeeId;
-    if (month) where.month = month;
-    if (year) where.year = year;
-    if (status) where.status = status;
-    
-    const payroll = await Payroll.findAll({
-      where,
-      include: [{ model: Employee }],
-      order: [['year', 'DESC'], ['month', 'DESC']]
-    });
-
-    res.json({ success: true, data: payroll });
-  } catch (error) {
-    res.status(500).json({ error: { message: error.message } });
-  }
-});
-
-router.post('/payroll/:id/pay', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { amount } = req.body;
-    
-    const payroll = await Payroll.findByPk(id);
-    if (!payroll) {
-      return res.status(404).json({ error: { message: 'Payroll not found' } });
-    }
-
-    payroll.paidAmount += amount;
-    payroll.paymentDate = new Date();
-    payroll.status = payroll.paidAmount >= payroll.totalAmount ? 'Paid' : 'Partial';
-    payroll.paidBy = req.user.id;
-    await payroll.save();
-
-    res.json({ success: true, data: payroll });
+    res.json({ data: { presentDays: report.presentDays, absentDays: report.absentDays } });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }

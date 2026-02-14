@@ -11,7 +11,7 @@ import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
-const CURRENCIES = ['AFN', 'USD'];
+const CURRENCIES = ['AFN', 'USD', 'PKR'];
 const LOAN_TYPES = ['Lent', 'Borrowed', 'Owner Loan'];
 
 export default function LoansPage() {
@@ -249,8 +249,9 @@ export default function LoansPage() {
               <FormControl fullWidth>
                 <InputLabel>Currency</InputLabel>
                 <Select value={formData.currency} label="Currency" onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
-                  <MenuItem value="AFN">🇦🇫 ؋</MenuItem>
-                  <MenuItem value="USD">🇺🇸 USD</MenuItem>
+                  <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
+                  <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
+                  <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

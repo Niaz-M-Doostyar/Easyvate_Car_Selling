@@ -4,7 +4,7 @@ const Payroll = require('../../models/Payroll');
 const { Op } = require('sequelize');
 
 /**
- * Calculate salary based on attendance
+ * Calculate salary based on monthly attendance report
  * @param {number} employeeId - Employee ID
  * @param {number} month - Month (1-12)
  * @param {number} year - Year
@@ -21,59 +21,27 @@ const calculatePayroll = async (employeeId, month, year) => {
     throw new Error('Cannot calculate payroll for inactive employee');
   }
 
-  // Get start and end date of month
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0);
-  const totalDaysInMonth = endDate.getDate();
-
-  // Get attendance records for the month
-  const attendanceRecords = await Attendance.findAll({
-    where: {
-      employeeId,
-      date: {
-        [Op.between]: [startDate, endDate]
-      }
-    }
+  // Get monthly attendance report
+  const attendanceReport = await Attendance.findOne({
+    where: { employeeId, month, year }
   });
 
-  // Count present days (including half days as 0.5)
+  // Get total days in the month
+  const totalDaysInMonth = new Date(year, month, 0).getDate();
+
   let presentDays = 0;
   let absentDays = 0;
-  let halfDays = 0;
-  let leaveDays = 0;
-  let holidays = 0;
 
-  attendanceRecords.forEach(record => {
-    switch (record.status) {
-      case 'Present':
-        presentDays++;
-        break;
-      case 'Absent':
-        absentDays++;
-        break;
-      case 'Half Day':
-        halfDays++;
-        presentDays += 0.5;
-        break;
-      case 'Leave':
-        leaveDays++;
-        presentDays++; // Paid leave counts as present
-        break;
-      case 'Holiday':
-        holidays++;
-        presentDays++; // Holidays count as present
-        break;
-    }
-  });
+  if (attendanceReport) {
+    presentDays = Number(attendanceReport.presentDays) || 0;
+    absentDays = Number(attendanceReport.absentDays) || 0;
+  }
 
-  // Calculate working days (exclude holidays)
-  const workingDays = totalDaysInMonth - holidays;
-  
-  // Calculate per-day salary
+  // Calculate per-day salary based on total days in month
   const baseSalary = parseFloat(employee.monthlySalary);
-  const perDaySalary = baseSalary / workingDays;
+  const perDaySalary = baseSalary / totalDaysInMonth;
   
-  // Calculate salary based on attendance
+  // Calculate salary based on present days
   const calculatedSalary = perDaySalary * presentDays;
 
   return {
@@ -82,16 +50,11 @@ const calculatePayroll = async (employeeId, month, year) => {
     month,
     year,
     baseSalary,
-    workingDays,
     totalDaysInMonth,
     presentDays,
     absentDays,
-    halfDays,
-    leaveDays,
-    holidays,
     perDaySalary: parseFloat(perDaySalary.toFixed(2)),
     calculatedSalary: parseFloat(calculatedSalary.toFixed(2)),
-    attendanceRecords
   };
 };
 
