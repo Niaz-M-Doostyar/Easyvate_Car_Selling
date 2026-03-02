@@ -182,6 +182,7 @@ export default function AppDrawer() {
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
+        drawerType: 'front',
         drawerStyle: { backgroundColor: paperTheme.colors.surface, width: 300 },
         drawerActiveTintColor: paperTheme.colors.primary,
         drawerInactiveTintColor: paperTheme.colors.onSurfaceVariant,

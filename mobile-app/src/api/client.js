@@ -1,15 +1,26 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Android emulator uses 10.0.2.2 to reach host machine localhost
-// iOS simulator uses localhost directly
-// For physical device, use your machine's local IP
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:3001/api',
-  ios: 'http://localhost:3001/api',
-  default: 'http://localhost:3001/api',
-});
+// Detect if running on a physical device vs simulator/emulator
+const isDevice = Constants.executionEnvironment === 'storeClient' || !Constants.isDevice === false;
+const LOCAL_IP = '192.168.68.33'; // Your Mac's WiFi IP — update if your network changes
+
+const getBaseUrl = () => {
+  // Physical device (Expo Go) — must use LAN IP
+  if (Constants.executionEnvironment === 'storeClient') {
+    return `http://${LOCAL_IP}:3001/api`;
+  }
+  // Simulator/emulator
+  return Platform.select({
+    android: 'http://10.0.2.2:3001/api',
+    ios: 'http://localhost:3001/api',
+    default: `http://${LOCAL_IP}:3001/api`,
+  });
+};
+
+const BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
