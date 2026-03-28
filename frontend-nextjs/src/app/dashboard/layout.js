@@ -38,11 +38,14 @@ import {
   Payment,
   ManageAccounts,
   Notifications,
+  Info,
+  ContactMail,
   DarkMode,
   LightMode,
 } from '@mui/icons-material';
 import { useThemeMode } from '@/contexts/ThemeContext';
 import SettingsDrawer from '@/components/SettingsDrawer';
+// import { text } from 'stream/consumers';
 
 const drawerWidth = 280;
 
@@ -59,13 +62,19 @@ const ALL_MENU_ITEMS = [
   { text: 'Loans & Debts', icon: <MonetizationOn />, path: '/dashboard/loans' },
   { text: 'Reports', icon: <Assessment />, path: '/dashboard/reports' },
   { text: 'Users & Roles', icon: <ManageAccounts />, path: '/dashboard/users' },
+  { text: 'Website About', icon: <Info />, path: '/dashboard/about'},
+  { text: 'Website Team', icon: <People />, path: '/dashboard/team'},
+  { text: 'Website Contact', icon: <ContactMail />, path: '/dashboard/contact'},
+  { text: 'Website Slider', icon: <ContactMail />, path: '/dashboard/carousel'},
+  { text: 'Website Review', icon: <ContactMail />, path: '/dashboard/testimonial'},
+  { text: 'Website Video', icon: <ContactMail />, path: '/dashboard/choose-video'}
 ];
 
 // Role-based menu access mapping (must match backend User model ENUM roles)
 const ROLE_ACCESS = {
   'Super Admin': null, // null = all items
   'Owner': null,
-  'Manager': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports'],
+  'Manager': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports', 'Website About', 'Website Team', 'Website Slider', 'Website Review', 'Website Video'],
   'Accountant': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Payroll', 'Reports'],
   'Financial': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Payroll', 'Reports'],
   'Inventory & Sales': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Currency Exchange', 'Reports'],

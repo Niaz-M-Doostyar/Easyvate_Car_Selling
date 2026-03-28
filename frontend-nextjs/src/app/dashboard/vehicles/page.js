@@ -6,12 +6,15 @@ import {
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
   Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
+  ImageList, ImageListItem, ImageListItemBar, IconButton as MuiIconButton
 } from '@mui/material';
 import {
   Add, Search, PictureAsPdf, DirectionsCar, Tag, ColorLens,
   Speed, Build, LocalGasStation, AttachMoney, CalendarToday, Sell,
   Person, Phone, Badge, LocationOn, GroupAdd, Delete, History,
   Edit, Visibility, Close, NavigateNext, NavigateBefore, Info,
+  Image as ImageIcon, PhotoLibrary, CloudUpload, Delete as DeleteIcon,
+  ZoomIn,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
@@ -19,7 +22,7 @@ import EnhancedDataTable from '@/components/EnhancedDataTable';
 import { validateRequired, validatePrice, validateYear } from '@/utils/validation';
 import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
-const STEPS = ['Vehicle Details', 'Reference Person', 'Sharing / Partnership'];
+const STEPS = ['Vehicle Details', 'Reference Person', 'Sharing / Partnership', 'Images'];
 
 // Dropdown options
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
@@ -55,6 +58,15 @@ export default function VehiclesPage() {
   const [editReasonOpen, setEditReasonOpen] = useState(false);
   const [editReason, setEditReason] = useState('');
   const [pendingEditVehicle, setPendingEditVehicle] = useState(null);
+
+  // Image states
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [imageErrors, setImageErrors] = useState([]);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryVehicleId, setGalleryVehicleId] = useState(null);
 
   // Form data – Section 1: Vehicle
   const [formData, setFormData] = useState({
@@ -146,8 +158,10 @@ export default function VehiclesPage() {
         setActiveStep(0);
       } else if (newErrors.refFullName) {
         setActiveStep(1);
-      } else {
+      } else if (newErrors.sharingTotal || Object.keys(newErrors).some(k => k.startsWith('sharing_'))) {
         setActiveStep(2);
+      } else {
+        setActiveStep(3); // image errors would be handled separately
       }
       enqueueSnackbar('Please fix validation errors', { variant: 'error' });
       return;
@@ -164,7 +178,6 @@ export default function VehiclesPage() {
       sellingPrice: parseFloat(formData.sellingPrice),
     };
 
-    // Attach reference person if provided
     if (refPerson.hasReference && refPerson.fullName) {
       vehicleData.referencePerson = {
         fullName: refPerson.fullName,
@@ -174,7 +187,6 @@ export default function VehiclesPage() {
       };
     }
 
-    // Attach sharing persons if provided
     if (formSharingPersons.length > 0) {
       vehicleData.sharingPersons = formSharingPersons.map((p) => ({
         personName: p.personName,
@@ -184,20 +196,38 @@ export default function VehiclesPage() {
       }));
     }
 
+    setImageUploading(true);
     try {
+      let vehicleId;
       if (editingId) {
+        // Update existing vehicle
         vehicleData.editReason = editReason || 'Updated vehicle details';
         await apiClient.put(`/vehicles/${editingId}`, vehicleData);
+        vehicleId = editingId;
         enqueueSnackbar('Vehicle updated successfully', { variant: 'success' });
       } else {
-        await apiClient.post('/vehicles', vehicleData);
+        // Create new vehicle
+        const response = await apiClient.post('/vehicles', vehicleData);
+        vehicleId = response.data.id; // adjust based on your API response structure
         enqueueSnackbar('Vehicle added successfully', { variant: 'success' });
       }
+
+      // Upload new images if any
+      if (selectedImages.length > 0) {
+        const formData = new FormData();
+        selectedImages.forEach(file => formData.append('images', file));
+        await apiClient.post(`/vehicles/${vehicleId}/images`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
       setOpen(false);
       resetForm();
       fetchVehicles();
     } catch (error) {
       enqueueSnackbar(error.response?.data?.message || 'Failed to save vehicle', { variant: 'error' });
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -216,6 +246,9 @@ export default function VehiclesPage() {
     setEditingId(null);
     setActiveStep(0);
     setEditReason('');
+    setSelectedImages([]);
+    setExistingImages([]);
+    setImageErrors([]);
   };
 
   const handleEdit = (vehicle) => {
@@ -227,7 +260,7 @@ export default function VehiclesPage() {
     setEditReasonOpen(true);
   };
 
-  const confirmEdit = () => {
+  const confirmEdit = async () => { 
     if (!editReason.trim()) {
       enqueueSnackbar('Please provide a reason for editing', { variant: 'warning' });
       return;
@@ -265,6 +298,14 @@ export default function VehiclesPage() {
         investmentAmount: p.investmentAmount || '', phoneNumber: p.phoneNumber || '',
       })));
     }
+
+    try {
+        const res = await apiClient.get(`/vehicles/${vehicle.id}/images`);
+        setExistingImages(res.data.data || []);
+      } catch {
+        setExistingImages([]);
+      }
+
     setEditingId(vehicle.id);
     setEditReasonOpen(false);
     setOpen(true);
@@ -320,6 +361,62 @@ export default function VehiclesPage() {
     const updated = [...formSharingPersons];
     updated[index] = { ...updated[index], [field]: value };
     setFormSharingPersons(updated);
+  };
+
+  // Image helpers
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach(file => {
+      if (file.size > 500 * 1024) {
+        errors.push(`${file.name} exceeds 500KB`);
+      } else if (!file.type.startsWith('image/')) {
+        errors.push(`${file.name} is not an image`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (errors.length > 0) {
+      setImageErrors(errors);
+      enqueueSnackbar(`${errors.length} file(s) rejected. Max 500KB, images only.`, { variant: 'warning' });
+    } else {
+      setImageErrors([]);
+    }
+
+    setSelectedImages(prev => [...prev, ...validFiles]);
+  };
+
+  const removeSelectedImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const deleteExistingImage = async (imageId) => {
+    if (!window.confirm('Delete this image?')) return;
+    try {
+      await apiClient.delete(`/vehicles/images/${imageId}`);
+      setExistingImages(prev => prev.filter(img => img.id !== imageId));
+      enqueueSnackbar('Image deleted', { variant: 'success' });
+    } catch (error) {
+      enqueueSnackbar('Failed to delete image', { variant: 'error' });
+    }
+  };
+
+  const fetchVehicleImages = async (vehicleId) => {
+    try {
+      const res = await apiClient.get(`/vehicles/${vehicleId}/images`);
+      setGalleryImages(res.data.data || []);
+    } catch {
+      setGalleryImages([]);
+    }
+  };
+
+  const openGallery = (vehicleId) => {
+    setGalleryVehicleId(vehicleId);
+    fetchVehicleImages(vehicleId);
+    setGalleryOpen(true);
   };
 
   const filteredVehicles = useMemo(() => {
@@ -668,6 +765,107 @@ export default function VehiclesPage() {
           </>
         );
 
+        case 3:
+          return (
+            <>
+              <Typography variant="h6" fontWeight={700} sx={{ display: 'block', mt: 1, mb: 2 }}>
+                Vehicle Images
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Upload up to 10 images (max 500KB each). You can add more later.
+              </Typography>
+
+              {/* Existing images (only in edit mode) */}
+              {editingId && existingImages.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                    Existing Images
+                  </Typography>
+                  <ImageList cols={3} gap={8} sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {existingImages.map((img) => (
+                      <ImageListItem key={img.id}>
+                        <img
+                          src={`/api${img.path}`}
+                          alt={img.filename}
+                          loading="lazy"
+                          style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
+                        />
+                        <ImageListItemBar
+                          position="bottom"
+                          actionIcon={
+                            <MuiIconButton size="small" onClick={() => deleteExistingImage(img.id)} sx={{ color: 'white' }}>
+                              <DeleteIcon fontSize="small" />
+                            </MuiIconButton>
+                          }
+                        />
+                      </ImageListItem>
+                    ))}
+                  </ImageList>
+                </Box>
+              )}
+
+              {/* New image upload */}
+              <Box
+                sx={{
+                  border: '2px dashed',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  p: 3,
+                  textAlign: 'center',
+                  bgcolor: 'action.hover',
+                  cursor: 'pointer',
+                  '&:hover': { borderColor: 'primary.main' }
+                }}
+                onClick={() => document.getElementById('image-upload').click()}
+              >
+                <input
+                  id="image-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleImageSelect}
+                />
+                <CloudUpload sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
+                <Typography variant="body1">Click to upload images</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  (Max 500KB per file)
+                </Typography>
+              </Box>
+
+              {/* Selected images preview */}
+              {selectedImages.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                    Selected Images ({selectedImages.length})
+                  </Typography>
+                  <ImageList cols={3} gap={8} sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {selectedImages.map((file, index) => (
+                      <ImageListItem key={index}>
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          loading="lazy"
+                          style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
+                        />
+                        <ImageListItemBar
+                          title={file.name.length > 15 ? file.name.substring(0, 12) + '...' : file.name}
+                          subtitle={`${(file.size / 1024).toFixed(1)} KB`}
+                          position="bottom"
+                          actionIcon={
+                            <MuiIconButton size="small" onClick={() => removeSelectedImage(index)} sx={{ color: 'white' }}>
+                              <DeleteIcon fontSize="small" />
+                            </MuiIconButton>
+                          }
+                        />
+                      </ImageListItem>
+                    ))}
+                  </ImageList>
+                </Box>
+              )}
+            </>
+          );
+
       default:
         return null;
     }
@@ -731,6 +929,7 @@ export default function VehiclesPage() {
           { id: '_actions', label: '', align: 'center', format: (val, row) => (
             <Box display="flex" gap={0.5}>
               <Tooltip title="View Details"><IconButton size="small" onClick={() => handleViewDetails(row)}><Visibility fontSize="small" /></IconButton></Tooltip>
+              <Tooltip title="Show Images"><IconButton size="small" onClick={() => openGallery(row.id)}><PhotoLibrary fontSize="small" /></IconButton></Tooltip>
               <Tooltip title="Download PDF"><IconButton size="small" onClick={() => generatePDF(row.id)}><PictureAsPdf fontSize="small" /></IconButton></Tooltip>
             </Box>
           )},
@@ -777,8 +976,8 @@ export default function VehiclesPage() {
             {activeStep < STEPS.length - 1 ? (
               <Button variant="contained" onClick={() => setActiveStep(activeStep + 1)} endIcon={<NavigateNext />}>Next</Button>
             ) : (
-              <Button variant="contained" onClick={handleSubmit} startIcon={editingId ? <Edit /> : <Add />}>
-                {editingId ? 'Update Vehicle' : 'Register Vehicle'}
+              <Button variant="contained" onClick={handleSubmit} startIcon={editingId ? <Edit /> : <Add />} disabled={imageUploading}>
+                {imageUploading ? 'Saving...' : (editingId ? 'Update Vehicle' : 'Register Vehicle')}
               </Button>
             )}
           </Box>
@@ -808,6 +1007,51 @@ export default function VehiclesPage() {
           <Button onClick={() => { setEditReasonOpen(false); setEditReason(''); setPendingEditVehicle(null); }}>Cancel</Button>
           <Button variant="contained" color="warning" onClick={confirmEdit} startIcon={<Edit />}>Continue to Edit</Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Image Gallery Dialog */}
+      <Dialog open={galleryOpen} onClose={() => setGalleryOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PhotoLibrary color="primary" />
+          <Typography variant="h6" fontWeight={700}>
+            Vehicle Images
+          </Typography>
+          <Box flex={1} />
+          <IconButton onClick={() => setGalleryOpen(false)}><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {galleryImages.length === 0 ? (
+            <Box textAlign="center" py={4} color="text.secondary">
+              <ImageIcon sx={{ fontSize: 48, opacity: 0.3 }} />
+              <Typography variant="body2" mt={1}>No images for this vehicle</Typography>
+            </Box>
+          ) : (
+            <ImageList cols={3} gap={16}>
+              {galleryImages.map((img) => (
+                <ImageListItem key={img.id}>
+                  <img
+                    src={`/api${img.path}`}
+                    alt={img.filename}
+                    loading="lazy"
+                    style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
+                    onClick={() => window.open(`/api${img.path}`, '_blank')}
+                  />
+                  <ImageListItemBar
+                    title={img.filename}
+                    subtitle={`${(img.size / 1024).toFixed(1)} KB`}
+                    actionIcon={
+                      <Tooltip title="Open full size">
+                        <MuiIconButton size="small" onClick={() => window.open(`/api${img.path}`, '_blank')} sx={{ color: 'white' }}>
+                          <ZoomIn fontSize="small" />
+                        </MuiIconButton>
+                      </Tooltip>
+                    }
+                  />
+                </ImageListItem>
+              ))}
+            </ImageList>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* ═══════ VEHICLE DETAIL DIALOG ═══════ */}

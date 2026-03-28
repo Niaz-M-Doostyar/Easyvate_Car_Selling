@@ -9,9 +9,9 @@ const config = {
   
   DB: {
     HOST: process.env.DB_HOST || 'localhost',
-    PORT: parseInt(process.env.DB_PORT || '8889', 10),
+    PORT: parseInt(process.env.DB_PORT || '3306', 10),
     USER: process.env.DB_USER || 'root',
-    PASSWORD: process.env.DB_PASSWORD || 'root',
+    PASSWORD: process.env.DB_PASSWORD || '',
     DATABASE: process.env.DB_NAME || 'easyvate_cars',
     DIALECT: 'mysql',
     POOL: {

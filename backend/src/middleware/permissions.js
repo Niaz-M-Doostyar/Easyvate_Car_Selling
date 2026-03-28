@@ -1,5 +1,8 @@
 // Role-based access control permissions
 
+const { read } = require("pdfkit");
+const { AboutEnglish, AboutPashto, AboutDari, TeamEnglish, TeamPashto, TeamDari, ContactEnglish, ContactPashto, ContactDari, CarouselEnglish, CarouselPashto, CarouselDari, TestimonialEnglish, TestimonialPashto, TestimonialDari, Video } = require("../../models");
+
 const PERMISSIONS = {
   // Role definitions with their capabilities
   'Super Admin': {
@@ -13,7 +16,21 @@ const PERMISSIONS = {
     attendance: ['read', 'create', 'update'],
     payroll: ['read', 'create', 'update'],
     currency: ['read', 'create'],
-    loans: ['read', 'create', 'update', 'delete']
+    loans: ['read', 'create', 'update', 'delete'],
+    AboutEnglish: ['read', 'create', 'update', 'delete'],
+    AboutPashto: ['read', 'create', 'update', 'delete'],
+    AboutDari: ['read', 'create', 'update', 'delete'],
+    TeamEnglish: ['read', 'create', 'update', 'delete'],
+    TeamPashto: ['read', 'create', 'update', 'delete'],
+    TeamDari: ['read', 'create', 'update', 'delete'],
+    ContactEnglish: ['read', 'create', 'update', 'delete'],
+    ContactPashto: ['read', 'create', 'update', 'delete'],
+    ContactDari: ['read', 'create', 'update', 'delete'],
+    Carousel: ['read', 'create', 'update', 'delete'],
+    TestimonialEnglish: ['read', 'create', 'update', 'delete'],
+    TestimonialPashto: ['read', 'create', 'update', 'delete'],
+    TestimonialDari: ['read', 'create', 'update', 'delete'],
+    Video: ['read', 'create', 'update', 'delete']
   },
   
   'Owner': {
@@ -27,7 +44,21 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: ['read', 'create', 'update'],
     currency: ['read', 'create'],
-    loans: ['read', 'create', 'update']
+    loans: ['read', 'create', 'update'],
+    AboutEnglish: ['read', 'create', 'update', 'delete'],
+    AboutPashto: ['read', 'create', 'update', 'delete'],
+    AboutDari: ['read', 'create', 'update', 'delete'],
+    TeamEnglish: ['read', 'create', 'update', 'delete'],
+    TeamPashto: ['read', 'create', 'update', 'delete'],
+    TeamDari: ['read', 'create', 'update', 'delete'],
+    ContactEnglish: ['read', 'create', 'update', 'delete'],
+    ContactPashto: ['read', 'create', 'update', 'delete'],
+    ContactDari: ['read', 'create', 'update', 'delete'],
+    Carousel: ['read', 'create', 'update', 'delete'],
+    TestimonialEnglish: ['read', 'create', 'update', 'delete'],
+    TestimonialPashto: ['read', 'create', 'update', 'delete'],
+    TestimonialDari: ['read', 'create', 'update', 'delete'],
+    Video: ['read', 'create', 'update', 'delete']
   },
   
   'Manager': {
@@ -41,7 +72,21 @@ const PERMISSIONS = {
     attendance: ['read', 'create'],
     payroll: ['read'],
     currency: ['read'],
-    loans: ['read']
+    loans: ['read'],
+    AboutEnglish: ['read', 'create', 'update', 'delete'],
+    AboutPashto: ['read', 'create', 'update', 'delete'],
+    AboutDari: ['read', 'create', 'update', 'delete'],
+    TeamEnglish: ['read', 'create', 'update', 'delete'],
+    TeamPashto: ['read', 'create', 'update', 'delete'],
+    TeamDari: ['read', 'create', 'update', 'delete'],
+    ContactEnglish: ['read', 'create', 'update', 'delete'],
+    ContactPashto: ['read', 'create', 'update', 'delete'],
+    ContactDari: ['read', 'create', 'update', 'delete'],
+    Carousel: ['read', 'create', 'update', 'delete'],
+    TestimonialEnglish: ['read', 'create', 'update', 'delete'],
+    TestimonialPashto: ['read', 'create', 'update', 'delete'],
+    TestimonialDari: ['read', 'create', 'update', 'delete'],
+    Video: ['read', 'create', 'update', 'delete']
   },
   
   'Accountant': {
@@ -83,7 +128,21 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: [],
     currency: ['read'],
-    loans: []
+    loans: [],
+    AboutEnglish: ['read', 'create', 'update', 'delete'],
+    AboutPashto: ['read', 'create', 'update', 'delete'],
+    AboutDari: ['read', 'create', 'update', 'delete'],
+    TeamEnglish: ['read', 'create', 'update', 'delete'],
+    TeamPashto: ['read', 'create', 'update', 'delete'],
+    TeamDari: ['read', 'create', 'update', 'delete'],
+    ContactEnglish: ['read', 'create', 'update', 'delete'],
+    ContactPashto: ['read', 'create', 'update', 'delete'],
+    ContactDari: ['read', 'create', 'update', 'delete'],
+    Carousel: ['read', 'create', 'update', 'delete'],
+    TestimonialEnglish: ['read', 'create', 'update', 'delete'],
+    TestimonialPashto: ['read', 'create', 'update', 'delete'],
+    TestimonialDari: ['read', 'create', 'update', 'delete'],
+    Video: ['read', 'create', 'update', 'delete']
   },
   
   'Sales': {
@@ -97,7 +156,21 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: [],
     currency: [],
-    loans: []
+    loans: [],
+    AboutEnglish: ['read', 'create', 'update', 'delete'],
+    AboutPashto: ['read', 'create', 'update', 'delete'],
+    AboutDari: ['read', 'create', 'update', 'delete'],
+    TeamEnglish: ['read', 'create', 'update', 'delete'],
+    TeamPashto: ['read', 'create', 'update', 'delete'],
+    TeamDari: ['read', 'create', 'update', 'delete'],
+    ContactEnglish: ['read', 'create', 'update', 'delete'],
+    ContactPashto: ['read', 'create', 'update', 'delete'],
+    ContactDari: ['read', 'create', 'update', 'delete'],
+    Carousel: ['read', 'create', 'update', 'delete'],
+    TestimonialEnglish: ['read', 'create', 'update', 'delete'],
+    TestimonialPashto: ['read', 'create', 'update', 'delete'],
+    TestimonialDari: ['read', 'create', 'update', 'delete'],
+    Video: ['read', 'create', 'update', 'delete']
   },
   
   'Viewer': {

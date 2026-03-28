@@ -12,6 +12,42 @@ const { generateVehiclePdf } = require('../src/services/pdf');
 const { verifyToken } = require('../src/middleware/auth');
 const { checkPermission } = require('../src/middleware/permissions');
 const { toAFN } = require('../src/services/exchangeRate');
+const multer = require('multer');
+const fs = require('fs');
+const VehicleImage = require('../models/VehicleImage');
+
+const uploadDir = path.join(__dirname, '..', 'uploads', 'vehicle-images');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `vehicle-${req.params.id}-${uniqueSuffix}${ext}`);
+  }
+});
+
+// File filter – only images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+// Multer upload instance with 500KB limit
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 500 * 1024 }, // 500KB
+  fileFilter: fileFilter
+});
 
 const refreshVehicleTotalCost = async (vehicleId) => {
   const costs = await VehicleCost.findAll({ where: { vehicleId } });
@@ -65,7 +101,8 @@ router.get('/:id', async (req, res) => {
     const vehicle = await Vehicle.findByPk(req.params.id, {
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' }
+        { model: SharingPerson, as: 'sharingPersons' },
+        { model: VehicleImage, as: 'images', order: [['order', 'ASC']] }
       ]
     });
     
@@ -398,6 +435,90 @@ router.get('/:id/history', async (req, res) => {
     });
     
     res.json({ data: history });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== IMAGE ROUTES ====================
+
+// Upload one or more images for a specific vehicle
+router.post('/:id/images', (req, res, next) => {
+  upload.array('images', 10)(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File too large. Maximum size is 500KB.' });
+      }
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findByPk(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+
+    const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Save each image record to database
+    const imageRecords = await Promise.all(files.map(async (file, index) => {
+      // Public URL path (adjust if your static serving is different)
+      const imageUrl = `/uploads/vehicle-images/${file.filename}`;
+      return VehicleImage.create({
+        vehicleId: vehicle.id,
+        filename: file.originalname,
+        path: imageUrl,
+        size: file.size,
+        order: index // preserve order from upload
+      });
+    }));
+
+    res.status(201).json({
+      message: `${imageRecords.length} image(s) uploaded successfully`,
+      images: imageRecords
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all images for a vehicle
+router.get('/:id/images', async (req, res) => {
+  try {
+    const images = await VehicleImage.findAll({
+      where: { vehicleId: req.params.id },
+      order: [['order', 'ASC'], ['createdAt', 'ASC']]
+    });
+    res.json({ data: images });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a specific image
+router.delete('/images/:imageId', async (req, res) => {
+  try {
+    const image = await VehicleImage.findByPk(req.params.imageId);
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    // Delete physical file
+    const filePath = path.join(__dirname, '..', 'uploads', 'vehicle-images', path.basename(image.path));
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await image.destroy();
+    res.json({ message: 'Image deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -18,6 +18,17 @@ const Sale = require('./Sale');
 const CommissionDistribution = require('./CommissionDistribution');
 const LedgerTransaction = require('./LedgerTransaction');
 const ExchangeRate = require('./ExchangeRate');
+const VehicleImage = require('./VehicleImage');
+const { AboutEnglish, AboutPashto, AboutDari } = require('./About');
+const { TeamEnglish, TeamPashto, TeamDari } = require('./Team');
+const { AboutLogoEnglish, AboutLogoPashto, AboutLogoDari } = require('./AboutLogo');
+const { ContactEnglish, ContactPashto, ContactDari } = require('./Contact');
+const Carousel = require('./Carousel');
+const { TestimonialEnglish, TestimonialPashto, TestimonialDari } = require('./Testimonial');
+const Video = require('./ChooseVideo');
+
+Vehicle.hasMany(VehicleImage, { as: 'images', foreignKey: 'vehicleId' });
+VehicleImage.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
 
 Vehicle.hasMany(VehicleCost, { foreignKey: 'vehicleId', as: 'costs' });
 VehicleCost.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
@@ -48,6 +59,7 @@ module.exports = {
   sequelize,
   User,
   Vehicle,
+  VehicleImage,
   VehicleCost,
   ReferencePerson,
   SharingPerson,
@@ -63,5 +75,22 @@ module.exports = {
   Sale,
   CommissionDistribution,
   LedgerTransaction,
-  ExchangeRate
+  ExchangeRate,
+  AboutEnglish,
+  AboutPashto,
+  AboutDari,
+  AboutLogoEnglish,
+  AboutLogoPashto,
+  AboutLogoDari,
+  TeamEnglish,
+  TeamPashto,
+  TeamDari,
+  ContactEnglish,
+  ContactPashto,
+  ContactDari,
+  Carousel,
+  TestimonialEnglish,
+  TestimonialPashto,
+  TestimonialDari,
+  Video
 };

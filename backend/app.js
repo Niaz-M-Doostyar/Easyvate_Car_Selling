@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const config = require('./src/config');
 const { sequelize } = require('./models');
 const { requestLogger } = require('./src/middleware/logger');
@@ -16,6 +17,12 @@ const attendanceRoutes = require('./routes/attendance');
 const payrollRoutes = require('./routes/payroll');
 const reportsRoutes = require('./routes/reports');
 const loansRoutes = require('./routes/loans');
+const aboutRoutes = require('./routes/about');
+const teamRoutes = require('./routes/team');
+const contactRoutes = require('./routes/contact');
+const carouselRoutes = require('./routes/carousel');
+const testimonialRoutes = require('./routes/testimonial');
+const videoRoutes = require('./routes/chooseVideo');
 
 const app = express();
 
@@ -28,6 +35,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(requestLogger);
 
 app.get('/health', (req, res) => {
@@ -53,6 +61,12 @@ app.use('/api/attendance', verifyToken, authorize(ROLE_EMPLOYEE), attendanceRout
 app.use('/api/payroll', verifyToken, authorize(ROLE_FINANCIAL), payrollRoutes);
 app.use('/api/reports', verifyToken, authorize([...ROLE_FINANCIAL, ...ROLE_INVENTORY]), reportsRoutes);
 app.use('/api/loans', verifyToken, authorize(ROLE_FINANCIAL), loansRoutes);
+app.use('/api/about', verifyToken, authorize(ROLE_INVENTORY), aboutRoutes);
+app.use('/api/team', verifyToken, authorize(ROLE_INVENTORY), teamRoutes);
+app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);
+app.use('/api/carousel', verifyToken, authorize(ROLE_INVENTORY), carouselRoutes);
+app.use('/api/testimonial', verifyToken, authorize(ROLE_INVENTORY), testimonialRoutes);
+app.use('/api/choose-video', verifyToken, authorize(ROLE_INVENTORY), videoRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
