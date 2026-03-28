@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -22,9 +22,13 @@ export default function RootNavigator() {
     );
   }
 
+  const baseNavTheme = isDark ? DarkTheme : DefaultTheme;
+
   const navTheme = {
+    ...baseNavTheme,
     dark: isDark,
     colors: {
+      ...baseNavTheme.colors,
       primary: paperTheme.colors.primary,
       background: paperTheme.colors.background,
       card: paperTheme.colors.surface,

@@ -1,18 +1,64 @@
 require('dotenv').config();
 
-const ENV = process.env.NODE_ENV || 'development';
+// ============================================================
+// DEPLOYMENT PRESETS
+// Change DEPLOY_TARGET in backend/.env to switch environments:
+//   local  →  your Mac with MAMP (MySQL on port 8889)
+//   vps    →  remote VPS (MySQL on port 3308, no password)
+// ============================================================
+const DEPLOY_TARGET = process.env.DEPLOY_TARGET || 'local';
+
+const PRESETS = {
+  local: {
+    HOST: '0.0.0.0',
+    PORT: 3001,
+    DB: {
+      HOST: 'localhost',
+      PORT: 8889,
+      USER: 'root',
+      PASSWORD: 'root',
+      DATABASE: 'easyvate_cars',
+    },
+    CORS_ORIGIN: 'http://localhost:3000',
+  },
+  vps: {
+    HOST: '0.0.0.0',
+    PORT: 3001,
+    DB: {
+      HOST: 'localhost',
+      PORT: 3308,
+      USER: 'root',
+      PASSWORD: '',
+      DATABASE: 'easyvate_cars',
+    },
+    CORS_ORIGIN: 'http://194.163.170.240',
+  },
+  
+};
+
+const preset = PRESETS[DEPLOY_TARGET] || PRESETS.local;
+
+console.log(`[config] DEPLOY_TARGET = ${DEPLOY_TARGET}`);
 
 const config = {
-  ENV,
-  PORT: parseInt(process.env.PORT || '3001', 10),
-  HOST: process.env.HOST || '0.0.0.0', // Bind to all interfaces for mobile app access
-  
+  ENV: DEPLOY_TARGET,
+  PORT: preset.PORT,
+  HOST: preset.HOST,
+
   DB: {
+<<<<<<< HEAD
     HOST: process.env.DB_HOST || 'localhost',
     PORT: parseInt(process.env.DB_PORT || '3306', 10),
     USER: process.env.DB_USER || 'root',
     PASSWORD: process.env.DB_PASSWORD || '',
     DATABASE: process.env.DB_NAME || 'easyvate_cars',
+=======
+    HOST: preset.DB.HOST,
+    PORT: preset.DB.PORT,
+    USER: preset.DB.USER,
+    PASSWORD: preset.DB.PASSWORD,
+    DATABASE: preset.DB.DATABASE,
+>>>>>>> a9e6e0a1c52d76eece87385461329215c7ad45ae
     DIALECT: 'mysql',
     POOL: {
       max: 10,
@@ -28,13 +74,13 @@ const config = {
   },
 
   CORS: {
-    ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    CREDENTIALS: process.env.CORS_CREDENTIALS === 'true',
+    ORIGIN: preset.CORS_ORIGIN,
+    CREDENTIALS: false,
   },
 
   FEATURES: {
-    AUTO_SYNC_DB: ENV === 'development',
-    AUTO_CREATE_ADMIN: ENV === 'development',
+    AUTO_SYNC_DB: true,
+    AUTO_CREATE_ADMIN: true,
   },
 };
 
