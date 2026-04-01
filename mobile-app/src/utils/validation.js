@@ -20,7 +20,7 @@ export const validateEmail = (email) => {
 
 export const validateNationalId = (id) => {
   if (!id) return null;
-  if (!/^\d{10,15}$/.test(id)) return 'National ID must be 10-15 digits';
+  if (!/^\d{9,15}$/.test(id)) return 'National ID must be 9-15 digits';
   return null;
 };
 

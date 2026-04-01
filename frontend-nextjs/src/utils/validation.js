@@ -11,8 +11,8 @@ export const validatePhone = (phone) => {
 };
 
 export const validateNationalId = (id) => {
-  // Afghan National ID should be 10-15 digits
-  const idRegex = /^\d{10,15}$/;
+  // Afghan National ID (Tazkira): old format 9 digits, new e-Tazkira 14 digits
+  const idRegex = /^\d{9,15}$/;
   return idRegex.test(id.replace(/\s/g, ''));
 };
 

@@ -25,7 +25,7 @@ export default function SaleFormScreen({ navigation, route }) {
     sellingCurrency: 'AFN',
     saleDate: new Date().toISOString().split('T')[0],
     sellingPrice: '',
-    downPayment: '',
+    downPayment: '0',
     notes: '',
     witnessName1: '',
     // Buyer info
@@ -67,7 +67,7 @@ export default function SaleFormScreen({ navigation, route }) {
         ...f,
         sellingCurrency: 'AFN',
         sellingPrice: String(editing.sellingPriceAFN || editing.sellingPrice || ''),
-        downPayment: String(editing.downPayment || ''),
+        downPayment: editing.downPayment != null ? String(editing.downPayment) : '0',
       }));
     }
   }, [editing]);
@@ -94,7 +94,7 @@ export default function SaleFormScreen({ navigation, route }) {
     const e = {};
     if (!form.vehicleId) e.vehicleId = 'Vehicle is required';
     if (!form.sellingPrice || Number(form.sellingPrice) <= 0) e.sellingPrice = 'Valid price required';
-    if (form.downPayment && !validatePrice(form.downPayment)) e.downPayment = 'Valid price required';
+    if (form.downPayment !== '' && form.downPayment != null && (isNaN(Number(form.downPayment)) || Number(form.downPayment) < 0)) e.downPayment = 'Down payment must be 0 or more';
     if ((Number(form.downPayment) || 0) > (Number(form.sellingPrice) || 0)) e.downPayment = 'Down payment cannot exceed price';
     if (form.saleType === 'Exchange Car') {
       if (!form.exchVehicleManufacturer) e.exchVehicleManufacturer = 'Required';

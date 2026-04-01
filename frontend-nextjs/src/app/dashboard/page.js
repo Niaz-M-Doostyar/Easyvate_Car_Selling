@@ -91,7 +91,7 @@ export default function DashboardPage() {
         statusMap[st] = (statusMap[st] || 0) + 1;
       });
 
-      const totalRevenue = s.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
+      const totalRevenue = s.reduce((sum, sale) => sum + parseFloat(sale.sellingPriceAFN || sale.sellingPrice || 0), 0);
       const totalProfit = s.reduce((sum, sale) => sum + parseFloat(sale.profit || 0), 0);
       const totalCommission = s.reduce((sum, sale) => sum + parseFloat(sale.commission || 0), 0);
 
@@ -109,8 +109,8 @@ export default function DashboardPage() {
       const salesTrend = lastMonth.length > 0
         ? (((thisMonth.length - lastMonth.length) / lastMonth.length) * 100).toFixed(1)
         : thisMonth.length > 0 ? 100 : 0;
-      const revThisMonth = thisMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
-      const revLastMonth = lastMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
+      const revThisMonth = thisMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPriceAFN || sale.sellingPrice || 0), 0);
+      const revLastMonth = lastMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPriceAFN || sale.sellingPrice || 0), 0);
       const revTrend = revLastMonth > 0
         ? (((revThisMonth - revLastMonth) / revLastMonth) * 100).toFixed(1)
         : revThisMonth > 0 ? 100 : 0;
@@ -523,7 +523,7 @@ export default function DashboardPage() {
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" fontWeight={700} color="primary.main">
-                              {fmtCurrency(sale.sellingPrice)}
+                              {fmtCurrency(sale.sellingPriceAFN || sale.sellingPrice)}
                             </Typography>
                           </TableCell>
                           <TableCell>

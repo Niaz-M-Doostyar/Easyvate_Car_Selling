@@ -205,7 +205,7 @@ export default function ShowroomLedgerPage() {
           { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={getTypeColor(v)} variant="outlined" />, exportFormat: (v) => v },
           { id: 'personName', label: 'Person', format: (v) => v || '-' },
           { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-          { id: 'amountInAFN', label: 'Amount', format: (v) => `${Number(v).toLocaleString()}`, hiddenOnMobile: true },
+          { id: 'amountInAFN', label: 'Amount (AFN ؋)', format: (v) => `${Number(v).toLocaleString()} ؋`, hiddenOnMobile: true },
           { id: 'description', label: 'Description', format: (v) => v || '-' },
           { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
         ]}

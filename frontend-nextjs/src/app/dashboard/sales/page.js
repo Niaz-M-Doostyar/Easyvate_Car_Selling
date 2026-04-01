@@ -32,7 +32,7 @@ const defaultForm = {
   vehicleId: '',
   sellingCurrency: 'AFN',
   saleDate: new Date().toISOString().slice(0, 10),
-  sellingPrice: '', downPayment: '', remainingAmount: '',
+  sellingPrice: '', downPayment: '0', remainingAmount: '',
   notes: '',
   // Buyer info (text fields, no customer dropdown)
   buyerName: '', buyerFatherName: '', buyerPhone: '', buyerAddress: '',
@@ -178,7 +178,7 @@ export default function SalesPage() {
       sellingCurrency: 'AFN',
       saleDate: sale.saleDate ? new Date(sale.saleDate).toISOString().slice(0, 10) : '',
       sellingPrice: (sale.sellingPriceAFN || sale.sellingPrice)?.toString() || '',
-      downPayment: sale.downPayment?.toString() || '',
+      downPayment: sale.downPayment?.toString() ?? '0',
       remainingAmount: sale.remainingAmount?.toString() || '',
       notes: sale.notes || '',
       buyerName: sale.buyerName || '',
@@ -238,8 +238,8 @@ export default function SalesPage() {
     if (!validateRequired(formData.sellingPrice) || !validatePrice(formData.sellingPrice)) {
       newErrors.sellingPrice = 'Valid selling price is required';
     }
-    if (!validateRequired(formData.downPayment) || !validatePrice(formData.downPayment)) {
-      newErrors.downPayment = 'Valid down payment is required';
+    if (!validateRequired(formData.downPayment) || isNaN(parseFloat(formData.downPayment)) || parseFloat(formData.downPayment) < 0) {
+      newErrors.downPayment = 'Down payment is required (enter 0 for no down payment)';
     }
     if ((parseFloat(formData.downPayment) || 0) > (parseFloat(formData.sellingPrice) || 0)) {
       newErrors.downPayment = 'Down payment cannot exceed the selling price';

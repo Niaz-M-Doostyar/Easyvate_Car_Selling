@@ -60,8 +60,8 @@ export default function LoansPage() {
   }, [loans, filter]);
 
   const summary = useMemo(() => {
-    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
-    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
+    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amountInAFN || l.amount || 0), 0);
+    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amountInAFN || l.amount || 0), 0);
     return { given, received, total: loans.length, open: loans.filter((l) => l.status === 'Open').length };
   }, [loans]);
 
