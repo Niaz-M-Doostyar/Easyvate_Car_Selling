@@ -15,12 +15,12 @@ import {
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import { validateEmail, validatePhone, validateRequired, validateNationalId } from '@/utils/validation';
+import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
 const CUSTOMER_TYPES = [
   { value: 'Buyer', label: '🛒 Buyer', color: 'primary' },
   { value: 'Investor', label: '💰 Investor', color: 'success' },
-  { value: 'Capital Provider', label: '🏦 Capital Provider', color: 'info' },
   { value: 'Borrower', label: '📋 Borrower', color: 'warning' },
 ];
 
@@ -625,7 +625,7 @@ export default function CustomersPage() {
             <Grid item xs={8}>
               <TextField fullWidth label="Amount" type="number" placeholder="0" value={ledgerForm.amount}
                 onChange={(e) => setLedgerForm({ ...ledgerForm, amount: e.target.value })} required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(ledgerForm.currency)}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={4}>

@@ -27,9 +27,14 @@ const VehicleCost = sequelize.define('VehicleCost', {
     type: DataTypes.STRING(10),
     allowNull: false
   },
-  amountInPKR: {
+  amountInAFN: {
     type: DataTypes.DECIMAL(15, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Amount converted to Afghani at the daily exchange rate'
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'The exchange rate used for conversion to AFN'
   },
   description: {
     type: DataTypes.TEXT

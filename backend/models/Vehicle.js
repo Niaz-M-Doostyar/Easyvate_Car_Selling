@@ -89,11 +89,16 @@ const Vehicle = sequelize.define('Vehicle', {
     type: DataTypes.DECIMAL(15, 2),
     defaultValue: 0
   },
-  totalCostPKR: {
-    type: DataTypes.DECIMAL(15, 2)
+  totalCostAFN: {
+    type: DataTypes.DECIMAL(15, 2),
+    comment: 'Total cost in Afghani'
   },
   sellingPrice: {
     type: DataTypes.DECIMAL(15, 2)
+  },
+  sellingPriceAFN: {
+    type: DataTypes.DECIMAL(15, 2),
+    comment: 'Selling price converted to Afghani'
   },
   isLocked: {
     type: DataTypes.BOOLEAN,

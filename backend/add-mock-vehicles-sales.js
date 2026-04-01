@@ -23,7 +23,7 @@ const mockVehicles = [
     transportCostToDubai: 500.00,
     importCostToAfghanistan: 2000.00,
     repairCost: 300.00,
-    totalCostPKR: 1650000.00,
+    totalCostAFN: 1650000.00,
     sellingPrice: 1850000.00
   },
   {
@@ -45,7 +45,7 @@ const mockVehicles = [
     transportCostToDubai: 800.00,
     importCostToAfghanistan: 3500.00,
     repairCost: 500.00,
-    totalCostPKR: 2750000.00,
+    totalCostAFN: 2750000.00,
     sellingPrice: 3100000.00
   },
   {
@@ -67,7 +67,7 @@ const mockVehicles = [
     transportCostToDubai: 1000.00,
     importCostToAfghanistan: 4000.00,
     repairCost: 700.00,
-    totalCostPKR: 3300000.00,
+    totalCostAFN: 3300000.00,
     sellingPrice: 3700000.00
   },
   {
@@ -89,7 +89,7 @@ const mockVehicles = [
     transportCostToDubai: 400.00,
     importCostToAfghanistan: 1500.00,
     repairCost: 200.00,
-    totalCostPKR: 1320000.00,
+    totalCostAFN: 1320000.00,
     sellingPrice: 1480000.00
   },
   {
@@ -111,7 +111,7 @@ const mockVehicles = [
     transportCostToDubai: 600.00,
     importCostToAfghanistan: 2500.00,
     repairCost: 400.00,
-    totalCostPKR: 1980000.00,
+    totalCostAFN: 1980000.00,
     sellingPrice: 2220000.00
   }
 ];

@@ -1,7 +1,15 @@
 import mysql from 'mysql2/promise';
 
+console.log('[db] env', {
+  DB_HOST: process.env.DB_HOST || 'localhost',
+  DB_PORT: process.env.DB_PORT || 'not set',
+  DB_USER: process.env.DB_USER || 'root',
+  DB_NAME: process.env.DB_NAME || 'easyvate_cars',
+});
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'easyvate_cars',

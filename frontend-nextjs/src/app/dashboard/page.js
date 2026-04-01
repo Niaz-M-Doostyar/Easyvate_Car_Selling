@@ -67,7 +67,8 @@ export default function DashboardPage() {
 
   const fetchData = async () => {
     try {
-      const [vehicles, customers, sales, loans, balance, employees] = await Promise.all([
+      // allSettled: one failing endpoint won't block the rest of the dashboard
+      const [rVehicles, rCustomers, rSales, rLoans, rBalance, rEmployees] = await Promise.allSettled([
         apiClient.get('/vehicles'),
         apiClient.get('/customers'),
         apiClient.get('/sales'),
@@ -76,12 +77,13 @@ export default function DashboardPage() {
         apiClient.get('/employees'),
       ]);
 
-      const v = vehicles.data.data || [];
-      const s = sales.data.data || [];
-      const l = loans.data.data || [];
-      const c = customers.data.data || [];
-      const e = employees.data.data || [];
-      const bal = balance.data || {};
+      const ok = (r) => r.status === 'fulfilled';
+      const v = ok(rVehicles)   ? (rVehicles.value.data.data   || rVehicles.value.data   || []) : [];
+      const s = ok(rSales)      ? (rSales.value.data.data      || rSales.value.data      || []) : [];
+      const l = ok(rLoans)      ? (rLoans.value.data.data      || rLoans.value.data      || []) : [];
+      const c = ok(rCustomers)  ? (rCustomers.value.data.data  || rCustomers.value.data  || []) : [];
+      const e = ok(rEmployees)  ? (rEmployees.value.data.data  || rEmployees.value.data  || []) : [];
+      const bal = ok(rBalance)  ? (rBalance.value.data         || {}) : {};
 
       const statusMap = {};
       v.forEach((vh) => {
@@ -137,6 +139,14 @@ export default function DashboardPage() {
       setRecentSales(s.slice(0, 6));
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      // Ensure stats is never null so render doesn't crash
+      setStats(prev => prev || {
+        totalVehicles: 0, totalCustomers: 0, totalSales: 0, totalRevenue: 0,
+        totalProfit: 0, totalCommission: 0, totalEmployees: 0,
+        availableVehicles: 0, soldVehicles: 0, openLoans: 0,
+        showroomBalance: 0, ownerBalance: 0, sharedPersons: [],
+        salesTrend: 0, revTrend: 0, thisMonthSales: 0, thisMonthRevenue: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -176,7 +186,14 @@ export default function DashboardPage() {
     );
   }
 
-  const st = stats;
+  const st = stats || {
+    totalRevenue: 0, thisMonthSales: 0, revTrend: 0,
+    totalSales: 0, thisMonthRevenue: 0, salesTrend: 0,
+    totalVehicles: 0, availableVehicles: 0,
+    totalCustomers: 0, openLoans: 0,
+    showroomBalance: 0, ownerBalance: 0,
+    sharedPersons: [], totalEmployees: 0,
+  };
 
   /* ─── Greeting based on time ─────────────────────────── */
   const hour = new Date().getHours();

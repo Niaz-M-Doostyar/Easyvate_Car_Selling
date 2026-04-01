@@ -43,7 +43,7 @@ const Customer = sequelize.define('Customer', {
     allowNull: false
   },
   customerType: {
-    type: DataTypes.ENUM('Buyer', 'Investor', 'Capital Provider', 'Borrower'),
+    type: DataTypes.ENUM('Buyer', 'Investor', 'Borrower'),
     defaultValue: 'Buyer'
   },
   balance: {

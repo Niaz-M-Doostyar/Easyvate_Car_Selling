@@ -19,9 +19,22 @@ const Loan = sequelize.define('Loan', {
     type: DataTypes.STRING(10),
     defaultValue: 'AFN'
   },
-  amountInPKR: {
+  amountInAFN: {
     type: DataTypes.DECIMAL(15, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Amount converted to Afghani'
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'Exchange rate used for conversion to AFN'
+  },
+  customerId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'customers',
+      key: 'id'
+    },
+    comment: 'Reference to customer'
   },
   borrowDate: {
     type: DataTypes.DATE,

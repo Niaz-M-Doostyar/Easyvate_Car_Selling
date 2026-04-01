@@ -173,8 +173,8 @@ export default function ReportsPage() {
           title="Sales Details" data={Array.isArray(reportData) ? reportData : []} loading={false}
           columns={[
             { id: 'vehicle', label: 'Vehicle', format: (_, row) => row.vehicle ? `${row.vehicle.manufacturer} ${row.vehicle.model}` : '-' },
-            { id: 'customer', label: 'Customer', format: (_, row) => row.customer?.fullName || row.customer?.name || '-' },
-            { id: 'sellingPrice', label: 'Selling Price', format: (v) => formatCurrency(v), bold: true },
+            { id: 'buyerName', label: 'Buyer', format: (_, row) => row.buyerName || row.customer?.fullName || '-' },
+            { id: 'sellingPriceAFN', label: 'Selling Price (AFN)', format: (v, row) => formatCurrency(v || row.sellingPriceAFN || row.sellingPrice || 0), bold: true },
             { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" color={Number(v) >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>{formatCurrency(v)}</Typography> },
             { id: 'commission', label: 'Commission', format: (v) => formatCurrency(v) },
             { id: 'saleDate', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
@@ -205,7 +205,7 @@ export default function ReportsPage() {
             { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={['Income', 'Vehicle Sale'].includes(v) ? 'success' : 'error'} variant="outlined" />, exportFormat: (v) => v },
             { id: 'personName', label: 'Person', format: (v) => v || '-' },
             { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-            { id: 'amountInPKR', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
+            { id: 'amountInAFN', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
             { id: 'description', label: 'Description', format: (v) => v || '-' },
             { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
@@ -237,7 +237,8 @@ export default function ReportsPage() {
             { id: 'model', label: 'Model' },
             { id: 'year', label: 'Year' },
             { id: 'color', label: 'Color', hiddenOnMobile: true },
-            { id: 'purchasePrice', label: 'Purchase Price', format: (v) => formatCurrency(v), bold: true },
+            { id: 'totalCostAFN', label: 'Total Cost (AFN)', format: (v) => formatCurrency(v || 0), bold: true },
+            { id: 'sellingPriceAFN', label: 'Selling Price (AFN)', format: (v, row) => formatCurrency(v || row.sellingPriceAFN || row.sellingPrice || 0) },
             { id: 'status', label: 'Status', format: (v) => <Chip label={v} size="small" color={statusColors[v] || 'default'} variant="outlined" />, exportFormat: (v) => v },
           ]}
           emptyMessage="No vehicles found"
@@ -489,8 +490,10 @@ export default function ReportsPage() {
   const renderCustomerTransactions = () => {
     if (!reportData) return null;
     const data = Array.isArray(reportData) ? reportData : [];
-    const totalReceived = data.filter(t => ['Received', 'Sale', 'Installment'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
-    const totalPaid = data.filter(t => ['Paid', 'Loan'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
+    const creditTypes = ['Received', 'Installment', 'Loan Payment', 'Investment'];
+    const debitTypes = ['Paid', 'Sale', 'Loan'];
+    const totalReceived = data.filter((transaction) => creditTypes.includes(transaction.type)).reduce((sum, transaction) => sum + Number(transaction.amountInAFN || 0), 0);
+    const totalPaid = data.filter((transaction) => debitTypes.includes(transaction.type)).reduce((sum, transaction) => sum + Number(transaction.amountInAFN || 0), 0);
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -505,7 +508,7 @@ export default function ReportsPage() {
             { id: 'customer', label: 'Customer', format: (v) => v?.fullName || v?.name || '-' },
             { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={['Received', 'Sale', 'Installment'].includes(v) ? 'success' : 'warning'} variant="outlined" />, exportFormat: (v) => v },
             { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-            { id: 'amountInPKR', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
+            { id: 'amountInAFN', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
             { id: 'purpose', label: 'Purpose', format: (v) => v || '-' },
             { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}

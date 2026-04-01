@@ -4,7 +4,7 @@ import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, InputAdornment,
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
-  Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha,
+  Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   ImageList, ImageListItem, ImageListItemBar, IconButton as MuiIconButton
 } from '@mui/material';
@@ -24,15 +24,15 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
 const STEPS = ['Vehicle Details', 'Reference Person', 'Sharing / Partnership', 'Images'];
 
-// Dropdown options
-const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
-const MANUFACTURERS = [
+// Dropdown defaults (merged with dynamic from DB)
+const DEFAULT_CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
+const DEFAULT_MANUFACTURERS = [
   'Toyota', 'Honda', 'BMW', 'Mercedes-Benz', 'Audi', 'Volkswagen', 'Ford', 'Chevrolet',
   'KIA', 'Hyundai', 'Mazda', 'Nissan', 'Suzuki', 'Daihatsu', 'FAW', 'Changan'
 ];
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG', 'LPG'];
-const TRANSMISSIONS = ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'];
-const ENGINE_TYPES = ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'];
+const DEFAULT_TRANSMISSIONS = ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'];
+const DEFAULT_ENGINE_TYPES = ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'];
 
 export default function VehiclesPage() {
   const theme = useTheme();
@@ -75,7 +75,7 @@ export default function VehiclesPage() {
     mileage: '', plateNo: '', vehicleLicense: '', steering: 'Left', monolithicCut: 'Monolithic',
     basePurchasePrice: '', baseCurrency: 'USD',
     transportCostToDubai: '0', importCostToAfghanistan: '0', repairCost: '0',
-    sellingPrice: '', status: 'Available',
+    sellingPrice: '0', status: 'Available',
   });
 
   // Form data – Section 2: Reference Person
@@ -86,7 +86,43 @@ export default function VehiclesPage() {
   // Form data – Section 3: Sharing Persons
   const [formSharingPersons, setFormSharingPersons] = useState([]);
 
-  useEffect(() => { fetchVehicles(); }, []);
+  // Dynamic dropdown options & customers for sharing
+  const [dropdownOptions, setDropdownOptions] = useState({ manufacturer: [], category: [], engineType: [], transmission: [] });
+  const [customers, setCustomers] = useState([]);
+
+  useEffect(() => { fetchVehicles(); fetchDropdownOptions(); fetchCustomers(); }, []);
+
+  const fetchDropdownOptions = async () => {
+    try {
+      const fields = ['manufacturer', 'category', 'engineType', 'transmission'];
+      const results = await Promise.all(fields.map(f => apiClient.get(`/vehicles/dropdown-options/${f}`).catch(() => ({ data: { data: [] } }))));
+      const opts = {};
+      fields.forEach((f, i) => {
+        const values = results[i].data.data || [];
+        opts[f] = Array.isArray(values)
+          ? values.map((value) => (typeof value === 'string' ? value : value?.value)).filter(Boolean)
+          : [];
+      });
+      setDropdownOptions(opts);
+    } catch { /* ignore */ }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* ignore */ }
+  };
+
+  const addDropdownOption = async (fieldName, value) => {
+    try {
+      await apiClient.post('/vehicles/dropdown-options', { fieldName, value });
+      await fetchDropdownOptions();
+      enqueueSnackbar(`Added "${value}" to ${fieldName}`, { variant: 'success' });
+    } catch (error) {
+      enqueueSnackbar(error.response?.data?.error || 'Failed to add option', { variant: 'error' });
+    }
+  };
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -135,8 +171,11 @@ export default function VehiclesPage() {
     if (!validateRequired(formData.basePurchasePrice) || !validatePrice(formData.basePurchasePrice)) {
       newErrors.basePurchasePrice = 'Valid base price is required';
     }
-    if (!validateRequired(formData.sellingPrice) || !validatePrice(formData.sellingPrice)) {
-      newErrors.sellingPrice = 'Valid selling price is required';
+    if (formData.status === 'Available') {
+      const selling = parseFloat(formData.sellingPrice) || 0;
+      if (selling < totalCost) {
+        newErrors.sellingPrice = 'Selling price cannot be less than total cost for available vehicles';
+      }
     }
     if (refPerson.hasReference && !validateRequired(refPerson.fullName)) {
       newErrors.refFullName = 'Reference person name is required';
@@ -147,14 +186,14 @@ export default function VehiclesPage() {
       const totalPct = formSharingPersons.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0);
       if (totalPct > 100) newErrors.sharingTotal = 'Total sharing percentage cannot exceed 100%';
       formSharingPersons.forEach((p, i) => {
-        if (!p.personName) newErrors[`sharing_${i}_name`] = 'Name required';
+        if (!p.customerId) newErrors[`sharing_${i}_name`] = 'Customer is required';
         if (!p.percentage || parseFloat(p.percentage) <= 0) newErrors[`sharing_${i}_pct`] = 'Valid % required';
       });
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      if (newErrors.vehicleId || newErrors.manufacturer || newErrors.model || newErrors.year || newErrors.chassisNumber || newErrors.basePurchasePrice || newErrors.sellingPrice) {
+      if (newErrors.vehicleId || newErrors.manufacturer || newErrors.model || newErrors.year || newErrors.chassisNumber || newErrors.basePurchasePrice) {
         setActiveStep(0);
       } else if (newErrors.refFullName) {
         setActiveStep(1);
@@ -175,7 +214,7 @@ export default function VehiclesPage() {
       transportCostToDubai: parseFloat(formData.transportCostToDubai) || 0,
       importCostToAfghanistan: parseFloat(formData.importCostToAfghanistan) || 0,
       repairCost: parseFloat(formData.repairCost) || 0,
-      sellingPrice: parseFloat(formData.sellingPrice),
+      sellingPrice: formData.status === 'Available' ? (parseFloat(formData.sellingPrice) || 0) : 0,
     };
 
     if (refPerson.hasReference && refPerson.fullName) {
@@ -189,10 +228,9 @@ export default function VehiclesPage() {
 
     if (formSharingPersons.length > 0) {
       vehicleData.sharingPersons = formSharingPersons.map((p) => ({
-        personName: p.personName,
+        customerId: p.customerId,
         percentage: parseFloat(p.percentage),
         investmentAmount: parseFloat(p.investmentAmount) || 0,
-        phoneNumber: p.phoneNumber || '',
       }));
     }
 
@@ -238,7 +276,7 @@ export default function VehiclesPage() {
       mileage: '', plateNo: '', vehicleLicense: '', steering: 'Left', monolithicCut: 'Monolithic',
       basePurchasePrice: '', baseCurrency: 'USD',
       transportCostToDubai: '0', importCostToAfghanistan: '0', repairCost: '0',
-      sellingPrice: '', status: 'Available',
+      sellingPrice: '0', status: 'Available',
     });
     setRefPerson({ fullName: '', tazkiraNumber: '', phoneNumber: '', address: '', hasReference: false });
     setFormSharingPersons([]);
@@ -294,8 +332,11 @@ export default function VehiclesPage() {
     }
     if (vehicle.sharingPersons?.length > 0) {
       setFormSharingPersons(vehicle.sharingPersons.map((p) => ({
-        personName: p.personName, percentage: p.percentage,
-        investmentAmount: p.investmentAmount || '', phoneNumber: p.phoneNumber || '',
+        customerId: p.customerId || p.customer?.id || null,
+        personName: p.customer?.fullName || p.personName || '',
+        percentage: p.percentage,
+        investmentAmount: p.investmentAmount || '',
+        phoneNumber: p.customer?.phoneNumber || p.phoneNumber || '',
       })));
     }
 
@@ -352,7 +393,7 @@ export default function VehiclesPage() {
 
   // Sharing persons helpers
   const addSharingPerson = () => {
-    setFormSharingPersons([...formSharingPersons, { personName: '', percentage: '', investmentAmount: '', phoneNumber: '' }]);
+    setFormSharingPersons([...formSharingPersons, { customerId: null, personName: '', percentage: '', investmentAmount: '', phoneNumber: '' }]);
   };
   const removeSharingPerson = (index) => {
     setFormSharingPersons(formSharingPersons.filter((_, i) => i !== index));
@@ -446,13 +487,29 @@ export default function VehiclesPage() {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth error={!!errors.manufacturer}>
-                  <InputLabel>Manufacturer</InputLabel>
-                  <Select value={formData.manufacturer} label="Manufacturer" onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}>
-                    {MANUFACTURERS.map((mfg) => <MenuItem key={mfg} value={mfg}>{mfg}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                {errors.manufacturer && <Typography color="error" variant="caption">{errors.manufacturer}</Typography>}
+                <Autocomplete
+                  freeSolo
+                  options={[...new Set([...DEFAULT_MANUFACTURERS, ...(dropdownOptions.manufacturer || [])])]}
+                  value={formData.manufacturer}
+                  onChange={(e, v) => setFormData({ ...formData, manufacturer: v || '' })}
+                  onInputChange={(e, v) => setFormData({ ...formData, manufacturer: v || '' })}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Manufacturer" error={!!errors.manufacturer} helperText={errors.manufacturer} required
+                      InputProps={{ ...params.InputProps, endAdornment: (
+                        <>
+                          {params.InputProps.endAdornment}
+                          {formData.manufacturer && !([...DEFAULT_MANUFACTURERS, ...(dropdownOptions.manufacturer || [])]).includes(formData.manufacturer) && (
+                            <Tooltip title="Save as new option">
+                              <IconButton size="small" onClick={() => addDropdownOption('manufacturer', formData.manufacturer)}>
+                                <Add fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </>
+                      )}}
+                    />
+                  )}
+                />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField fullWidth label="Model" placeholder="e.g. Corolla" value={formData.model}
@@ -468,13 +525,25 @@ export default function VehiclesPage() {
                 />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select value={formData.category} label="Category" onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {CATEGORIES.map((cat) => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  freeSolo
+                  options={[...new Set([...DEFAULT_CATEGORIES, ...(dropdownOptions.category || [])])]}
+                  value={formData.category}
+                  onChange={(e, v) => setFormData({ ...formData, category: v || '' })}
+                  onInputChange={(e, v) => setFormData({ ...formData, category: v || '' })}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Category"
+                      InputProps={{ ...params.InputProps, endAdornment: (
+                        <>
+                          {params.InputProps.endAdornment}
+                          {formData.category && !([...DEFAULT_CATEGORIES, ...(dropdownOptions.category || [])]).includes(formData.category) && (
+                            <Tooltip title="Save as new category"><IconButton size="small" onClick={() => addDropdownOption('category', formData.category)}><Add fontSize="small" /></IconButton></Tooltip>
+                          )}
+                        </>
+                      )}}
+                    />
+                  )}
+                />
               </Grid>
               <Grid item xs={6} sm={3}>
                 <TextField fullWidth label="Color" placeholder="White" value={formData.color}
@@ -500,13 +569,25 @@ export default function VehiclesPage() {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={6} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Engine Type</InputLabel>
-                  <Select value={formData.engineType} label="Engine Type" onChange={(e) => setFormData({ ...formData, engineType: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {ENGINE_TYPES.map((type) => <MenuItem key={type} value={type}>{type}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  freeSolo
+                  options={[...new Set([...DEFAULT_ENGINE_TYPES, ...(dropdownOptions.engineType || [])])]}
+                  value={formData.engineType}
+                  onChange={(e, v) => setFormData({ ...formData, engineType: v || '' })}
+                  onInputChange={(e, v) => setFormData({ ...formData, engineType: v || '' })}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Engine Type"
+                      InputProps={{ ...params.InputProps, endAdornment: (
+                        <>
+                          {params.InputProps.endAdornment}
+                          {formData.engineType && !([...DEFAULT_ENGINE_TYPES, ...(dropdownOptions.engineType || [])]).includes(formData.engineType) && (
+                            <Tooltip title="Save as new engine type"><IconButton size="small" onClick={() => addDropdownOption('engineType', formData.engineType)}><Add fontSize="small" /></IconButton></Tooltip>
+                          )}
+                        </>
+                      )}}
+                    />
+                  )}
+                />
               </Grid>
               <Grid item xs={6} sm={4}>
                 <FormControl fullWidth>
@@ -518,13 +599,25 @@ export default function VehiclesPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={6} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Transmission</InputLabel>
-                  <Select value={formData.transmission} label="Transmission" onChange={(e) => setFormData({ ...formData, transmission: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {TRANSMISSIONS.map((trans) => <MenuItem key={trans} value={trans}>{trans}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  freeSolo
+                  options={[...new Set([...DEFAULT_TRANSMISSIONS, ...(dropdownOptions.transmission || [])])]}
+                  value={formData.transmission}
+                  onChange={(e, v) => setFormData({ ...formData, transmission: v || '' })}
+                  onInputChange={(e, v) => setFormData({ ...formData, transmission: v || '' })}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Transmission"
+                      InputProps={{ ...params.InputProps, endAdornment: (
+                        <>
+                          {params.InputProps.endAdornment}
+                          {formData.transmission && !([...DEFAULT_TRANSMISSIONS, ...(dropdownOptions.transmission || [])]).includes(formData.transmission) && (
+                            <Tooltip title="Save as new transmission type"><IconButton size="small" onClick={() => addDropdownOption('transmission', formData.transmission)}><Add fontSize="small" /></IconButton></Tooltip>
+                          )}
+                        </>
+                      )}}
+                    />
+                  )}
+                />
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label="Mileage (km)" type="number" placeholder="0" value={formData.mileage}
@@ -563,7 +656,10 @@ export default function VehiclesPage() {
               <Grid item xs={6} sm={4}>
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
-                  <Select value={formData.status} label="Status" onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                  <Select value={formData.status} label="Status" onChange={(e) => {
+                    const nextStatus = e.target.value;
+                    setFormData({ ...formData, status: nextStatus, sellingPrice: nextStatus === 'Available' ? formData.sellingPrice : '0' });
+                  }}>
                     <MenuItem value="Available">🟢 Available</MenuItem>
                     <MenuItem value="Reserved">🟡 Reserved</MenuItem>
                     <MenuItem value="Sold">🔴 Sold</MenuItem>
@@ -582,7 +678,7 @@ export default function VehiclesPage() {
                 <TextField fullWidth label="Base Purchase Price" type="number" placeholder="0" value={formData.basePurchasePrice}
                   onChange={(e) => setFormData({ ...formData, basePurchasePrice: e.target.value })}
                   error={!!errors.basePurchasePrice} helperText={errors.basePurchasePrice} required
-                  InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
                 />
               </Grid>
               <Grid item xs={6} sm={4}>
@@ -622,8 +718,10 @@ export default function VehiclesPage() {
               <Grid item xs={12} sm={4}>
                 <TextField fullWidth label="Selling Price" type="number" placeholder="0" value={formData.sellingPrice}
                   onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-                  error={!!errors.sellingPrice} helperText={errors.sellingPrice} required
-                  InputProps={{ startAdornment: <InputAdornment position="start"><Sell fontSize="small" color="action" /></InputAdornment>, endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
+                  disabled={formData.status !== 'Available'}
+                  error={!!errors.sellingPrice}
+                  helperText={errors.sellingPrice || (formData.status !== 'Available' ? 'Auto-set to 0 for unavailable vehicles' : '')}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment>, endAdornment: <InputAdornment position="end">{formData.baseCurrency}</InputAdornment> }}
                 />
               </Grid>
             </Grid>
@@ -708,10 +806,22 @@ export default function VehiclesPage() {
                 </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label="Person Name" placeholder="Name" size="small" value={person.personName}
-                      onChange={(e) => updateSharingPerson(index, 'personName', e.target.value)}
-                      error={!!errors[`sharing_${index}_name`]} helperText={errors[`sharing_${index}_name`]} required
-                      InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+                    <Autocomplete
+                      options={customers}
+                      getOptionLabel={(option) => typeof option === 'string' ? option : `${option.fullName} (${option.phoneNumber || 'No phone'})`}
+                      value={customers.find(c => c.id === person.customerId) || null}
+                      onChange={(e, v) => {
+                        updateSharingPerson(index, 'customerId', v?.id || null);
+                        updateSharingPerson(index, 'personName', v?.fullName || '');
+                        updateSharingPerson(index, 'phoneNumber', v?.phoneNumber || '');
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Select Customer" size="small"
+                          error={!!errors[`sharing_${index}_name`]} helperText={errors[`sharing_${index}_name`]} required
+                          InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment>{params.InputProps.startAdornment}</>) }}
+                        />
+                      )}
+                      size="small"
                     />
                   </Grid>
                   <Grid item xs={6} sm={3}>
@@ -924,8 +1034,8 @@ export default function VehiclesPage() {
             const colors = { Available: 'success', Reserved: 'warning', Sold: 'error', Coming: 'info', 'Under Repair': 'secondary' };
             return <Chip label={val || '-'} size="small" color={colors[val] || 'default'} />;
           }},
-          { id: 'totalCostPKR', label: 'Total Cost', align: 'right', hiddenOnMobile: true, format: (val, row) => val ? formatCurrency(val, row?.baseCurrency || 'AFN') : '-' },
-          { id: 'sellingPrice', label: 'Selling Price', align: 'right', bold: true, format: (val, row) => val ? formatCurrency(val, row?.baseCurrency || 'AFN') : '0' },
+          { id: 'totalCostAFN', label: 'Total Cost (AFN)', align: 'right', hiddenOnMobile: true, format: (val) => val ? formatCurrency(val, 'AFN') : '-' },
+          { id: 'sellingPriceAFN', label: 'Selling Price (AFN)', align: 'right', bold: true, format: (val) => val ? formatCurrency(val, 'AFN') : '0' },
           { id: '_actions', label: '', align: 'center', format: (val, row) => (
             <Box display="flex" gap={0.5}>
               <Tooltip title="View Details"><IconButton size="small" onClick={() => handleViewDetails(row)}><Visibility fontSize="small" /></IconButton></Tooltip>
@@ -1096,8 +1206,9 @@ export default function VehiclesPage() {
                 ['Plate No.', detailVehicle.plateNo], ['Vehicle License', detailVehicle.vehicleLicense],
                 ['Steering', detailVehicle.steering], ['Monolithic/Cut', detailVehicle.monolithicCut],
                 ['Status', detailVehicle.status],
-                ['Selling Price', detailVehicle.sellingPrice ? formatCurrency(detailVehicle.sellingPrice, detailVehicle.baseCurrency) : '-'],
-                ['Total Cost', detailVehicle.totalCostPKR ? formatCurrency(detailVehicle.totalCostPKR, detailVehicle.baseCurrency) : '-'],
+                ['Selling Price (AFN)', detailVehicle.sellingPriceAFN ? formatCurrency(detailVehicle.sellingPriceAFN, 'AFN') : '-'],
+                ['Entered Selling Price', detailVehicle.sellingPrice ? formatCurrency(detailVehicle.sellingPrice, detailVehicle.baseCurrency) : '-'],
+                ['Total Cost (AFN)', detailVehicle.totalCostAFN ? formatCurrency(detailVehicle.totalCostAFN, 'AFN') : '-'],
                 ['Locked', detailVehicle.isLocked ? 'Yes (Sold)' : 'No'],
               ].map(([label, value]) => (
                 <Grid item xs={6} sm={4} key={label}>
@@ -1130,7 +1241,7 @@ export default function VehiclesPage() {
                       <TableCell><Chip label={cost.stage} size="small" variant="outlined" /></TableCell>
                       <TableCell align="right">{Number(cost.amount).toLocaleString()}</TableCell>
                       <TableCell>{cost.currency}</TableCell>
-                      <TableCell align="right">{Number(cost.amountInPKR).toLocaleString()}</TableCell>
+                      <TableCell align="right">{Number(cost.amountInAFN).toLocaleString()}</TableCell>
                       <TableCell>{cost.date ? new Date(cost.date).toLocaleDateString() : '-'}</TableCell>
                       <TableCell>{cost.description || '-'}</TableCell>
                     </TableRow>

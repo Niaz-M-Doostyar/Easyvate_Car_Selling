@@ -58,7 +58,7 @@ async function run() {
     monolithicCut: 'Monolithic',
     basePurchasePrice: 25000,
     baseCurrency: 'AFN',
-    totalCostPKR: 25000,
+    totalCostAFN: 25000,
     status: 'Available'
   };
 

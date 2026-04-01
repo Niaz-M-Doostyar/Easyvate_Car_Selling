@@ -141,6 +141,14 @@ function drawPrice(doc, y, label, amount) {
   return y + h + 4;
 }
 
+function getSaleSellingPriceAFN(sale) {
+  return Number(sale.sellingPriceAFN || sale.sellingPrice || 0);
+}
+
+function getVehicleSellingPriceAFN(vehicle) {
+  return Number(vehicle.sellingPriceAFN || vehicle.sellingPrice || 0);
+}
+
 // Compact terms 9px per line
 function drawTermsCompact(doc, y, terms, color) {
   y = drawSection(doc, y, 'Terms & Conditions / Sharait aw Zamanat', color);
@@ -153,19 +161,18 @@ function drawTermsCompact(doc, y, terms, color) {
   return y + 2;
 }
 
-// Compact notes
-function drawNotesCompact(doc, y, note1, note2) {
-  if (!note1 && !note2) return y;
+// Compact notes (note 1 only)
+function drawNotesCompact(doc, y, note1) {
+  if (!note1) return y;
   doc.font('Helvetica-Bold').fontSize(6).fillColor(COLORS.grayText).text('Notes:', M, y);
   y += 9;
   doc.font('Helvetica').fontSize(6).fillColor(COLORS.darkText);
-  if (note1) { doc.text('1. ' + note1, M + 4, y, { width: CW - 8, lineBreak: false }); y += 9; }
-  if (note2) { doc.text('2. ' + note2, M + 4, y, { width: CW - 8, lineBreak: false }); y += 9; }
+  doc.text('1. ' + note1, M + 4, y, { width: CW - 8, lineBreak: false }); y += 9;
   return y + 2;
 }
 
-// Compact signatures ~42px
-function drawSignaturesCompact(doc, y, witness1, witness2) {
+// Compact signatures ~38px — only Witness 1
+function drawSignaturesCompact(doc, y, witness1) {
   doc.save();
   doc.moveTo(M, y).lineTo(M + CW, y).dash(2, { space: 2 }).stroke(COLORS.border);
   doc.restore();
@@ -183,8 +190,7 @@ function drawSignaturesCompact(doc, y, witness1, witness2) {
   }
   y += 34;
   doc.font('Helvetica').fontSize(6).fillColor(COLORS.darkText);
-  doc.text('Witness 1: ' + (witness1 || '________________________'), M, y, { width: CW / 2 - 5 });
-  doc.text('Witness 2: ' + (witness2 || '________________________'), M + CW / 2, y, { width: CW / 2, align: 'right' });
+  doc.text('Witness: ' + (witness1 || '________________________'), M, y, { width: CW });
   return y + 10;
 }
 
@@ -204,6 +210,7 @@ function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'exchange_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
+  var buyer = customer || {};
 
   return new Promise(function(resolve, reject) {
     var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
@@ -222,7 +229,7 @@ function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
     y += 14;
 
     var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
-    var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
+    var buyerVals = [sale.buyerName || buyer.fullName, sale.buyerFatherName || buyer.fatherName, sale.buyerProvince || buyer.province, sale.buyerDistrict || buyer.district, sale.buyerVillage || buyer.village, sale.buyerAddress || buyer.currentAddress, sale.buyerIdNumber || buyer.nationalIdNumber, sale.buyerPhone || buyer.phoneNumber];
     var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
     for (var i = 0; i < labels.length; i++) {
       y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGray : '#fff');
@@ -246,7 +253,7 @@ function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
     y += 5;
 
     // Prices
-    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', getSaleSellingPriceAFN(sale));
     if (Number(sale.priceDifference) > 0) {
       y = drawPrice(doc, y, 'PRICE DIFFERENCE / D Qeemat Farq', sale.priceDifference);
       doc.font('Helvetica').fontSize(6).fillColor(COLORS.grayText)
@@ -263,8 +270,8 @@ function generateExchangeCarPdf(sale, vehicle, customer, outputDir) {
       '5: Commission: 2% from buyer, 1% from seller. Buying/selling Bait-ul-Maal vehicles prohibited.'
     ];
     y = drawTermsCompact(doc, y, terms, COLORS.exchangeAccent);
-    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
-    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawNotesCompact(doc, y, sale.notes);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1);
 
     drawFooterCompact(doc);
     doc.end();
@@ -281,6 +288,7 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'container_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
+  var buyer = customer || {};
 
   return new Promise(function(resolve, reject) {
     var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
@@ -299,7 +307,7 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
     y += 14;
 
     var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
-    var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
+    var buyerVals = [sale.buyerName || buyer.fullName, sale.buyerFatherName || buyer.fatherName, sale.buyerProvince || buyer.province, sale.buyerDistrict || buyer.district, sale.buyerVillage || buyer.village, sale.buyerAddress || buyer.currentAddress, sale.buyerIdNumber || buyer.nationalIdNumber, sale.buyerPhone || buyer.phoneNumber];
     var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
     for (var i = 0; i < labels.length; i++) {
       y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGray : '#fff');
@@ -323,7 +331,7 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
     y += 5;
 
     // Price
-    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', getSaleSellingPriceAFN(sale));
     if (Number(sale.downPayment) > 0) {
       doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.grayText);
       doc.text('Down Payment: ' + Number(sale.downPayment).toLocaleString() + ' AFN', M + 8, y);
@@ -333,7 +341,7 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
 
     // Terms
     var terms = [
-      '1: The vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN as shown above.',
+      '1: The vehicle price is (' + getSaleSellingPriceAFN(sale).toLocaleString() + ') AFN as shown above.',
       '2: Traffic responsibility from (' + new Date(sale.saleDate).toLocaleDateString('en-GB') + ') onward is with the buyer.',
       '3: The vehicle has no legal documents \u2014 only one key. Vehicle fully checked and approved.',
       '4: Theft responsibility is on the buyer. Seller has no complaint right.',
@@ -341,8 +349,8 @@ function generateContainerOneKeyPdf(sale, vehicle, customer, outputDir) {
       '6: The showroom is only a witness. Commission: 2% buyer, 1% seller.'
     ];
     y = drawTermsCompact(doc, y, terms, COLORS.containerAccent);
-    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
-    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawNotesCompact(doc, y, sale.notes);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1);
 
     drawFooterCompact(doc);
     doc.end();
@@ -359,6 +367,7 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
   ensureDir(outputDir);
   var fileName = 'licensed_bill_' + sale.saleId + '.pdf';
   var filePath = path.join(outputDir, fileName);
+  var buyer = customer || {};
 
   return new Promise(function(resolve, reject) {
     var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M } });
@@ -377,7 +386,7 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
     y += 14;
 
     var labels = ['Full Name', 'Father Name', 'Province', 'District', 'Village', 'Address', 'ID Number', 'Phone'];
-    var buyerVals = [customer.fullName, customer.fatherName, customer.province, customer.district, customer.village, customer.currentAddress, customer.nationalIdNumber, customer.phoneNumber];
+    var buyerVals = [sale.buyerName || buyer.fullName, sale.buyerFatherName || buyer.fatherName, sale.buyerProvince || buyer.province, sale.buyerDistrict || buyer.district, sale.buyerVillage || buyer.village, sale.buyerAddress || buyer.currentAddress, sale.buyerIdNumber || buyer.nationalIdNumber, sale.buyerPhone || buyer.phoneNumber];
     var sellerVals = [sale.sellerName, sale.sellerFatherName, sale.sellerProvince, sale.sellerDistrict, sale.sellerVillage, sale.sellerAddress, sale.sellerIdNumber, sale.sellerPhone];
     for (var i = 0; i < labels.length; i++) {
       y = drawPersonRow(doc, y, labels[i], buyerVals[i], sellerVals[i], colW, i % 2 === 0 ? COLORS.lightGreen : '#fff');
@@ -401,7 +410,7 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
     y += 5;
 
     // Price
-    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', sale.sellingPrice);
+    y = drawPrice(doc, y, 'SELLING PRICE / Qeemat', getSaleSellingPriceAFN(sale));
 
     if (sale.trafficTransferDate) {
       doc.roundedRect(M, y, CW, 15, 2).fill('#e8f5e9').stroke(COLORS.licensedAccent);
@@ -421,7 +430,7 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
     var transferDateStr = sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toLocaleDateString('en-GB') : '___';
     var saleDateStr = new Date(sale.saleDate).toLocaleDateString('en-GB');
     var terms = [
-      '1: The vehicle price is (' + Number(sale.sellingPrice || 0).toLocaleString() + ') AFN.',
+      '1: The vehicle price is (' + getSaleSellingPriceAFN(sale).toLocaleString() + ') AFN.',
       '2: Traffic responsibility until (' + transferDateStr + ') with seller. After (' + saleDateStr + ') with buyer.',
       '3: Vehicle has complete legal documents and title. Fully checked and approved.',
       '4: Theft responsibility is on the buyer. Seller has no complaint right.',
@@ -429,8 +438,8 @@ function generateLicensedCarPdf(sale, vehicle, customer, outputDir) {
       '6: Showroom is only a witness. Commission: 2% buyer, 1% seller.'
     ];
     y = drawTermsCompact(doc, y, terms, COLORS.licensedAccent);
-    y = drawNotesCompact(doc, y, sale.notes, sale.note2);
-    y = drawSignaturesCompact(doc, y, sale.witnessName1, sale.witnessName2);
+    y = drawNotesCompact(doc, y, sale.notes);
+    y = drawSignaturesCompact(doc, y, sale.witnessName1);
 
     drawFooterCompact(doc);
     doc.end();
@@ -533,7 +542,7 @@ var generateFinancialReportPdf = function(reportData, outputDir) {
 
 
 // ================================================================
-//  Vehicle PDF
+//  Vehicle PDF — full info + cost breakdown on one page
 // ================================================================
 var generateVehiclePdf = function(vehicle, outputDir) {
   ensureDir(outputDir);
@@ -541,44 +550,100 @@ var generateVehiclePdf = function(vehicle, outputDir) {
   var filePath = path.join(outputDir, fileName);
 
   return new Promise(function(resolve, reject) {
-    var doc = new PDFDocument({ size: 'A4', margin: 40 });
+    var doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: 0, left: M, right: M }, autoFirstPage: true });
     var stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    doc.rect(0, 0, PAGE_W, 60).fill(COLORS.headerBg);
-    doc.rect(0, 60, PAGE_W, 3).fill(COLORS.gold);
-    drawCarSilhouette(doc, PAGE_W / 2 - 50, 5, 100, 40, COLORS.gold);
-    doc.font('Helvetica-Bold').fontSize(16).fillColor('#fff')
-      .text('Vehicle Information Card', 40, 42, { width: PAGE_W - 80, align: 'center' });
+    // Header
+    doc.rect(0, 0, PAGE_W, 54).fill(COLORS.headerBg);
+    doc.rect(0, 54, PAGE_W, 2).fill(COLORS.gold);
+    drawCarSilhouette(doc, M, 4, 80, 36, COLORS.gold);
+    drawCarSilhouette(doc, PAGE_W - M - 80, 4, 80, 36, COLORS.gold);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORS.white)
+      .text('NIAZI KHPALWAK MOTOR PURANCHI', 90, 8, { width: PAGE_W - 180, align: 'center' });
+    doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.gold)
+      .text('Vehicle Information Card / د موټر د معلوماتو کارت', 90, 24, { width: PAGE_W - 180, align: 'center' });
+    doc.fontSize(6).fillColor('#ccc')
+      .text('Phone: 0700008983 | 0700008982 | Kandahar, Purani Road', 90, 36, { width: PAGE_W - 180, align: 'center' });
 
-    var y = 80;
-    var rows = [
-      ['Vehicle ID', vehicle.vehicleId], ['Category', vehicle.category],
-      ['Manufacturer', vehicle.manufacturer], ['Model', vehicle.model],
-      ['Year', vehicle.year], ['Color', vehicle.color],
-      ['Chassis/VIN', vehicle.chassisNumber], ['Engine Number', vehicle.engineNumber],
-      ['Engine Type', vehicle.engineType], ['Fuel Type', vehicle.fuelType],
-      ['Transmission', vehicle.transmission], ['Mileage', vehicle.mileage],
-      ['Plate No.', vehicle.plateNo], ['Vehicle License', vehicle.vehicleLicense],
-      ['Steering', vehicle.steering], ['Monolithic/Cut', vehicle.monolithicCut],
-      ['Status', vehicle.status],
-      ['Selling Price (AFN)', vehicle.sellingPrice],
-      ['Total Cost (AFN)', vehicle.totalCostPKR]
+    // Vehicle ID badge
+    var y = 60;
+    doc.rect(M, y, CW, 16).fill(COLORS.accent);
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#fff')
+      .text('Vehicle ID: ' + (vehicle.vehicleId || '—') + '   |   Status: ' + (vehicle.status || 'Available'), M + 8, y + 4, { width: CW - 16, align: 'center' });
+    y += 18;
+
+    // ── Vehicle Identity (2 columns) ──
+    doc.rect(M, y, CW, 14).fill(COLORS.lightGold);
+    doc.rect(M, y, 3, 14).fill(COLORS.gold);
+    doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.primary)
+      .text('VEHICLE IDENTITY & SPECIFICATIONS / د موټر هویت', M + 8, y + 4);
+    y += 14;
+
+    var colW = (CW - 4) / 2;
+    var specRows = [
+      ['Manufacturer', vehicle.manufacturer, 'Model', vehicle.model],
+      ['Year', vehicle.year, 'Category', vehicle.category],
+      ['Color', vehicle.color, 'Fuel Type', vehicle.fuelType],
+      ['Engine Type', vehicle.engineType, 'Transmission', vehicle.transmission],
+      ['Chassis / VIN', vehicle.chassisNumber, 'Engine Number', vehicle.engineNumber],
+      ['Plate No.', vehicle.plateNo, 'Vehicle License', vehicle.vehicleLicense],
+      ['Steering', vehicle.steering, 'Monolithic/Cut', vehicle.monolithicCut],
+      ['Mileage', vehicle.mileage ? (Number(vehicle.mileage).toLocaleString() + ' km') : '—', 'Status', vehicle.status],
     ];
-
-    for (var ri = 0; ri < rows.length; ri++) {
-      var rbg = ri % 2 === 0 ? COLORS.lightGray : '#fff';
-      doc.rect(40, y, PAGE_W - 80, 18).fill(rbg).stroke('#e0e0e0');
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.grayText)
-        .text(rows[ri][0], 46, y + 4, { width: 130 });
-      doc.font('Helvetica').fontSize(9).fillColor(COLORS.darkText)
-        .text(String(rows[ri][1] != null ? rows[ri][1] : '\u2014'), 180, y + 4, { width: PAGE_W - 230 });
-      y += 18;
+    for (var si = 0; si < specRows.length; si++) {
+      var r = specRows[si];
+      var bg = si % 2 === 0 ? COLORS.lightGray : '#fff';
+      y = drawSpecRow(doc, y, r[0], r[1], r[2], r[3], colW, bg);
     }
+    y += 6;
 
-    doc.rect(0, PAGE_H - 25, PAGE_W, 25).fill(COLORS.headerBg);
-    doc.font('Helvetica').fontSize(7).fillColor('#aaa')
-      .text('Niazi Khpalwak Motor Puranchi  -  Vehicle Record', 40, PAGE_H - 18, { width: PAGE_W - 80, align: 'center' });
+    // ── Cost Breakdown ──
+    doc.rect(M, y, CW, 14).fill(COLORS.lightGold);
+    doc.rect(M, y, 3, 14).fill(COLORS.gold);
+    doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.primary)
+      .text('COST BREAKDOWN / د لګښت تفصیل', M + 8, y + 4);
+    y += 14;
+
+    var baseCurr = vehicle.baseCurrency || 'AFN';
+    var costRows = [
+      { label: 'Base Purchase Price', orig: vehicle.basePurchasePrice, afn: null },
+      { label: 'Transport to Dubai', orig: vehicle.transportCostToDubai, afn: null },
+      { label: 'Import to Afghanistan', orig: vehicle.importCostToAfghanistan, afn: null },
+      { label: 'Repair Cost', orig: vehicle.repairCost, afn: null },
+    ];
+    for (var ci = 0; ci < costRows.length; ci++) {
+      var cr = costRows[ci];
+      var cbg = ci % 2 === 0 ? COLORS.lightBlue : '#fff';
+      var h = 13;
+      doc.rect(M, y, CW, h).fill(cbg).stroke('#e0e0e0');
+      doc.font('Helvetica-Bold').fontSize(5.5).fillColor(COLORS.grayText).text(cr.label, M + 5, y + 3, { width: 130 });
+      var origStr = Number(cr.orig || 0).toLocaleString() + ' ' + baseCurr;
+      doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.darkText).text(origStr, M + 140, y + 3, { width: CW - 150, align: 'right' });
+      y += h;
+    }
+    // Total Cost
+    var totalH = 18;
+    doc.rect(M, y, CW, totalH).fill(COLORS.lightGold).stroke(COLORS.gold);
+    doc.rect(M, y, 4, totalH).fill(COLORS.gold);
+    doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.grayText).text('TOTAL COST (AFN)', M + 10, y + 5);
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.primary)
+      .text(Number(vehicle.totalCostAFN || 0).toLocaleString() + ' \u060b', M + CW / 2, y + 3, { width: CW / 2 - 10, align: 'right' });
+    y += totalH + 4;
+
+    // Selling Price
+    doc.roundedRect(M, y, CW, 20, 3).fill('#e8f5e9').stroke(COLORS.licensedAccent);
+    doc.rect(M, y, 4, 20).fill(COLORS.licensedAccent);
+    doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.grayText).text('SELLING PRICE (AFN)', M + 10, y + 6);
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.licensedAccent)
+      .text(getVehicleSellingPriceAFN(vehicle).toLocaleString() + ' \u060b', M + CW / 2, y + 4, { width: CW / 2 - 10, align: 'right' });
+    y += 24;
+
+    // Footer
+    doc.rect(0, PAGE_H - 20, PAGE_W, 20).fill(COLORS.headerBg);
+    doc.rect(0, PAGE_H - 22, PAGE_W, 2).fill(COLORS.gold);
+    doc.font('Helvetica').fontSize(5.5).fillColor('#aaa')
+      .text('Niazi Khpalwak Motor Puranchi \u2014 Official Vehicle Record', M, PAGE_H - 14, { width: CW, align: 'center' });
 
     doc.end();
     stream.on('finish', function() { resolve({ filePath: filePath, fileName: fileName }); });

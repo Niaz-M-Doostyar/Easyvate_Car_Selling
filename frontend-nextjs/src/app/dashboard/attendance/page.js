@@ -4,6 +4,7 @@ import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
   InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment,
+  Autocomplete,
 } from '@mui/material';
 import { Add, EventNote, Notes, Assessment, Person } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
@@ -53,9 +54,11 @@ export default function AttendancePage() {
   const fetchEmployees = async () => {
     try {
       const response = await apiClient.get('/employees');
-      setEmployees(response.data.data || []);
+      setEmployees((response.data.data || []).filter(e => e.status === 'Active'));
     } catch { /* handled silently */ }
   };
+
+  const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
 
   const filteredReports = useMemo(() => {
     let result = [...reports];
@@ -105,7 +108,7 @@ export default function AttendancePage() {
         month: parseInt(formData.month),
         year: parseInt(formData.year),
         presentDays: parseInt(formData.presentDays),
-        absentDays: parseInt(formData.absentDays) || 0,
+        absentDays: getDaysInMonth(parseInt(formData.month), parseInt(formData.year)) - parseInt(formData.presentDays),
         notes: formData.notes,
       };
       if (editingId) {
@@ -242,19 +245,24 @@ export default function AttendancePage() {
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
-              <FormControl fullWidth required>
-                <InputLabel>Employee</InputLabel>
-                <Select value={formData.employeeId} label="Employee" onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}>
-                  {employees.map((emp) => (
-                    <MenuItem key={emp.id} value={emp.id}>👤 {emp.fullName} — {emp.role}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={employees}
+                getOptionLabel={(opt) => opt.fullName ? `${opt.fullName} — ${opt.role}` : ''}
+                value={employees.find(e => e.id === formData.employeeId) || null}
+                onChange={(_, val) => setFormData({ ...formData, employeeId: val?.id || '' })}
+                renderInput={(params) => <TextField {...params} label="Employee" required />}
+                isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Month</InputLabel>
-                <Select value={formData.month} label="Month" onChange={(e) => setFormData({ ...formData, month: e.target.value })}>
+                <Select value={formData.month} label="Month" onChange={(e) => {
+                  const newMonth = e.target.value;
+                  const maxDays = getDaysInMonth(newMonth, formData.year);
+                  const present = Math.min(parseInt(formData.presentDays) || 0, maxDays);
+                  setFormData({ ...formData, month: newMonth, absentDays: formData.presentDays ? maxDays - present : '' });
+                }}>
                   {MONTHS.map((m, i) => <MenuItem key={m} value={i + 1}>📅 {m}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -262,7 +270,12 @@ export default function AttendancePage() {
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Year</InputLabel>
-                <Select value={formData.year} label="Year" onChange={(e) => setFormData({ ...formData, year: e.target.value })}>
+                <Select value={formData.year} label="Year" onChange={(e) => {
+                  const newYear = e.target.value;
+                  const maxDays = getDaysInMonth(formData.month, newYear);
+                  const present = Math.min(parseInt(formData.presentDays) || 0, maxDays);
+                  setFormData({ ...formData, year: newYear, absentDays: formData.presentDays ? maxDays - present : '' });
+                }}>
                   {years.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -274,25 +287,29 @@ export default function AttendancePage() {
                 type="number"
                 placeholder="e.g. 25"
                 value={formData.presentDays}
-                onChange={(e) => setFormData({ ...formData, presentDays: e.target.value })}
+                onChange={(e) => {
+                  const present = e.target.value;
+                  const maxDays = getDaysInMonth(formData.month, formData.year);
+                  const p = Math.min(Math.max(parseInt(present) || 0, 0), maxDays);
+                  setFormData({ ...formData, presentDays: present, absentDays: present ? maxDays - p : '' });
+                }}
                 required
                 InputProps={{
                   startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="success" /></InputAdornment>,
-                  inputProps: { min: 0, max: 31 },
+                  inputProps: { min: 0, max: getDaysInMonth(formData.month, formData.year) },
                 }}
+                helperText={`Max: ${getDaysInMonth(formData.month, formData.year)} days`}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Absent Days"
+                label="Absent Days (auto-calculated)"
                 type="number"
-                placeholder="e.g. 5"
                 value={formData.absentDays}
-                onChange={(e) => setFormData({ ...formData, absentDays: e.target.value })}
+                disabled
                 InputProps={{
                   startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="error" /></InputAdornment>,
-                  inputProps: { min: 0, max: 31 },
                 }}
               />
             </Grid>

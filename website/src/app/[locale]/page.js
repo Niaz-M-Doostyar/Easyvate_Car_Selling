@@ -13,7 +13,7 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
 
 const getImageUrl = (path) => {
   if (!path) return '/img/cars/car-1.jpg';
@@ -108,19 +108,28 @@ export default function HomePage() {
     fetch(`/api/home-cars?locale=${locale}`)
       .then(res => res.json())
       .then(data => {
-        setCars(data.cars);
-        setCarouselSlides(data.carousel);
-        setTestimonials(data.testimonials);
-        setChooseVideo(data.chooseVideo);
+        const fetchedCars = data?.cars || { all: [], container: [], licensed: [] };
+        setCars(fetchedCars);
+        setCarouselSlides(data?.carousel || []);
+        setTestimonials(data?.testimonials || []);
+        setChooseVideo(data?.chooseVideo || null);
         setLoading(false);
       })
       .catch(err => {
         console.error('Failed to fetch home data', err);
+        setCars({ all: [], container: [], licensed: [] });
+        setCarouselSlides([]);
+        setTestimonials([]);
+        setChooseVideo(null);
         setLoading(false);
       });
   }, [locale]);
 
-  const currentCars = activeFilter === 'all' ? cars.all : activeFilter === 'container' ? cars.container : cars.licensed;
+  const currentCars = activeFilter === 'all'
+    ? (cars?.all || [])
+    : activeFilter === 'container'
+      ? (cars?.container || [])
+      : (cars?.licensed || []);
 
   return (
     <>
@@ -138,17 +147,33 @@ export default function HomePage() {
           pagination={{ clickable: true }}
           className="hero-carousel"
         >
-          {carouselSlides.map((slide, index) => (
-            <SwiperSlide key={slide.id || index}>
-              <div
-                className="hero__slide"
-                style={{
-                  backgroundImage: `url(${getImageUrl(slide.image)})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  height: '700px',
-                }}
-              >
+          {carouselSlides.map((slide, index) => {
+            const slideImageUrl = getImageUrl(slide.image);
+            return (
+              <SwiperSlide key={slide.id || index}>
+                <div
+                  className="hero__slide"
+                  style={{
+                    backgroundImage: `url(${slideImageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    height: '700px',
+                    position: 'relative',
+                  }}
+                >
+                  <img
+                    src={slideImageUrl}
+                    alt={slide.title || `slide-${index}`}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: 0,
+                    }}
+                  />
+
                 <div className="container h-100">
                   <div className="row h-100 align-items-center">
                     <div className="col-lg-7">
@@ -166,7 +191,8 @@ export default function HomePage() {
                 </div>
               </div>
             </SwiperSlide>
-          ))}
+            );
+          })}
         </Swiper>
 
         {/* Filter Panel – overlaid on desktop */}

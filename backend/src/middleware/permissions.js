@@ -1,8 +1,5 @@
 // Role-based access control permissions
 
-const { read } = require("pdfkit");
-const { AboutEnglish, AboutPashto, AboutDari, TeamEnglish, TeamPashto, TeamDari, ContactEnglish, ContactPashto, ContactDari, CarouselEnglish, CarouselPashto, CarouselDari, TestimonialEnglish, TestimonialPashto, TestimonialDari, Video } = require("../../models");
-
 const PERMISSIONS = {
   // Role definitions with their capabilities
   'Super Admin': {

@@ -10,7 +10,7 @@ const CustomerLedger = require('../models/CustomerLedger');
 const LedgerTransaction = require('../models/LedgerTransaction');
 const path = require('path');
 const { generateSaleInvoicePdf } = require('../src/services/pdf');
-const { toAFN } = require('../src/services/exchangeRate');
+const { toAFN, saveDailyRates } = require('../src/services/exchangeRate');
 
 // Get all sales
 router.get('/', async (req, res) => {
@@ -53,13 +53,47 @@ router.get('/:id', async (req, res) => {
 // Update sale
 router.put('/:id', async (req, res) => {
   try {
-    const sale = await Sale.findByPk(req.params.id);
+    const sale = await Sale.findByPk(req.params.id, {
+      include: [
+        { model: Vehicle, as: 'vehicle' },
+        { model: Customer, as: 'customer' },
+      ],
+    });
     
     if (!sale) {
       return res.status(404).json({ error: 'Sale not found' });
     }
-    
-    await sale.update(req.body);
+
+    const immutableFields = [
+      'vehicleId', 'customerId', 'saleType', 'sellingCurrency', 'sellingPrice', 'sellingPriceAFN',
+      'downPayment', 'remainingAmount', 'paidAmount', 'paymentStatus', 'totalCost', 'profit',
+      'commission', 'ownerShare', 'exchangeRateUsed', 'saleDate', 'exchangeVehicleId',
+    ];
+
+    const attemptedImmutableField = immutableFields.find((field) => req.body[field] !== undefined && req.body[field] !== sale[field]);
+    if (attemptedImmutableField) {
+      return res.status(400).json({ error: `Field ${attemptedImmutableField} cannot be edited after a sale is recorded` });
+    }
+
+    const allowedUpdates = [
+      'buyerName', 'buyerFatherName', 'buyerPhone', 'buyerAddress', 'buyerIdNumber', 'buyerProvince',
+      'buyerDistrict', 'buyerVillage', 'sellerName', 'sellerFatherName', 'sellerProvince', 'sellerDistrict',
+      'sellerVillage', 'sellerAddress', 'sellerIdNumber', 'sellerPhone', 'exchVehicleCategory',
+      'exchVehicleManufacturer', 'exchVehicleModel', 'exchVehicleYear', 'exchVehicleColor', 'exchVehicleChassis',
+      'exchVehicleEngine', 'exchVehicleEngineType', 'exchVehicleFuelType', 'exchVehicleTransmission',
+      'exchVehicleMileage', 'exchVehiclePlateNo', 'exchVehicleLicense', 'exchVehicleSteering',
+      'exchVehicleMonolithicCut', 'priceDifference', 'priceDifferencePaidBy', 'trafficTransferDate',
+      'notes', 'witnessName1',
+    ];
+    const updatePayload = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedUpdates.includes(key))
+    );
+
+    await sale.update(updatePayload);
+
+    const pdfOutputDir = path.join(__dirname, '..', 'uploads', 'pdf');
+    const pdfInfo = await generateSaleInvoicePdf(sale, sale.vehicle, sale.customer, pdfOutputDir);
+    await sale.update({ invoicePath: pdfInfo.filePath });
     
     const updatedSale = await Sale.findByPk(req.params.id, {
       include: [
@@ -79,8 +113,11 @@ router.put('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const {
-      vehicleId, customerId, sellingPrice, saleDate, downPayment, remainingAmount, notes,
+      vehicleId, customerId, sellingPrice, sellingCurrency, saleDate, downPayment, remainingAmount, notes,
       saleType,
+      // Buyer info (text fields)
+      buyerName, buyerFatherName, buyerPhone, buyerAddress, buyerIdNumber,
+      buyerProvince, buyerDistrict, buyerVillage,
       // Seller info
       sellerName, sellerFatherName, sellerProvince, sellerDistrict, sellerVillage,
       sellerAddress, sellerIdNumber, sellerPhone,
@@ -93,7 +130,7 @@ router.post('/', async (req, res) => {
       // Licensed fields
       trafficTransferDate,
       // Common extra
-      note2, witnessName1, witnessName2
+      witnessName1
     } = req.body;
     
     const vehicle = await Vehicle.findByPk(vehicleId, {
@@ -117,14 +154,32 @@ router.post('/', async (req, res) => {
     }
     const saleId = `S${String(nextSaleNum).padStart(6, '0')}`;
     
-    // Calculate profit
-    const profit = Number(sellingPrice) - Number(vehicle.totalCostPKR || 0);
+    // Convert selling price to AFN
+    const paymentCurr = sellingCurrency || 'AFN';
+    const sellingPriceConverted = await toAFN(sellingPrice, paymentCurr);
+    const sellingPriceAFN = sellingPriceConverted.amountAFN;
+    const sellingPriceNum = Number(sellingPrice) || 0;
+    const downPaymentNum = Number(downPayment) || 0;
+    const downPaymentConverted = await toAFN(downPaymentNum, paymentCurr);
+    const downPaymentAFN = downPaymentConverted.amountAFN;
+    const remainingAmountAFN = Math.max(sellingPriceAFN - downPaymentAFN, 0);
+
+    if (downPaymentAFN > sellingPriceAFN) {
+      return res.status(400).json({ error: 'Down payment cannot exceed the selling price', message: 'Down payment cannot exceed the selling price' });
+    }
+    
+    // Save daily rates
+    await saveDailyRates(req.user?.id);
+    
+    // Calculate profit in AFN (selling price in AFN - total cost in AFN)
+    const profit = sellingPriceAFN - Number(vehicle.totalCostAFN || 0);
+    const distributableProfit = Math.max(profit, 0);
     
     // Calculate commission distribution
     let totalSharedAmount = 0;
     if (vehicle.sharingPersons && vehicle.sharingPersons.length > 0) {
       totalSharedAmount = vehicle.sharingPersons.reduce((sum, person) => {
-        return sum + ((profit * person.percentage) / 100);
+        return sum + ((distributableProfit * person.percentage) / 100);
       }, 0);
     }
     
@@ -132,16 +187,22 @@ router.post('/', async (req, res) => {
     const ownerShare = profit - commission; // Owner gets the remaining profit
     
     // Create sale
-    const sellingPriceNum = Number(sellingPrice);
-    const downPaymentNum = Number(downPayment) || 0;
-    const remainingAmountNum = Math.max(sellingPriceNum - downPaymentNum, 0);
-    const paymentStatus = remainingAmountNum <= 0 ? 'Paid' : (downPaymentNum > 0 ? 'Partial' : 'Pending');
+    const paymentStatus = remainingAmountAFN <= 0 ? 'Paid' : (downPaymentAFN > 0 ? 'Partial' : 'Pending');
 
     const sale = await Sale.create({
       saleId,
       saleType: saleType || 'Container One Key',
       vehicleId,
       customerId,
+      // Buyer info
+      buyerName: buyerName || null,
+      buyerFatherName: buyerFatherName || null,
+      buyerPhone: buyerPhone || null,
+      buyerAddress: buyerAddress || null,
+      buyerIdNumber: buyerIdNumber || null,
+      buyerProvince: buyerProvince || null,
+      buyerDistrict: buyerDistrict || null,
+      buyerVillage: buyerVillage || null,
       // Seller info
       sellerName: sellerName || null,
       sellerFatherName: sellerFatherName || null,
@@ -173,20 +234,21 @@ router.post('/', async (req, res) => {
       trafficTransferDate: trafficTransferDate || null,
       // Financial
       sellingPrice: sellingPriceNum,
-      totalCost: Number(vehicle.totalCostPKR || 0),
+      sellingCurrency: paymentCurr,
+      sellingPriceAFN,
+      totalCost: Number(vehicle.totalCostAFN || 0),
       profit,
       commission,
       ownerShare,
+      exchangeRateUsed: sellingPriceConverted.rate,
       saleDate,
       paymentMethod: 'Cash',
-      downPayment: downPaymentNum,
-      remainingAmount: remainingAmountNum,
-      paidAmount: downPaymentNum,
+      downPayment: downPaymentAFN,
+      remainingAmount: remainingAmountAFN,
+      paidAmount: downPaymentAFN,
       paymentStatus,
       notes: notes || null,
-      note2: note2 || null,
       witnessName1: witnessName1 || null,
-      witnessName2: witnessName2 || null,
       soldBy: req.user.id
     });
     
@@ -227,7 +289,7 @@ router.post('/', async (req, res) => {
         status: 'Available',
         basePurchasePrice: Number(priceDifference) || 0,
         baseCurrency: 'AFN',
-        totalCostPKR: Number(priceDifference) || 0,
+        totalCostAFN: Number(priceDifference) || 0,
         sellingPrice: null,
         isLocked: false
       });
@@ -241,8 +303,9 @@ router.post('/', async (req, res) => {
       transactionId: `TR${Date.now()}`,
       transactionType: 'Vehicle Sale',
       amount: sellingPriceNum,
-      currency: 'AFN',
-      amountPKR: await toAFN(sellingPriceNum, 'AFN'),
+      currency: paymentCurr,
+      amountAFN: sellingPriceAFN,
+      exchangeRateUsed: sellingPriceConverted.rate,
       relatedEntityType: 'Sale',
       relatedEntityId: sale.id,
       description: `Vehicle ${vehicle.vehicleId} sold to customer`,
@@ -255,9 +318,10 @@ router.post('/', async (req, res) => {
       await ShowroomLedger.create({
         type: 'Vehicle Sale',
         amount: downPaymentNum,
-        currency: 'AFN',
-        amountInPKR: await toAFN(downPaymentNum, 'AFN'),
-        description: `Down payment for ${vehicle.vehicleId} — ${paymentStatus === 'Paid' ? 'Paid in full' : `${downPaymentNum.toLocaleString()} of ${sellingPriceNum.toLocaleString()} AFN`}`,
+        currency: paymentCurr,
+        amountInAFN: downPaymentConverted.amountAFN,
+        exchangeRateUsed: downPaymentConverted.rate,
+        description: `Down payment for ${vehicle.vehicleId} — ${paymentStatus === 'Paid' ? 'Paid in full' : `${downPaymentNum.toLocaleString()} ${paymentCurr} received`}`,
         date: saleDate,
         referenceId: sale.id,
         referenceType: 'Sale',
@@ -265,60 +329,60 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Customer ledger: compute running balance from last entry
-    const lastCustEntry = await CustomerLedger.findOne({
-      where: { customerId },
-      order: [['id', 'DESC']],
-    });
-    const prevCustBalance = lastCustEntry ? Number(lastCustEntry.balance || 0) : 0;
-    const balanceAfterSale = prevCustBalance - sellingPriceNum; // debit: customer owes full price
+    // Customer ledger: only if customerId is provided (sales now use text fields for buyer)
+    if (customerId) {
+      const lastCustEntry = await CustomerLedger.findOne({
+        where: { customerId },
+        order: [['id', 'DESC']],
+      });
+      const prevCustBalance = lastCustEntry ? Number(lastCustEntry.balance || 0) : 0;
+      const balanceAfterSale = prevCustBalance - sellingPriceAFN;
 
-    // Customer ledger: Sale entry (debit — customer owes full price)
-    await CustomerLedger.create({
-      customerId,
-      type: 'Sale',
-      amount: sellingPriceNum,
-      currency: 'AFN',
-      amountInPKR: await toAFN(sellingPriceNum, 'AFN'),
-      purpose: `Purchase of ${vehicle.vehicleId} — total price`,
-      date: saleDate,
-      balance: balanceAfterSale,
-      saleId: sale.id,
-      addedBy: req.user.id
-    });
-
-    // If down payment received, also create a "Received" ledger entry
-    let finalCustBalance = balanceAfterSale;
-    if (downPaymentNum > 0) {
-      finalCustBalance = balanceAfterSale + downPaymentNum; // credit: customer paid down payment
       await CustomerLedger.create({
         customerId,
-        type: 'Received',
-        amount: downPaymentNum,
-        currency: 'AFN',
-        amountInPKR: await toAFN(downPaymentNum, 'AFN'),
-        purpose: `Down payment for ${vehicle.vehicleId}`,
+        type: 'Sale',
+        amount: sellingPriceNum,
+        currency: paymentCurr,
+        amountInAFN: sellingPriceAFN,
+        exchangeRateUsed: sellingPriceConverted.rate,
+        purpose: `Purchase of ${vehicle.vehicleId} — total price`,
         date: saleDate,
-        balance: finalCustBalance,
+        balance: balanceAfterSale,
         saleId: sale.id,
         addedBy: req.user.id
       });
-    }
 
-    // Update customer overall balance
-    await Customer.update({ balance: finalCustBalance }, { where: { id: customerId } });
+      let finalCustBalance = balanceAfterSale;
+      if (downPaymentNum > 0) {
+        finalCustBalance = balanceAfterSale + downPaymentAFN;
+        await CustomerLedger.create({
+          customerId,
+          type: 'Received',
+          amount: downPaymentNum,
+          currency: paymentCurr,
+          amountInAFN: downPaymentAFN,
+          exchangeRateUsed: downPaymentConverted.rate,
+          purpose: `Down payment for ${vehicle.vehicleId}`,
+          date: saleDate,
+          balance: finalCustBalance,
+          saleId: sale.id,
+          addedBy: req.user.id
+        });
+      }
+      await Customer.update({ balance: finalCustBalance }, { where: { id: customerId } });
+    }
     
     // Distribute commission to sharing persons
-    if (vehicle.sharingPersons && vehicle.sharingPersons.length > 0) {
+    if (distributableProfit > 0 && vehicle.sharingPersons && vehicle.sharingPersons.length > 0) {
       for (const person of vehicle.sharingPersons) {
-        const personShare = (profit * person.percentage) / 100;
+        const personShare = (distributableProfit * person.percentage) / 100;
         
         await LedgerTransaction.create({
           transactionId: `TR${Date.now()}_${person.id}`,
           transactionType: 'Commission',
           amount: personShare,
           currency: 'AFN',
-          amountPKR: await toAFN(personShare, 'AFN'),
+          amountAFN: personShare,
           relatedEntityType: 'SharingPerson',
           relatedEntityId: person.id,
           description: `Commission for ${person.personName} - ${person.percentage}%`,
@@ -335,16 +399,42 @@ router.post('/', async (req, res) => {
           status: 'Pending'
         });
 
+        // Create customer ledger entry for sharing person if linked to customer
+        if (person.customerId) {
+          const lastShareEntry = await CustomerLedger.findOne({
+            where: { customerId: person.customerId },
+            order: [['id', 'DESC']],
+          });
+          const prevShareBalance = lastShareEntry ? Number(lastShareEntry.balance || 0) : 0;
+          const newShareBalance = prevShareBalance + personShare;
+          
+          await CustomerLedger.create({
+            customerId: person.customerId,
+            type: 'Investment',
+            amount: personShare,
+            currency: 'AFN',
+            amountInAFN: personShare,
+            purpose: `Commission from sale ${sale.saleId} - ${person.percentage}% share`,
+            date: saleDate,
+            balance: newShareBalance,
+            saleId: sale.id,
+            addedBy: req.user.id
+          });
+          
+          await Customer.update({ balance: newShareBalance }, { where: { id: person.customerId } });
+        }
+
         await ShowroomLedger.create({
           type: 'Commission',
           amount: personShare,
           currency: 'AFN',
-          amountInPKR: await toAFN(personShare, 'AFN'),
+          amountInAFN: personShare,
           description: `Commission for ${person.personName}`,
           date: saleDate,
           referenceId: sale.id,
           referenceType: 'CommissionDistribution',
           personName: person.personName,
+          personId: person.customerId || null,
           addedBy: req.user.id
         });
       }
@@ -414,7 +504,7 @@ router.get('/:id/invoice', async (req, res) => {
     }
 
     const vehicle = await Vehicle.findByPk(sale.vehicleId);
-    const customer = await Customer.findByPk(sale.customerId);
+    const customer = sale.customerId ? await Customer.findByPk(sale.customerId) : null;
     const pdfOutputDir = path.join(__dirname, '..', 'uploads', 'pdf');
     const pdfInfo = await generateSaleInvoicePdf(sale, vehicle, customer, pdfOutputDir);
     await sale.update({ invoicePath: pdfInfo.filePath });
@@ -433,21 +523,32 @@ router.get('/:id/payments', async (req, res) => {
     const sale = await Sale.findByPk(req.params.id);
     if (!sale) return res.status(404).json({ error: 'Sale not found' });
 
-    const payments = await CustomerLedger.findAll({
-      where: { saleId: sale.id, type: ['Received', 'Installment'] },
+    const paymentEntries = await ShowroomLedger.findAll({
+      where: { referenceType: 'Sale', referenceId: sale.id, type: 'Vehicle Sale' },
       order: [['date', 'ASC']],
     });
+
+    const payments = paymentEntries.map((entry) => ({
+      id: entry.id,
+      type: (entry.description || '').startsWith('Down payment') ? 'Down Payment' : 'Installment',
+      amount: entry.amount,
+      amountInAFN: entry.amountInAFN,
+      currency: entry.currency,
+      date: entry.date,
+      purpose: entry.description,
+      exchangeRateUsed: entry.exchangeRateUsed,
+    }));
 
     res.json({
       success: true,
       data: payments,
       summary: {
-        sellingPrice: Number(sale.sellingPrice),
+        sellingPrice: Number(sale.sellingPriceAFN || sale.sellingPrice),
         downPayment: Number(sale.downPayment),
         paidAmount: Number(sale.paidAmount),
         remainingAmount: Number(sale.remainingAmount),
         paymentStatus: sale.paymentStatus,
-        installmentCount: payments.filter(p => p.type === 'Installment').length,
+        installmentCount: payments.filter((payment) => payment.type === 'Installment').length,
       }
     });
   } catch (error) {
@@ -479,13 +580,15 @@ router.post('/:id/payments', async (req, res) => {
     const paymentAmount = Number(amount);
     const paymentCurrency = currency || 'AFN';
     const remaining = Number(sale.remainingAmount);
+    const paymentConverted = await toAFN(paymentAmount, paymentCurrency);
+    const paymentAmountAFN = paymentConverted.amountAFN;
 
-    if (paymentAmount > remaining) {
-      return res.status(400).json({ error: `Payment amount (${paymentAmount}) exceeds remaining balance (${remaining})` });
+    if (paymentAmountAFN > remaining) {
+      return res.status(400).json({ error: `Payment amount exceeds remaining balance of ${remaining.toLocaleString()} AFN` });
     }
 
-    const newPaid = Number(sale.paidAmount) + paymentAmount;
-    const newRemaining = Math.max(remaining - paymentAmount, 0);
+    const newPaid = Number(sale.paidAmount) + paymentAmountAFN;
+    const newRemaining = Math.max(remaining - paymentAmountAFN, 0);
     const newStatus = newRemaining <= 0 ? 'Paid' : 'Partial';
     const paymentDate = date || new Date();
 
@@ -497,40 +600,45 @@ router.post('/:id/payments', async (req, res) => {
     });
 
     // 2) Create customer ledger entry linked to this sale
-    const lastEntry = await CustomerLedger.findOne({
-      where: { customerId: sale.customerId },
-      order: [['id', 'DESC']],
-    });
-    const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
-    const newBalance = prevBalance + paymentAmount; // credit: customer paid us
+    let ledgerEntry = null;
+    if (sale.customerId) {
+      const lastEntry = await CustomerLedger.findOne({
+        where: { customerId: sale.customerId },
+        order: [['id', 'DESC']],
+      });
+      const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
+      const newBalance = prevBalance + paymentAmountAFN;
 
-    const ledgerEntry = await CustomerLedger.create({
-      customerId: sale.customerId,
-      type: 'Installment',
-      amount: paymentAmount,
-      currency: paymentCurrency,
-      amountInPKR: await toAFN(paymentAmount, paymentCurrency),
-      purpose: note || `Installment payment for sale ${sale.saleId} — ${sale.vehicle?.vehicleId || ''}`,
-      date: paymentDate,
-      balance: newBalance,
-      saleId: sale.id,
-      addedBy: req.user?.id,
-    });
+      ledgerEntry = await CustomerLedger.create({
+        customerId: sale.customerId,
+        type: 'Installment',
+        amount: paymentAmount,
+        currency: paymentCurrency,
+        amountInAFN: paymentAmountAFN,
+        exchangeRateUsed: paymentConverted.rate,
+        purpose: note || `Installment payment for sale ${sale.saleId} — ${sale.vehicle?.vehicleId || ''}`,
+        date: paymentDate,
+        balance: newBalance,
+        saleId: sale.id,
+        addedBy: req.user?.id,
+      });
 
-    // 3) Update customer overall balance
-    await Customer.update({ balance: newBalance }, { where: { id: sale.customerId } });
+      // 3) Update customer overall balance
+      await Customer.update({ balance: newBalance }, { where: { id: sale.customerId } });
+    }
 
     // 4) Record actual cash received in showroom ledger
     await ShowroomLedger.create({
       type: 'Vehicle Sale',
       amount: paymentAmount,
       currency: paymentCurrency,
-      amountInPKR: await toAFN(paymentAmount, paymentCurrency),
-      description: `Installment from ${sale.customer?.fullName || 'Customer'} for ${sale.vehicle?.vehicleId || sale.saleId}${newStatus === 'Paid' ? ' (FULLY PAID)' : ` (${newRemaining.toLocaleString()} remaining)`}`,
+      amountInAFN: paymentAmountAFN,
+      exchangeRateUsed: paymentConverted.rate,
+      description: `Installment from ${sale.customer?.fullName || sale.buyerName || 'Buyer'} for ${sale.vehicle?.vehicleId || sale.saleId}${newStatus === 'Paid' ? ' (FULLY PAID)' : ` (${newRemaining.toLocaleString()} AFN remaining)`}`,
       date: paymentDate,
       referenceId: sale.id,
       referenceType: 'Sale',
-      personName: sale.customer?.fullName,
+      personName: sale.customer?.fullName || sale.buyerName || null,
       addedBy: req.user?.id,
     });
 
@@ -540,7 +648,8 @@ router.post('/:id/payments', async (req, res) => {
       transactionType: 'Credit',
       amount: paymentAmount,
       currency: paymentCurrency,
-      amountPKR: await toAFN(paymentAmount, paymentCurrency),
+      amountAFN: paymentAmountAFN,
+      exchangeRateUsed: paymentConverted.rate,
       relatedEntityType: 'Installment',
       relatedEntityId: sale.id,
       description: `Installment payment — ${sale.saleId}`,
@@ -558,8 +667,8 @@ router.post('/:id/payments', async (req, res) => {
     res.status(201).json({
       success: true,
       message: newStatus === 'Paid'
-        ? `Payment of ${paymentAmount.toLocaleString()} AFN recorded — sale is now FULLY PAID!`
-        : `Payment of ${paymentAmount.toLocaleString()} AFN recorded — ${newRemaining.toLocaleString()} AFN remaining`,
+        ? `Payment of ${paymentAmountAFN.toLocaleString()} AFN recorded — sale is now fully paid`
+        : `Payment of ${paymentAmountAFN.toLocaleString()} AFN recorded — ${newRemaining.toLocaleString()} AFN remaining`,
       data: { payment: ledgerEntry, sale: updatedSale },
     });
   } catch (error) {

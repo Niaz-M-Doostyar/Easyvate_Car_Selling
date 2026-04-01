@@ -5,7 +5,7 @@ const CurrencyExchange = require('../models/CurrencyExchange');
 const ShowroomLedger = require('../models/ShowroomLedger');
 const LedgerTransaction = require('../models/LedgerTransaction');
 const ExchangeRate = require('../models/ExchangeRate');
-const { toAFN, getRates, clearCache } = require('../src/services/exchangeRate');
+const { toAFN, getRates, clearCache, saveDailyRates } = require('../src/services/exchangeRate');
 
 router.post('/exchange', async (req, res) => {
   try {
@@ -40,7 +40,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount: parseFloat(fromAmount),
       currency: fromCurrency,
-      amountPKR: await toAFN(parseFloat(fromAmount), fromCurrency),
+      amountAFN: (await toAFN(parseFloat(fromAmount), fromCurrency)).amountAFN,
       relatedEntityType: 'CurrencyExchange',
       relatedEntityId: exchange.id,
       description: `Exchange out: ${fromAmount} ${fromCurrency}`,
@@ -55,7 +55,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount: toAmount,
       currency: toCurrency,
-      amountPKR: await toAFN(toAmount, toCurrency),
+      amountAFN: (await toAFN(toAmount, toCurrency)).amountAFN,
       relatedEntityType: 'CurrencyExchange',
       relatedEntityId: exchange.id,
       description: `Exchange in: ${toAmount} ${toCurrency}`,
@@ -68,7 +68,7 @@ router.post('/exchange', async (req, res) => {
       type: 'Currency Exchange',
       amount: parseFloat(fromAmount),
       currency: fromCurrency,
-      amountInPKR: -(await toAFN(parseFloat(fromAmount), fromCurrency)), // Negative for outgoing
+      amountInAFN: -(await toAFN(parseFloat(fromAmount), fromCurrency)).amountAFN, // Negative for outgoing
       description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
       date: new Date(),
       referenceId: exchange.id,
@@ -80,7 +80,7 @@ router.post('/exchange', async (req, res) => {
       type: 'Currency Exchange',
       amount: toAmount,
       currency: toCurrency,
-      amountInPKR: await toAFN(toAmount, toCurrency), // Positive for incoming
+      amountInAFN: (await toAFN(toAmount, toCurrency)).amountAFN, // Positive for incoming
       description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
       date: new Date(),
       referenceId: exchange.id,

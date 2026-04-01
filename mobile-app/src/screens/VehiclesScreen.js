@@ -83,7 +83,7 @@ export default function VehiclesScreen({ navigation }) {
             {item.vehicleId} • {item.year} • {item.category} • {item.color}
           </Text>
           <View style={styles.priceRow}>
-            <Text style={[styles.costText, { color: c.onSurfaceVariant }]}>Cost: {formatCurrency(item.totalCostPKR || item.totalCost)}</Text>
+            <Text style={[styles.costText, { color: c.onSurfaceVariant }]}>Cost: {formatCurrency(item.totalCostAFN || item.totalCost)}</Text>
             <Text style={[styles.priceText, { color: c.success }]}>{formatCurrency(item.sellingPrice)}</Text>
           </View>
         </View>

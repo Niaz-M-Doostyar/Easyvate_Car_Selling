@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../src/config');
 const { verifyToken } = require('../src/middleware/auth');
+const { authorize } = require('../src/middleware/auth');
+
+const USER_ADMIN_ROLES = ['Super Admin', 'Owner'];
 
 router.post('/login', async (req, res) => {
   try {
@@ -46,7 +49,7 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/register', verifyToken, async (req, res) => {
+router.post('/register', verifyToken, authorize(USER_ADMIN_ROLES), async (req, res) => {
   try {
     const { fullName, email, password, role, phoneNumber } = req.body;
     
@@ -84,7 +87,7 @@ router.post('/register', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/users/:id', verifyToken, async (req, res) => {
+router.put('/users/:id', verifyToken, authorize(USER_ADMIN_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
     const { fullName, email, role, isActive, password, phoneNumber } = req.body;
@@ -106,7 +109,7 @@ router.put('/users/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/users', verifyToken, async (req, res) => {
+router.get('/users', verifyToken, authorize(USER_ADMIN_ROLES), async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: ['id', 'username', 'fullName', 'email', 'phoneNumber', 'role', 'isActive', 'createdAt'],
@@ -118,7 +121,7 @@ router.get('/users', verifyToken, async (req, res) => {
   }
 });
 
-router.delete('/users/:id', verifyToken, async (req, res) => {
+router.delete('/users/:id', verifyToken, authorize(USER_ADMIN_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
     

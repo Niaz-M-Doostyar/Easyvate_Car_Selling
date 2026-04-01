@@ -12,7 +12,7 @@ const emptyVehicle = {
   manufacturer: '', model: '', year: '', category: '', color: '', chassisNumber: '', engineNumber: '',
   engineType: '', fuelType: '', transmission: '', mileage: '', plateNo: '', vehicleLicense: '',
   steering: '', monolithicCut: '', status: 'Available',
-  basePurchasePrice: '', baseCurrency: 'USD', transportDubai: '', importAfghanistan: '', repairCost: '',
+  basePurchasePrice: '', baseCurrency: 'USD', transportCostToDubai: '', importCostToAfghanistan: '', repairCost: '',
   sellingPrice: '',
 };
 
@@ -42,8 +42,8 @@ export default function VehicleFormScreen({ navigation, route }) {
         transmission: editing.transmission || '', mileage: String(editing.mileage || ''), plateNo: editing.plateNo || '',
         vehicleLicense: editing.vehicleLicense || '', steering: editing.steering || '', monolithicCut: editing.monolithicCut || '',
         status: editing.status || 'Available', basePurchasePrice: String(editing.basePurchasePrice || ''),
-        baseCurrency: editing.baseCurrency || 'USD', transportDubai: String(editing.transportDubai || ''),
-        importAfghanistan: String(editing.importAfghanistan || ''), repairCost: String(editing.repairCost || ''),
+        baseCurrency: editing.baseCurrency || 'USD', transportCostToDubai: String(editing.transportCostToDubai || ''),
+        importCostToAfghanistan: String(editing.importCostToAfghanistan || ''), repairCost: String(editing.repairCost || ''),
         sellingPrice: String(editing.sellingPrice || ''),
       });
       if (editing.refFullName) {
@@ -58,7 +58,7 @@ export default function VehicleFormScreen({ navigation, route }) {
     setErrors(p => ({ ...p, [key]: null }));
   };
 
-  const totalCost = [form.basePurchasePrice, form.transportDubai, form.importAfghanistan, form.repairCost]
+  const totalCost = [form.basePurchasePrice, form.transportCostToDubai, form.importCostToAfghanistan, form.repairCost]
     .reduce((s, v) => s + (Number(v) || 0), 0);
 
   const validate = () => {
@@ -80,11 +80,11 @@ export default function VehicleFormScreen({ navigation, route }) {
         year: Number(form.year) || null,
         mileage: Number(form.mileage) || null,
         basePurchasePrice: Number(form.basePurchasePrice) || 0,
-        transportDubai: Number(form.transportDubai) || 0,
-        importAfghanistan: Number(form.importAfghanistan) || 0,
+        transportCostToDubai: Number(form.transportCostToDubai) || 0,
+        importCostToAfghanistan: Number(form.importCostToAfghanistan) || 0,
         repairCost: Number(form.repairCost) || 0,
         sellingPrice: Number(form.sellingPrice) || 0,
-        totalCostPKR: totalCost,
+        totalCostAFN: totalCost,
         ...(hasRef ? ref : {}),
         sharingPersons: hasPartners ? partners : [],
       };
@@ -164,8 +164,8 @@ export default function VehicleFormScreen({ navigation, route }) {
                 <PickerField label="Base Currency" value={form.baseCurrency} options={CURRENCIES} onSelect={v => updateForm('baseCurrency', v)} style={styles.half} />
               </View>
               <View style={styles.row}>
-                <FormField label="Transport to Dubai" value={form.transportDubai} onChangeText={v => updateForm('transportDubai', v)} keyboardType="numeric" style={styles.half} />
-                <FormField label="Import to Afghanistan" value={form.importAfghanistan} onChangeText={v => updateForm('importAfghanistan', v)} keyboardType="numeric" style={styles.half} />
+                <FormField label="Transport to Dubai" value={form.transportCostToDubai} onChangeText={v => updateForm('transportCostToDubai', v)} keyboardType="numeric" style={styles.half} />
+                <FormField label="Import to Afghanistan" value={form.importCostToAfghanistan} onChangeText={v => updateForm('importCostToAfghanistan', v)} keyboardType="numeric" style={styles.half} />
               </View>
               <FormField label="Repair Cost" value={form.repairCost} onChangeText={v => updateForm('repairCost', v)} keyboardType="numeric" />
               <FormField label="Total Cost (auto)" value={String(totalCost)} disabled />

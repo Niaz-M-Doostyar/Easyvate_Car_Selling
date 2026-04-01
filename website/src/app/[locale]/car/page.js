@@ -12,7 +12,7 @@ import 'swiper/css/pagination';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
 
 const getImageUrl = (path) => {
   if (!path) return '/img/cars/car-1.jpg';

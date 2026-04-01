@@ -6,7 +6,7 @@ const Payroll = require('../models/Payroll');
 const Employee = require('../models/Employee');
 const ShowroomLedger = require('../models/ShowroomLedger');
 const LedgerTransaction = require('../models/LedgerTransaction');
-const { toAFN } = require('../src/services/exchangeRate');
+const { toAFN, saveDailyRates } = require('../src/services/exchangeRate');
 const {
   calculatePayroll,
   generatePayroll,
@@ -140,14 +140,15 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
     const employee = await Employee.findByPk(payroll.employeeId);
     
     const transactionId = `TR${Date.now()}_SALARY_${payroll.id}`;
-    const amountAFN = await toAFN(parseFloat(amount), 'AFN');
+    const converted = await toAFN(parseFloat(amount), 'AFN');
     
     await LedgerTransaction.create({
       transactionId,
       transactionType: 'Salary',
       amount: parseFloat(amount),
       currency: 'AFN',
-      amountPKR: amountAFN,
+      amountAFN: converted.amountAFN,
+      exchangeRateUsed: converted.rate,
       relatedEntityType: 'Payroll',
       relatedEntityId: payroll.id,
       description: `Salary payment for ${employee.fullName} - ${payroll.month}/${payroll.year}`,
@@ -159,7 +160,8 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
       type: 'Salary',
       amount: parseFloat(amount),
       currency: 'AFN',
-      amountInPKR: amountAFN,
+      amountInAFN: converted.amountAFN,
+      exchangeRateUsed: converted.rate,
       description: `Salary for ${employee.fullName}`,
       date: new Date(),
       referenceId: payroll.id,

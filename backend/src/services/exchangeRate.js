@@ -1,4 +1,6 @@
 const ExchangeRate = require('../../models/ExchangeRate');
+const DailyExchangeRate = require('../../models/DailyExchangeRate');
+const { Op } = require('sequelize');
 
 // In-memory cache to avoid database hits on every request
 let rateCache = null;
@@ -41,11 +43,75 @@ async function getRates() {
   }
 }
 
-// Convert any currency to AFN
+// Convert any currency to AFN and return both amount and rate used
 async function toAFN(amount, currency) {
+  if (!amount || isNaN(amount)) return { amountAFN: 0, rate: 1 };
+  if (currency === 'AFN') return { amountAFN: Number(amount), rate: 1 };
+  
   const rates = await getRates();
   const rate = rates[currency] || 1;
-  return Number(amount || 0) * rate;
+  return { amountAFN: Number(amount) * rate, rate };
+}
+
+// Legacy toAFN for backward compatibility (returns just the number)
+async function toAFNAmount(amount, currency) {
+  const { amountAFN } = await toAFN(amount, currency);
+  return amountAFN;
+}
+
+// Save today's exchange rates to daily log
+async function saveDailyRates(userId) {
+  try {
+    const rates = await getRates();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    for (const [currency, rate] of Object.entries(rates)) {
+      if (currency === 'AFN') continue;
+      await DailyExchangeRate.upsert({
+        date: today,
+        currency,
+        rateToAFN: rate,
+        createdBy: userId || null
+      });
+    }
+  } catch (error) {
+    console.error('Error saving daily rates:', error);
+  }
+}
+
+// Get the exchange rate for a specific date (for historical lookups)
+async function getRateForDate(currency, date) {
+  if (currency === 'AFN') return 1;
+  
+  try {
+    const dateStr = typeof date === 'string' ? date : new Date(date).toISOString().split('T')[0];
+    
+    // First try exact date
+    let dailyRate = await DailyExchangeRate.findOne({
+      where: { date: dateStr, currency }
+    });
+    
+    if (dailyRate) return parseFloat(dailyRate.rateToAFN);
+    
+    // Fall back to most recent rate before that date
+    dailyRate = await DailyExchangeRate.findOne({
+      where: { 
+        currency,
+        date: { [Op.lte]: dateStr }
+      },
+      order: [['date', 'DESC']]
+    });
+    
+    if (dailyRate) return parseFloat(dailyRate.rateToAFN);
+    
+    // Fall back to current rates
+    const rates = await getRates();
+    return rates[currency] || 1;
+  } catch (error) {
+    console.error('Error getting rate for date:', error);
+    const rates = await getRates();
+    return rates[currency] || 1;
+  }
 }
 
 // Clear cache (call this when rates are updated)
@@ -65,6 +131,8 @@ async function initializeRates() {
       ]);
       console.log('✓ Default exchange rates initialized');
     }
+    // Save today's rates
+    await saveDailyRates();
   } catch (error) {
     console.error('Error initializing exchange rates:', error);
   }
@@ -73,6 +141,9 @@ async function initializeRates() {
 module.exports = {
   getRates,
   toAFN,
+  toAFNAmount,
+  saveDailyRates,
+  getRateForDate,
   clearCache,
   initializeRates
 };

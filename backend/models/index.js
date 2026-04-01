@@ -18,7 +18,9 @@ const Sale = require('./Sale');
 const CommissionDistribution = require('./CommissionDistribution');
 const LedgerTransaction = require('./LedgerTransaction');
 const ExchangeRate = require('./ExchangeRate');
+const DailyExchangeRate = require('./DailyExchangeRate');
 const VehicleImage = require('./VehicleImage');
+const VehicleDropdownOption = require('./VehicleDropdownOption');
 const { AboutEnglish, AboutPashto, AboutDari } = require('./About');
 const { TeamEnglish, TeamPashto, TeamDari } = require('./Team');
 const { AboutLogoEnglish, AboutLogoPashto, AboutLogoDari } = require('./AboutLogo');
@@ -38,11 +40,18 @@ ReferencePerson.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
 
 Vehicle.hasMany(SharingPerson, { foreignKey: 'vehicleId', as: 'sharingPersons' });
 SharingPerson.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
+SharingPerson.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+Customer.hasMany(SharingPerson, { foreignKey: 'customerId', as: 'sharingPersons' });
 
 Vehicle.hasMany(EditHistory, { foreignKey: 'entityId', as: 'editHistory', scope: { entityType: 'Vehicle' } });
 
 Customer.hasMany(CustomerLedger, { foreignKey: 'customerId', as: 'ledger' });
-CustomerLedger.belongsTo(Customer, { foreignKey: 'customerId' });
+CustomerLedger.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+
+Loan.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+Customer.hasMany(Loan, { foreignKey: 'customerId', as: 'loans' });
+
+ShowroomLedger.belongsTo(Customer, { foreignKey: 'personId', as: 'person' });
 
 Employee.hasMany(Attendance, { foreignKey: 'employeeId', as: 'attendance' });
 Attendance.belongsTo(Employee, { foreignKey: 'employeeId' });
@@ -61,6 +70,7 @@ module.exports = {
   Vehicle,
   VehicleImage,
   VehicleCost,
+  VehicleDropdownOption,
   ReferencePerson,
   SharingPerson,
   EditHistory,
@@ -76,6 +86,7 @@ module.exports = {
   CommissionDistribution,
   LedgerTransaction,
   ExchangeRate,
+  DailyExchangeRate,
   AboutEnglish,
   AboutPashto,
   AboutDari,

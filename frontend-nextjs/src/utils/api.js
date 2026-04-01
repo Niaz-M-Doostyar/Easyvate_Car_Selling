@@ -7,7 +7,7 @@ import axios from 'axios';
 //   vps    →  remote VPS (194.163.170.240) – no port, served via Nginx
 // ============================================================
 const API_URLS = {
-  local: 'http://localhost:3001/api',
+  local: 'http://localhost:3002/api',
   vps:   'http://194.163.170.240/api',
 };
 

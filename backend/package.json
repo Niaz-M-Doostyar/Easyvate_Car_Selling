@@ -4,8 +4,8 @@
   "description": "Easyvate Car Selling Platform - Backend API",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "start": "PORT=3002 node app.js",
+    "dev": "PORT=3002 nodemon app.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

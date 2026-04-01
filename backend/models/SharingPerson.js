@@ -11,6 +11,15 @@ const SharingPerson = sequelize.define('SharingPerson', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  customerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'customers',
+      key: 'id'
+    },
+    comment: 'Reference to customer (investor/borrower)'
+  },
   personName: {
     type: DataTypes.STRING(255),
     allowNull: false

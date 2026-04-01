@@ -55,7 +55,7 @@ router.get('/sales', async (req, res) => {
 
     const summary = {
       totalSales: sales.length,
-      totalRevenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+      totalRevenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0),
       totalProfit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
       totalCommission: sales.reduce((sum, s) => sum + safeNum(s.commission), 0)
     };
@@ -79,12 +79,12 @@ router.get('/financial', async (req, res) => {
     const transactions = await ShowroomLedger.findAll({ where, order: [['date', 'DESC']] });
     
     const income = transactions
-      .filter(t => ['Income', 'Vehicle Sale'].includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .filter(t => ['Income', 'Vehicle Sale', 'Loan Received'].includes(t.type))
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
       
     const expenses = transactions
-      .filter(t => ['Expense', 'Vehicle Purchase', 'Salary'].includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .filter(t => ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'].includes(t.type))
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     
     const summary = {
       totalIncome: income,
@@ -137,11 +137,11 @@ router.get('/profit-loss', async (req, res) => {
       }
     });
     
-    const totalRevenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0);
+    const totalRevenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0);
     const totalCost = sales.reduce((sum, s) => sum + safeNum(s.totalCost), 0);
     const totalExpenses = ledger
       .filter(t => ['Expense', 'Salary'].includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     
     const grossProfit = totalRevenue - totalCost;
     const netProfit = grossProfit - totalExpenses;
@@ -183,12 +183,12 @@ router.get('/daily', async (req, res) => {
     res.json({
       data: {
         sales: sales.length,
-        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0),
         transactions: ledger.length,
-        cashIn: ledger.filter(t => ['Income', 'Vehicle Sale'].includes(t.type))
-          .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0),
-        cashOut: ledger.filter(t => ['Expense', 'Vehicle Purchase', 'Salary'].includes(t.type))
-          .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0)
+        cashIn: ledger.filter(t => ['Income', 'Vehicle Sale', 'Loan Received'].includes(t.type))
+          .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0),
+        cashOut: ledger.filter(t => ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'].includes(t.type))
+          .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0)
       }
     });
   } catch (error) {
@@ -204,7 +204,7 @@ router.get('/export-pdf', async (req, res) => {
 
     // Get sales data
     const sales = await Sale.findAll();
-    const revenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0);
+    const revenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0);
     const profit = sales.reduce((sum, s) => sum + safeNum(s.profit), 0);
     const commission = sales.reduce((sum, s) => sum + safeNum(s.commission), 0);
 
@@ -214,16 +214,16 @@ router.get('/export-pdf', async (req, res) => {
     
     const ledger = await ShowroomLedger.findAll();
     const income = ledger.filter(t => incomeTypes.includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     
     const showroomBalance = income - expenses;
 
     // Get shared persons breakdown
     const sharedPersons = await ShowroomLedger.findAll({
       where: { type: 'Commission' },
-      attributes: ['personName', [require('sequelize').fn('SUM', require('sequelize').col('amountInPKR')), 'total']],
+      attributes: ['personName', [require('sequelize').fn('SUM', require('sequelize').col('amountInAFN')), 'total']],
       group: ['personName'],
       raw: true
     });
@@ -285,16 +285,16 @@ router.get('/monthly', async (req, res) => {
       const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
 
       const income = ledger.filter(t => incomeTypes.includes(t.type))
-        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
       const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
 
       months.push({
         month,
         monthName: new Date(targetYear, month - 1).toLocaleString('default', { month: 'long' }),
         year: targetYear,
         salesCount: sales.length,
-        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0),
         profit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
         income,
         expenses,
@@ -339,14 +339,14 @@ router.get('/yearly', async (req, res) => {
       const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
 
       const income = ledger.filter(t => incomeTypes.includes(t.type))
-        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
       const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-        .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+        .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
 
       years.push({
         year,
         salesCount: sales.length,
-        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0),
+        revenue: sales.reduce((sum, s) => sum + safeNum(s.sellingPriceAFN || s.sellingPrice), 0),
         profit: sales.reduce((sum, s) => sum + safeNum(s.profit), 0),
         income,
         expenses,
@@ -390,11 +390,11 @@ router.get('/commission', async (req, res) => {
           transactions: []
         };
       }
-      grouped[name].totalCommission += safeNum(c.amountInPKR);
+      grouped[name].totalCommission += safeNum(c.amountInAFN);
       grouped[name].count++;
       grouped[name].transactions.push({
         date: c.date,
-        amount: c.amountInPKR,
+        amount: c.amountInAFN,
         description: c.description
       });
     });
@@ -416,9 +416,9 @@ router.get('/balance-breakdown', async (req, res) => {
     const ledger = await ShowroomLedger.findAll();
     
     const income = ledger.filter(t => incomeTypes.includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
-      .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+      .reduce((sum, t) => sum + safeNum(t.amountInAFN), 0);
     
     const showroomBalance = income - expenses;
 
@@ -427,7 +427,7 @@ router.get('/balance-breakdown', async (req, res) => {
       where: { type: 'Commission', personName: { [Op.not]: null } },
       attributes: [
         'personName', 
-        [require('sequelize').fn('SUM', require('sequelize').col('amountInPKR')), 'total'],
+        [require('sequelize').fn('SUM', require('sequelize').col('amountInAFN')), 'total'],
         [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
       ],
       group: ['personName'],
