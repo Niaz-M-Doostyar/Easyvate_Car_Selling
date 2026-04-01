@@ -4,6 +4,7 @@ import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
   InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment,
+  Autocomplete,
 } from '@mui/material';
 import { Add, AccountBalance, TrendingUp, TrendingDown, MenuBook, Person, AttachMoney, CalendarToday, Description, FilterList, Edit } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
@@ -13,25 +14,36 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
 const ENTRY_TYPES = [
   'Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale',
-  'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission',
+  'Salary', 'Loan Given', 'Loan Received', 'Commission',
 ];
 const INCOME_TYPES = ['Income', 'Vehicle Sale', 'Loan Received'];
 const EXPENSE_TYPES = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
+
+const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨' };
 
 export default function ShowroomLedgerPage() {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const [entries, setEntries] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [balance, setBalance] = useState({ income: 0, expenses: 0, balance: 0, ownerBalance: 0 });
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filter, setFilter] = useState({ type: '', dateFrom: '', dateTo: '', search: '' });
   const [formData, setFormData] = useState({
-    type: 'Income', personName: '', amount: '', currency: 'AFN', date: new Date().toISOString().split('T')[0], description: '',
+    type: 'Income', personName: '', customerId: null, amount: '', currency: 'AFN',
+    date: new Date().toISOString().split('T')[0], description: '',
   });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchCustomers(); }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* silent */ }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -65,8 +77,9 @@ export default function ShowroomLedgerPage() {
 
   const handleEdit = (record) => {
     setFormData({
-      type: record.type, personName: record.personName || '', amount: record.amount,
-      currency: record.currency || 'AFN', date: record.date?.split('T')[0] || '', description: record.description || '',
+      type: record.type, personName: record.personName || '', customerId: record.personId || null,
+      amount: record.amount, currency: record.currency || 'AFN',
+      date: record.date?.split('T')[0] || '', description: record.description || '',
     });
     setEditingId(record.id);
     setOpen(true);
@@ -106,7 +119,7 @@ export default function ShowroomLedgerPage() {
   };
 
   const resetForm = () => {
-    setFormData({ type: 'Income', personName: '', amount: '', currency: 'AFN', date: new Date().toISOString().split('T')[0], description: '' });
+    setFormData({ type: 'Income', personName: '', customerId: null, amount: '', currency: 'AFN', date: new Date().toISOString().split('T')[0], description: '' });
     setEditingId(null);
   };
 
@@ -192,7 +205,7 @@ export default function ShowroomLedgerPage() {
           { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={getTypeColor(v)} variant="outlined" />, exportFormat: (v) => v },
           { id: 'personName', label: 'Person', format: (v) => v || '-' },
           { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-          { id: 'amountInPKR', label: 'Amount', format: (v) => `${Number(v).toLocaleString()}`, hiddenOnMobile: true },
+          { id: 'amountInAFN', label: 'Amount (AFN ؋)', format: (v) => `${Number(v).toLocaleString()} ؋`, hiddenOnMobile: true },
           { id: 'description', label: 'Description', format: (v) => v || '-' },
           { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
         ]}
@@ -226,7 +239,6 @@ export default function ShowroomLedgerPage() {
                   <MenuItem value="Vehicle Purchase">🚗 Vehicle Purchase</MenuItem>
                   <MenuItem value="Vehicle Sale">💰 Vehicle Sale</MenuItem>
                   <MenuItem value="Salary">💼 Salary</MenuItem>
-                  <MenuItem value="Currency Exchange">💱 Currency Exchange</MenuItem>
                   <MenuItem value="Loan Given">🟡 Loan Given</MenuItem>
                   <MenuItem value="Loan Received">🟣 Loan Received</MenuItem>
                   <MenuItem value="Commission">🟠 Commission</MenuItem>
@@ -234,15 +246,25 @@ export default function ShowroomLedgerPage() {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Person Name (optional)" placeholder="e.g. Ahmad Khan" value={formData.personName}
-                onChange={(e) => setFormData({ ...formData, personName: e.target.value })}
-                InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+              <Autocomplete
+                options={customers}
+                getOptionLabel={(opt) => opt.fullName ? `${opt.fullName} (${opt.customerType})` : ''}
+                value={customers.find(c => c.id === formData.customerId) || null}
+                onChange={(_, val) => setFormData({
+                  ...formData,
+                  customerId: val?.id || null,
+                  personName: val?.fullName || '',
+                })}
+                isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Person Name (optional)" placeholder="Search customer..." />
+                )}
               />
             </Grid>
             <Grid item xs={6}>
               <TextField fullWidth label="Amount" type="number" placeholder="0" value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><strong style={{fontSize:'0.95rem'}}>{CURRENCY_SYMBOLS[formData.currency] || '؋'}</strong></InputAdornment> }}
               />
             </Grid>
             <Grid item xs={6}>

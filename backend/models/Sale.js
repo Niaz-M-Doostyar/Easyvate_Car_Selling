@@ -24,7 +24,8 @@ const Sale = sequelize.define('Sale', {
   },
   customerId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true,
+    defaultValue: null
   },
 
   // ── Seller / Exchanger Info (رانبوونکي) ─────────
@@ -64,6 +65,15 @@ const Sale = sequelize.define('Sale', {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false
   },
+  sellingCurrency: {
+    type: DataTypes.STRING(10),
+    defaultValue: 'AFN',
+    comment: 'Currency of the selling price'
+  },
+  sellingPriceAFN: {
+    type: DataTypes.DECIMAL(15, 2),
+    comment: 'Selling price converted to AFN'
+  },
   totalCost: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false
@@ -79,6 +89,10 @@ const Sale = sequelize.define('Sale', {
   ownerShare: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'Exchange rate used for payment currency conversion'
   },
   saleDate: {
     type: DataTypes.DATE,
@@ -113,10 +127,18 @@ const Sale = sequelize.define('Sale', {
   },
 
   // ── Notes & Misc ───────────────────────────────
+  // Buyer details (text fields instead of customer dropdown)
+  buyerName: { type: DataTypes.STRING(255) },
+  buyerFatherName: { type: DataTypes.STRING(255) },
+  buyerPhone: { type: DataTypes.STRING(20) },
+  buyerAddress: { type: DataTypes.TEXT },
+  buyerIdNumber: { type: DataTypes.STRING(50) },
+  buyerProvince: { type: DataTypes.STRING(100) },
+  buyerDistrict: { type: DataTypes.STRING(100) },
+  buyerVillage: { type: DataTypes.STRING(255) },
+  
   notes: { type: DataTypes.TEXT },
-  note2: { type: DataTypes.TEXT },
   witnessName1: { type: DataTypes.STRING(255) },
-  witnessName2: { type: DataTypes.STRING(255) },
   invoicePath: { type: DataTypes.STRING(255) },
   soldBy: { type: DataTypes.INTEGER }
 }, {

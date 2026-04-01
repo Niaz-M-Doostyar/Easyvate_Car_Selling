@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const LedgerTransaction = require('../models/LedgerTransaction');
 const ShowroomLedger = require('../models/ShowroomLedger');
+const Customer = require('../models/Customer');
 const { Op, Sequelize } = require('sequelize');
-const { toAFN } = require('../src/services/exchangeRate');
+const { toAFN, saveDailyRates } = require('../src/services/exchangeRate');
 
 // Get all transactions
 router.get('/', async (req, res) => {
@@ -37,7 +38,7 @@ router.get('/', async (req, res) => {
 router.get('/balance', async (req, res) => {
   try {
     // Total income
-    const income = await LedgerTransaction.sum('amountPKR', {
+    const income = await LedgerTransaction.sum('amountAFN', {
       where: {
         transactionType: {
           [Op.in]: ['Credit', 'Vehicle Sale', 'Currency Exchange']
@@ -46,7 +47,7 @@ router.get('/balance', async (req, res) => {
     }) || 0;
     
     // Total expenses
-    const expenses = await LedgerTransaction.sum('amountPKR', {
+    const expenses = await LedgerTransaction.sum('amountAFN', {
       where: {
         transactionType: {
           [Op.in]: ['Debit', 'Vehicle Purchase', 'Expense', 'Salary', 'Commission', 'Loan']
@@ -61,7 +62,7 @@ router.get('/balance', async (req, res) => {
     const breakdown = await LedgerTransaction.findAll({
       attributes: [
         'transactionType',
-        [Sequelize.fn('SUM', Sequelize.col('amountPKR')), 'total'],
+        [Sequelize.fn('SUM', Sequelize.col('amountAFN')), 'total'],
         [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
       ],
       group: ['transactionType']
@@ -90,7 +91,7 @@ router.get('/monthly', async (req, res) => {
         [Sequelize.fn('MONTH', Sequelize.col('transactionDate')), 'month'],
         [Sequelize.fn('YEAR', Sequelize.col('transactionDate')), 'year'],
         'transactionType',
-        [Sequelize.fn('SUM', Sequelize.col('amountPKR')), 'total']
+        [Sequelize.fn('SUM', Sequelize.col('amountAFN')), 'total']
       ],
       where: Sequelize.where(
         Sequelize.fn('YEAR', Sequelize.col('transactionDate')),
@@ -113,7 +114,7 @@ router.get('/yearly', async (req, res) => {
       attributes: [
         [Sequelize.fn('YEAR', Sequelize.col('transactionDate')), 'year'],
         'transactionType',
-        [Sequelize.fn('SUM', Sequelize.col('amountPKR')), 'total']
+        [Sequelize.fn('SUM', Sequelize.col('amountAFN')), 'total']
       ],
       group: ['year', 'transactionType'],
       order: [[Sequelize.fn('YEAR', Sequelize.col('transactionDate')), 'ASC']]
@@ -144,11 +145,11 @@ router.get('/showroom', async (req, res) => {
 
 router.get('/showroom/balance', async (req, res) => {
   try {
-    const income = await ShowroomLedger.sum('amountInPKR', {
+    const income = await ShowroomLedger.sum('amountInAFN', {
       where: { type: { [Op.in]: ['Income', 'Vehicle Sale', 'Loan Received'] } }
     }) || 0;
 
-    const expenses = await ShowroomLedger.sum('amountInPKR', {
+    const expenses = await ShowroomLedger.sum('amountInAFN', {
       where: { type: { [Op.in]: ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'] } }
     }) || 0;
 
@@ -156,7 +157,7 @@ router.get('/showroom/balance', async (req, res) => {
 
     const sharedPersons = await ShowroomLedger.findAll({
       where: { type: 'Commission' },
-      attributes: ['personName', [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']],
+      attributes: ['personName', [Sequelize.fn('SUM', Sequelize.col('amountInAFN')), 'total']],
       group: ['personName']
     });
 
@@ -182,10 +183,10 @@ router.get('/daily', async (req, res) => {
 
     const cashIn = ledger
       .filter(t => ['Income', 'Vehicle Sale', 'Loan Received'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amountInPKR || 0), 0);
+      .reduce((sum, t) => sum + Number(t.amountInAFN || 0), 0);
     const cashOut = ledger
       .filter(t => ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amountInPKR || 0), 0);
+      .reduce((sum, t) => sum + Number(t.amountInAFN || 0), 0);
 
     res.json({ date: start, cashIn, cashOut, net: cashIn - cashOut, transactions: ledger.length });
   } catch (error) {
@@ -203,7 +204,7 @@ router.get('/showroom/monthly', async (req, res) => {
         [Sequelize.fn('MONTH', Sequelize.col('date')), 'month'],
         [Sequelize.fn('YEAR', Sequelize.col('date')), 'year'],
         'type',
-        [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']
+        [Sequelize.fn('SUM', Sequelize.col('amountInAFN')), 'total']
       ],
       where: Sequelize.where(Sequelize.fn('YEAR', Sequelize.col('date')), yearFilter),
       group: ['month', 'year', 'type'],
@@ -222,7 +223,7 @@ router.get('/showroom/yearly', async (req, res) => {
       attributes: [
         [Sequelize.fn('YEAR', Sequelize.col('date')), 'year'],
         'type',
-        [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']
+        [Sequelize.fn('SUM', Sequelize.col('amountInAFN')), 'total']
       ],
       group: ['year', 'type'],
       order: [[Sequelize.fn('YEAR', Sequelize.col('date')), 'ASC']]
@@ -246,10 +247,10 @@ router.get('/time-balance', async (req, res) => {
 
     const income = ledger
       .filter(t => ['Income', 'Vehicle Sale', 'Loan Received'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amountInPKR || 0), 0);
+      .reduce((sum, t) => sum + Number(t.amountInAFN || 0), 0);
     const expenses = ledger
       .filter(t => ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amountInPKR || 0), 0);
+      .reduce((sum, t) => sum + Number(t.amountInAFN || 0), 0);
 
     res.json({ startDate: start, endDate: end, income, expenses, balance: income - expenses });
   } catch (error) {
@@ -260,17 +261,21 @@ router.get('/time-balance', async (req, res) => {
 // Create showroom ledger entry
 router.post('/showroom', async (req, res) => {
   try {
-    const { type, personName, amount, currency, date, description } = req.body;
+    const { type, personName, customerId, amount, currency, date, description } = req.body;
     
     const finalCurrency = currency || 'AFN';
-    const amountInPKR = await toAFN(amount, finalCurrency);
+    await saveDailyRates(req.user?.id);
+    const converted = await toAFN(amount, finalCurrency);
+    const customer = customerId ? await Customer.findByPk(customerId) : null;
     
     const entry = await ShowroomLedger.create({
       type,
-      personName: personName || null,
+      personName: customer ? customer.fullName : (personName || null),
+      personId: customer ? customer.id : null,
       amount: Number(amount),
       currency: finalCurrency,
-      amountInPKR,
+      amountInAFN: converted.amountAFN,
+      exchangeRateUsed: converted.rate,
       date: date || new Date(),
       description
     });
@@ -289,16 +294,20 @@ router.put('/showroom/:id', async (req, res) => {
       return res.status(404).json({ error: 'Showroom ledger entry not found' });
     }
     
-    const { type, personName, amount, currency, date, description } = req.body;
+    const { type, personName, customerId, amount, currency, date, description } = req.body;
     const finalCurrency = currency || entry.currency || 'AFN';
-    const amountInPKR = amount ? await toAFN(amount, finalCurrency) : entry.amountInPKR;
+    await saveDailyRates(req.user?.id);
+    const converted = amount ? await toAFN(amount, finalCurrency) : null;
+    const customer = customerId ? await Customer.findByPk(customerId) : null;
     
     await entry.update({
       type: type || entry.type,
-      personName: personName !== undefined ? personName : entry.personName,
+      personName: customerId !== undefined ? (customer ? customer.fullName : null) : (personName !== undefined ? personName : entry.personName),
+      personId: customerId !== undefined ? (customer ? customer.id : null) : entry.personId,
       amount: amount ? Number(amount) : entry.amount,
       currency: finalCurrency,
-      amountInPKR,
+      amountInAFN: converted ? converted.amountAFN : entry.amountInAFN,
+      exchangeRateUsed: converted ? converted.rate : entry.exchangeRateUsed,
       date: date || entry.date,
       description: description !== undefined ? description : entry.description
     });
@@ -337,7 +346,7 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     const finalCurrency = currency || 'AFN';
-    const amountPKR = await toAFN(amount, finalCurrency);
+    const converted = await toAFN(amount, finalCurrency);
     
     const transactionId = `TR${Date.now()}`;
     
@@ -346,7 +355,8 @@ router.post('/', async (req, res) => {
       transactionType,
       amount,
       currency: finalCurrency,
-      amountPKR,
+      amountAFN: converted.amountAFN,
+      exchangeRateUsed: converted.rate,
       relatedEntityType,
       relatedEntityId,
       description,
@@ -372,7 +382,7 @@ router.post('/exchange', async (req, res) => {
       transactionType: 'Currency Exchange',
       amount,
       currency: fromCurrency,
-      amountPKR: await toAFN(amount, fromCurrency || 'AFN'),
+      amountAFN: (await toAFN(amount, fromCurrency || 'AFN')).amountAFN,
       description: `${description} - ${fromCurrency} to ${toCurrency}`,
       transactionDate: new Date(),
       createdBy: req.user.id

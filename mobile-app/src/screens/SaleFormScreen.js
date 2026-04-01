@@ -15,7 +15,6 @@ export default function SaleFormScreen({ navigation, route }) {
   const c = paperTheme.colors;
 
   const [vehicles, setVehicles] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -23,14 +22,15 @@ export default function SaleFormScreen({ navigation, route }) {
   const [form, setForm] = useState({
     saleType: 'Container One Key',
     vehicleId: '',
-    customerId: '',
+    sellingCurrency: 'AFN',
     saleDate: new Date().toISOString().split('T')[0],
     sellingPrice: '',
-    downPayment: '',
+    downPayment: '0',
     notes: '',
-    note2: '',
     witnessName1: '',
-    witnessName2: '',
+    // Buyer info
+    buyerName: '', buyerFatherName: '', buyerPhone: '', buyerAddress: '',
+    buyerIdNumber: '', buyerProvince: '', buyerDistrict: '', buyerVillage: '',
     // Seller info
     sellerName: '', sellerFatherName: '', sellerProvince: '', sellerDistrict: '',
     sellerVillage: '', sellerAddress: '', sellerIdNumber: '', sellerPhone: '',
@@ -48,13 +48,9 @@ export default function SaleFormScreen({ navigation, route }) {
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        const [vRes, cRes] = await Promise.all([
-          apiClient.get('/vehicles'),
-          apiClient.get('/customers'),
-        ]);
+        const vRes = await apiClient.get('/vehicles');
         const vList = Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [];
         setVehicles(vList.filter(v => ['Available', 'Reserved'].includes(v.status) || (editing && v.id === editing.vehicleId)));
-        setCustomers(Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : []);
       } catch (e) { console.log(e); }
     };
     loadDropdowns();
@@ -66,7 +62,13 @@ export default function SaleFormScreen({ navigation, route }) {
       Object.keys(form).forEach(k => {
         if (editing[k] != null) f[k] = String(editing[k]);
       });
-      setForm(prev => ({ ...prev, ...f }));
+      setForm(prev => ({
+        ...prev,
+        ...f,
+        sellingCurrency: 'AFN',
+        sellingPrice: String(editing.sellingPriceAFN || editing.sellingPrice || ''),
+        downPayment: editing.downPayment != null ? String(editing.downPayment) : '0',
+      }));
     }
   }, [editing]);
 
@@ -76,7 +78,10 @@ export default function SaleFormScreen({ navigation, route }) {
       // Auto-fill selling price when vehicle selected
       if (k === 'vehicleId') {
         const veh = vehicles.find(x => String(x.id) === String(v));
-        if (veh && veh.sellingPrice) next.sellingPrice = String(veh.sellingPrice);
+        if (veh && veh.sellingPrice) {
+          next.sellingCurrency = veh.baseCurrency || next.sellingCurrency;
+          next.sellingPrice = String(veh.sellingPrice);
+        }
       }
       return next;
     });
@@ -88,9 +93,9 @@ export default function SaleFormScreen({ navigation, route }) {
   const validate = () => {
     const e = {};
     if (!form.vehicleId) e.vehicleId = 'Vehicle is required';
-    if (!form.customerId) e.customerId = 'Customer is required';
     if (!form.sellingPrice || Number(form.sellingPrice) <= 0) e.sellingPrice = 'Valid price required';
-    if (form.downPayment && validatePrice(form.downPayment)) e.downPayment = 'Valid price required';
+    if (form.downPayment !== '' && form.downPayment != null && (isNaN(Number(form.downPayment)) || Number(form.downPayment) < 0)) e.downPayment = 'Down payment must be 0 or more';
+    if ((Number(form.downPayment) || 0) > (Number(form.sellingPrice) || 0)) e.downPayment = 'Down payment cannot exceed price';
     if (form.saleType === 'Exchange Car') {
       if (!form.exchVehicleManufacturer) e.exchVehicleManufacturer = 'Required';
       if (!form.exchVehicleModel) e.exchVehicleModel = 'Required';
@@ -107,7 +112,7 @@ export default function SaleFormScreen({ navigation, route }) {
     try {
       const payload = { ...form };
       // Convert numeric fields
-      ['vehicleId', 'customerId', 'sellingPrice', 'downPayment', 'exchVehicleYear', 'exchVehicleMileage', 'priceDifference'].forEach(k => {
+      ['vehicleId', 'sellingPrice', 'downPayment', 'exchVehicleYear', 'exchVehicleMileage', 'priceDifference'].forEach(k => {
         if (payload[k]) payload[k] = Number(payload[k]);
       });
       if (editing) {
@@ -122,11 +127,10 @@ export default function SaleFormScreen({ navigation, route }) {
   };
 
   const vehicleOptions = vehicles.map(v => ({ label: `${v.manufacturer} ${v.model} (${v.year}) - ${v.status}`, value: String(v.id) }));
-  const customerOptions = customers.map(cust => ({ label: cust.fullName, value: String(cust.id) }));
 
-  const STEPS = form.saleType === 'Exchange Car' ? ['Sale Info', 'Seller', 'Exchange Vehicle', 'Notes'] :
-    form.saleType === 'Licensed Car' ? ['Sale Info', 'Seller', 'License', 'Notes'] :
-    ['Sale Info', 'Seller', 'Notes'];
+  const STEPS = form.saleType === 'Exchange Car' ? ['Sale Info', 'Buyer', 'Seller', 'Exchange Vehicle', 'Notes'] :
+    form.saleType === 'Licensed Car' ? ['Sale Info', 'Buyer', 'Seller', 'License', 'Notes'] :
+    ['Sale Info', 'Buyer', 'Seller', 'Notes'];
 
   const renderStep0 = () => (
     <View style={{ gap: 4 }}>
@@ -134,7 +138,7 @@ export default function SaleFormScreen({ navigation, route }) {
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {SALE_TYPES.map(t => (
           <Chip key={t.value} selected={form.saleType === t.value} showSelectedCheck
-            onPress={() => set('saleType', t.value)}
+            onPress={() => !editing && set('saleType', t.value)}
             style={{ backgroundColor: form.saleType === t.value ? t.color + '20' : c.surfaceVariant }}
             textStyle={{ color: form.saleType === t.value ? t.color : c.onSurface }}>
             {t.label}
@@ -142,28 +146,34 @@ export default function SaleFormScreen({ navigation, route }) {
         ))}
       </View>
 
+      {editing && <Text variant="bodySmall" style={{ color: c.primary, marginBottom: 8 }}>Financial fields are locked after recording a sale. Only buyer, seller, exchange-vehicle, note, and witness details can be edited.</Text>}
+
       <PickerField label="Vehicle *" value={vehicleOptions.find(o => o.value === form.vehicleId)?.label || ''} options={vehicleOptions.map(o => o.label)}
         onSelect={(v) => {
           const opt = vehicleOptions.find(o => o.label === v);
           if (opt) set('vehicleId', opt.value);
-        }} error={errors.vehicleId} />
+        }} error={errors.vehicleId} disabled={!!editing} />
 
-      <PickerField label="Customer *" value={form.customerId ? customerOptions.find(o => o.value === form.customerId)?.label : ''}
-        options={customerOptions.map(o => o.label)}
-        onSelect={(v) => {
-          const opt = customerOptions.find(o => o.label === v);
-          if (opt) set('customerId', opt.value);
-        }} error={errors.customerId} />
+      <FormField label="Sale Date" value={form.saleDate} onChangeText={v => set('saleDate', v)} placeholder="YYYY-MM-DD" disabled={!!editing} />
 
-      <FormField label="Sale Date" value={form.saleDate} onChangeText={v => set('saleDate', v)} placeholder="YYYY-MM-DD" />
-      <FormField label="Selling Price (AFN) *" value={form.sellingPrice} onChangeText={v => set('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} />
-      <FormField label="Down Payment (AFN) *" value={form.downPayment} onChangeText={v => set('downPayment', v)} keyboardType="numeric" error={errors.downPayment} />
+      <Text variant="titleSmall" style={{ fontWeight: '700', marginTop: 8, color: c.onSurface }}>Selling Currency</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+        {['AFN', 'USD', 'PKR'].map(cur => (
+          <Chip key={cur} selected={form.sellingCurrency === cur} showSelectedCheck
+            onPress={() => !editing && set('sellingCurrency', cur)}
+            style={{ backgroundColor: form.sellingCurrency === cur ? c.primary + '20' : c.surfaceVariant }}
+            textStyle={{ color: form.sellingCurrency === cur ? c.primary : c.onSurface }}>{cur}</Chip>
+        ))}
+      </View>
+
+      <FormField label={`Selling Price (${form.sellingCurrency}) *`} value={form.sellingPrice} onChangeText={v => set('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} disabled={!!editing} />
+      <FormField label={`Down Payment (${form.sellingCurrency}) *`} value={form.downPayment} onChangeText={v => set('downPayment', v)} keyboardType="numeric" error={errors.downPayment} disabled={!!editing} />
 
       <Card style={[styles.infoCard, { backgroundColor: c.surfaceVariant }]}>
         <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text variant="bodyMedium" style={{ color: c.onSurfaceVariant }}>Remaining Amount</Text>
           <Text variant="bodyMedium" style={{ fontWeight: '700', color: remaining > 0 ? '#ff9800' : '#4caf50' }}>
-            ؋ {remaining.toLocaleString()}
+            {form.sellingCurrency} {remaining.toLocaleString()}
           </Text>
         </Card.Content>
       </Card>
@@ -219,28 +229,41 @@ export default function SaleFormScreen({ navigation, route }) {
     </View>
   );
 
+  const renderBuyerInfo = () => (
+    <View style={{ gap: 4 }}>
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Buyer Information</Text>
+      <FormField label="Full Name" value={form.buyerName} onChangeText={v => set('buyerName', v)} />
+      <FormField label="Father's Name" value={form.buyerFatherName} onChangeText={v => set('buyerFatherName', v)} />
+      <PickerField label="Province" value={form.buyerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('buyerProvince', v)} />
+      <FormField label="District" value={form.buyerDistrict} onChangeText={v => set('buyerDistrict', v)} />
+      <FormField label="Village" value={form.buyerVillage} onChangeText={v => set('buyerVillage', v)} />
+      <FormField label="Address" value={form.buyerAddress} onChangeText={v => set('buyerAddress', v)} multiline />
+      <FormField label="ID Number (Tazkira)" value={form.buyerIdNumber} onChangeText={v => set('buyerIdNumber', v)} />
+      <FormField label="Phone" value={form.buyerPhone} onChangeText={v => set('buyerPhone', v)} keyboardType="phone-pad" />
+    </View>
+  );
+
   const renderNotes = () => (
     <View style={{ gap: 4 }}>
-      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Notes & Witnesses</Text>
-      <FormField label="Note 1" value={form.notes} onChangeText={v => set('notes', v)} multiline numberOfLines={3} />
-      <FormField label="Note 2" value={form.note2} onChangeText={v => set('note2', v)} multiline numberOfLines={3} />
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Notes & Witness</Text>
+      <FormField label="Notes" value={form.notes} onChangeText={v => set('notes', v)} multiline numberOfLines={3} />
       <Divider style={{ marginVertical: 12 }} />
-      <FormField label="Witness 1" value={form.witnessName1} onChangeText={v => set('witnessName1', v)} />
-      <FormField label="Witness 2" value={form.witnessName2} onChangeText={v => set('witnessName2', v)} />
+      <FormField label="Witness" value={form.witnessName1} onChangeText={v => set('witnessName1', v)} />
     </View>
   );
 
   const getStepContent = () => {
     if (step === 0) return renderStep0();
-    if (step === 1) return renderStep1();
+    if (step === 1) return renderBuyerInfo();
+    if (step === 2) return renderStep1();
     if (form.saleType === 'Exchange Car') {
-      if (step === 2) return renderExchangeVehicle();
-      if (step === 3) return renderNotes();
+      if (step === 3) return renderExchangeVehicle();
+      if (step === 4) return renderNotes();
     } else if (form.saleType === 'Licensed Car') {
-      if (step === 2) return renderLicensed();
-      if (step === 3) return renderNotes();
+      if (step === 3) return renderLicensed();
+      if (step === 4) return renderNotes();
     } else {
-      if (step === 2) return renderNotes();
+      if (step === 3) return renderNotes();
     }
     return null;
   };

@@ -6,7 +6,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, useTheme, alpha, LinearProgress, Stepper, Step, StepLabel,
-  ToggleButton, ToggleButtonGroup, Divider,
+  ToggleButton, ToggleButtonGroup, Divider, Autocomplete,
 } from '@mui/material';
 import {
   Add, Search, PictureAsPdf, PointOfSale, DirectionsCar, Person,
@@ -29,10 +29,14 @@ const SALE_TYPES = [
 
 const defaultForm = {
   saleType: 'Container One Key',
-  vehicleId: '', customerId: '',
+  vehicleId: '',
+  sellingCurrency: 'AFN',
   saleDate: new Date().toISOString().slice(0, 10),
-  sellingPrice: '', downPayment: '', remainingAmount: '',
-  notes: '', note2: '',
+  sellingPrice: '', downPayment: '0', remainingAmount: '',
+  notes: '',
+  // Buyer info (text fields, no customer dropdown)
+  buyerName: '', buyerFatherName: '', buyerPhone: '', buyerAddress: '',
+  buyerIdNumber: '', buyerProvince: '', buyerDistrict: '', buyerVillage: '',
   // Seller info
   sellerName: '', sellerFatherName: '', sellerProvince: '', sellerDistrict: '',
   sellerVillage: '', sellerAddress: '', sellerIdNumber: '', sellerPhone: '',
@@ -45,7 +49,7 @@ const defaultForm = {
   // Licensed fields
   trafficTransferDate: '',
   // Witnesses
-  witnessName1: '', witnessName2: '',
+  witnessName1: '',
 };
 
 export default function SalesPage() {
@@ -53,7 +57,6 @@ export default function SalesPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [sales, setSales] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -84,7 +87,6 @@ export default function SalesPage() {
   useEffect(() => {
     fetchSales();
     fetchVehicles();
-    fetchCustomers();
   }, []);
 
   const fetchSales = async () => {
@@ -103,13 +105,6 @@ export default function SalesPage() {
     try {
       const response = await apiClient.get('/vehicles');
       setVehicles(response.data.data || []);
-    } catch { /* silent */ }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await apiClient.get('/customers');
-      setCustomers(response.data.data || []);
     } catch { /* silent */ }
   };
 
@@ -180,13 +175,20 @@ export default function SalesPage() {
     setFormData({
       saleType: sale.saleType || 'Container One Key',
       vehicleId: sale.vehicleId || sale.vehicle?.id || '',
-      customerId: sale.customerId || sale.customer?.id || '',
+      sellingCurrency: 'AFN',
       saleDate: sale.saleDate ? new Date(sale.saleDate).toISOString().slice(0, 10) : '',
-      sellingPrice: sale.sellingPrice?.toString() || '',
-      downPayment: sale.downPayment?.toString() || '',
+      sellingPrice: (sale.sellingPriceAFN || sale.sellingPrice)?.toString() || '',
+      downPayment: sale.downPayment?.toString() ?? '0',
       remainingAmount: sale.remainingAmount?.toString() || '',
       notes: sale.notes || '',
-      note2: sale.note2 || '',
+      buyerName: sale.buyerName || '',
+      buyerFatherName: sale.buyerFatherName || '',
+      buyerPhone: sale.buyerPhone || '',
+      buyerAddress: sale.buyerAddress || '',
+      buyerIdNumber: sale.buyerIdNumber || '',
+      buyerProvince: sale.buyerProvince || '',
+      buyerDistrict: sale.buyerDistrict || '',
+      buyerVillage: sale.buyerVillage || '',
       sellerName: sale.sellerName || '',
       sellerFatherName: sale.sellerFatherName || '',
       sellerProvince: sale.sellerProvince || '',
@@ -214,7 +216,6 @@ export default function SalesPage() {
       priceDifferencePaidBy: sale.priceDifferencePaidBy || 'Buyer',
       trafficTransferDate: sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toISOString().slice(0, 10) : '',
       witnessName1: sale.witnessName1 || '',
-      witnessName2: sale.witnessName2 || '',
     });
     setEditingId(sale.id);
     setOpen(true);
@@ -234,12 +235,14 @@ export default function SalesPage() {
   const handleSubmit = async () => {
     const newErrors = {};
     if (!validateRequired(formData.vehicleId)) newErrors.vehicleId = 'Vehicle is required';
-    if (!validateRequired(formData.customerId)) newErrors.customerId = 'Customer is required';
     if (!validateRequired(formData.sellingPrice) || !validatePrice(formData.sellingPrice)) {
       newErrors.sellingPrice = 'Valid selling price is required';
     }
-    if (!validateRequired(formData.downPayment) || !validatePrice(formData.downPayment)) {
-      newErrors.downPayment = 'Valid down payment is required';
+    if (!validateRequired(formData.downPayment) || isNaN(parseFloat(formData.downPayment)) || parseFloat(formData.downPayment) < 0) {
+      newErrors.downPayment = 'Down payment is required (enter 0 for no down payment)';
+    }
+    if ((parseFloat(formData.downPayment) || 0) > (parseFloat(formData.sellingPrice) || 0)) {
+      newErrors.downPayment = 'Down payment cannot exceed the selling price';
     }
 
     // Exchange Car specific validation
@@ -316,7 +319,8 @@ export default function SalesPage() {
       (s) =>
         s.vehicle?.manufacturer?.toLowerCase().includes(term) ||
         s.vehicle?.model?.toLowerCase().includes(term) ||
-        s.customer?.fullName?.toLowerCase().includes(term) ||
+        s.buyerName?.toLowerCase().includes(term) ||
+        s.sellerName?.toLowerCase().includes(term) ||
         s.saleId?.toString().includes(term)
     );
   }, [sales, searchTerm]);
@@ -342,7 +346,7 @@ export default function SalesPage() {
 
       <Card sx={{ mb: 3, border: (t) => `1px solid ${t.palette.divider}` }}>
         <CardContent>
-          <TextField fullWidth placeholder="Search by vehicle, customer, or sale ID..."
+          <TextField fullWidth placeholder="Search by vehicle, buyer, seller, or sale ID..."
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{ startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }}
           />
@@ -359,9 +363,9 @@ export default function SalesPage() {
           { id: 'vehicle', label: 'Vehicle', format: (val, row) =>
             `${row.vehicle?.manufacturer || ''} ${row.vehicle?.model || ''} (${row.vehicle?.year || ''})`.trim() || '-',
           },
-          { id: 'customer', label: 'Customer', format: (val, row) => row.customer?.fullName || '-' },
+          { id: 'buyerName', label: 'Buyer', format: (val, row) => row.buyerName || row.customer?.fullName || '-' },
           { id: 'saleDate', label: 'Date', format: (date) => date ? new Date(date).toLocaleDateString() : '-' },
-          { id: 'sellingPrice', label: 'Price', align: 'right', bold: true, format: (val) => formatCurrency(val) },
+          { id: 'sellingPriceAFN', label: 'Price (AFN)', align: 'right', bold: true, format: (val, row) => formatCurrency(val || row.sellingPriceAFN || row.sellingPrice || 0) },
           { id: 'remainingAmount', label: 'Status', align: 'center', format: (val, row) => {
             const num = parseFloat(val) || 0;
             const status = row.paymentStatus;
@@ -427,46 +431,77 @@ export default function SalesPage() {
             ))}
           </Box>
 
-          {/* ── Common: Vehicle, Customer, Date ── */}
+          {/* ── Common: Vehicle, Date ── */}
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
             Transaction Details
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <FormControl fullWidth required error={!!errors.vehicleId}>
-                <InputLabel>Vehicle</InputLabel>
-                <Select value={formData.vehicleId} label="Vehicle"
-                  onChange={(e) => {
-                    const veh = vehicles.find((v) => v.id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      vehicleId: e.target.value,
-                      sellingPrice: veh?.sellingPrice?.toString() || formData.sellingPrice,
-                    });
-                    if (errors.vehicleId) setErrors({ ...errors, vehicleId: '' });
-                  }}>
-                  {availableVehicles.map((v) => (
-                    <MenuItem key={v.id} value={v.id}>{v.manufacturer} {v.model} ({v.year}) - {v.color}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                options={availableVehicles}
+                getOptionLabel={(option) => typeof option === 'string' ? option : `${option.manufacturer} ${option.model} (${option.year}) - ${option.color || ''}`}
+                value={availableVehicles.find(v => v.id === formData.vehicleId) || null}
+                disabled={!!editingId}
+                onChange={(e, v) => {
+                  const nextPrice = v?.sellingPrice?.toString() || '';
+                  const down = parseFloat(formData.downPayment) || 0;
+                  const price = parseFloat(nextPrice) || 0;
+                  setFormData({
+                    ...formData,
+                    vehicleId: v?.id || '',
+                    sellingCurrency: v?.baseCurrency || formData.sellingCurrency,
+                    sellingPrice: nextPrice,
+                    remainingAmount: Math.max(price - down, 0).toString(),
+                  });
+                  if (errors.vehicleId) setErrors({ ...errors, vehicleId: '' });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Vehicle / موټر" required error={!!errors.vehicleId} helperText={errors.vehicleId}
+                    InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><DirectionsCar fontSize="small" color="action" /></InputAdornment>{params.InputProps.startAdornment}</>) }}
+                  />
+                )}
+              />
             </Grid>
-            <Grid item xs={12} sm={4}>
-              <FormControl fullWidth required error={!!errors.customerId}>
-                <InputLabel>Buyer (Customer)</InputLabel>
-                <Select value={formData.customerId} label="Buyer (Customer)"
-                  onChange={(e) => { setFormData({ ...formData, customerId: e.target.value }); if (errors.customerId) setErrors({ ...errors, customerId: '' }); }}>
-                  {customers.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>{c.fullName} — {c.phoneNumber}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
               <TextField fullWidth label="Sale Date" type="date" value={formData.saleDate}
                 onChange={(e) => setFormData({ ...formData, saleDate: e.target.value })}
-                InputLabelProps={{ shrink: true }} required />
+                InputLabelProps={{ shrink: true }} required disabled={!!editingId} />
             </Grid>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth>
+                <InputLabel>Selling Currency</InputLabel>
+                <Select value={formData.sellingCurrency} label="Selling Currency"
+                  onChange={(e) => setFormData({ ...formData, sellingCurrency: e.target.value })}
+                  disabled={!!editingId}>
+                  <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
+                  <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
+                  <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
+          {/* ── Buyer Info (text fields, no dropdown) ── */}
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            Buyer Info / خریدار معلومات
+          </Typography>
+          <Grid container spacing={2}>
+            {[
+              { key: 'buyerName', label: 'Name / نوم' },
+              { key: 'buyerFatherName', label: 'Father Name / د پلار نوم' },
+              { key: 'buyerPhone', label: 'Phone / تلیفون' },
+              { key: 'buyerIdNumber', label: 'ID / Tazkira No.' },
+              { key: 'buyerProvince', label: 'Province / ولایت' },
+              { key: 'buyerDistrict', label: 'District / ولسوالي' },
+              { key: 'buyerVillage', label: 'Village / قریه' },
+              { key: 'buyerAddress', label: 'Address / پته' },
+            ].map(({ key, label }) => (
+              <Grid item xs={12} sm={3} key={key}>
+                <TextField fullWidth label={label} size="small" value={formData[key]}
+                  onChange={(e) => setFormData({ ...formData, [key]: e.target.value })} />
+              </Grid>
+            ))}
           </Grid>
 
           {/* Vehicle summary */}
@@ -477,7 +512,7 @@ export default function SalesPage() {
                 {[
                   ['Type', selectedVehicle.category], ['Color', selectedVehicle.color],
                   ['Engine', selectedVehicle.engineNumber], ['Chassis', selectedVehicle.chassisNumber],
-                  ['Plate', selectedVehicle.plateNo], ['Cost', formatCurrency(selectedVehicle.totalCostPKR || 0)],
+                  ['Plate', selectedVehicle.plateNo], ['Cost', formatCurrency(selectedVehicle.totalCostAFN || 0, 'AFN')],
                 ].map(([k, v]) => (
                   <Grid item xs={4} sm={2} key={k}>
                     <Typography variant="caption" color="text.secondary">{k}</Typography>
@@ -701,6 +736,11 @@ export default function SalesPage() {
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
             Payment Info / مالي معلومات
           </Typography>
+          {editingId && (
+            <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1.5 }}>
+              Financial fields are locked after a sale is recorded. You can still edit buyer, seller, note, and witness details.
+            </Typography>
+          )}
           <Grid container spacing={2}>
             <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Selling Price / قیمت" type="number" value={formData.sellingPrice}
@@ -711,7 +751,8 @@ export default function SalesPage() {
                   if (errors.sellingPrice) setErrors({ ...errors, sellingPrice: '' });
                 }}
                 error={!!errors.sellingPrice} helperText={errors.sellingPrice} required
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                disabled={!!editingId}
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.sellingCurrency)}</InputAdornment> }} />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Down Payment / پیشکي" type="number" value={formData.downPayment}
@@ -722,11 +763,12 @@ export default function SalesPage() {
                   if (errors.downPayment) setErrors({ ...errors, downPayment: '' });
                 }}
                 error={!!errors.downPayment} helperText={errors.downPayment} required
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                disabled={!!editingId}
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.sellingCurrency)}</InputAdornment> }} />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Remaining / پاتي" type="number" value={formData.remainingAmount} disabled
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }}
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.sellingCurrency)}</InputAdornment> }}
                 sx={{ '& .MuiInputBase-root': { bgcolor: 'action.hover' } }} />
             </Grid>
           </Grid>
@@ -735,24 +777,16 @@ export default function SalesPage() {
 
           {/* ── Notes & Witnesses ── */}
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-            Notes & Witnesses / یادښت او شاهدان
+            Notes & Witness / یادښت او شاهد
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Note 1 / لومړۍ یادښت" multiline rows={2} value={formData.notes}
+            <Grid item xs={12} sm={8}>
+              <TextField fullWidth label="Note / یادښت" multiline rows={2} value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Note 2 / دوهمه یادښت" multiline rows={2} value={formData.note2}
-                onChange={(e) => setFormData({ ...formData, note2: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Witness 1 / لومړی شاهد" size="small" value={formData.witnessName1}
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth label="Witness / شاهد" size="small" value={formData.witnessName1}
                 onChange={(e) => setFormData({ ...formData, witnessName1: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Witness 2 / دوهم شاهد" size="small" value={formData.witnessName2}
-                onChange={(e) => setFormData({ ...formData, witnessName2: e.target.value })} />
             </Grid>
           </Grid>
         </DialogContent>
@@ -776,7 +810,7 @@ export default function SalesPage() {
                   Sale #{detailSale?.saleId || detailSale?.id}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {detailSale?.vehicle?.manufacturer} {detailSale?.vehicle?.model} → {detailSale?.customer?.fullName}
+                  {detailSale?.vehicle?.manufacturer} {detailSale?.vehicle?.model} → {detailSale?.buyerName || detailSale?.customer?.fullName || 'Buyer'}
                 </Typography>
               </Box>
             </Box>
@@ -824,7 +858,7 @@ export default function SalesPage() {
                       </Button>
                     </Box>
                     <LinearProgress variant="determinate" sx={{ mt: 1.5, borderRadius: 1, height: 6 }}
-                      value={Math.min(((Number(detailSale.paidAmount || detailSale.downPayment || 0)) / Number(detailSale.sellingPrice || 1)) * 100, 100)}
+                      value={Math.min(((Number(detailSale.paidAmount || detailSale.downPayment || 0)) / Number(detailSale.sellingPriceAFN || detailSale.sellingPrice || 1)) * 100, 100)}
                       color="warning" />
                   </Card>
                 </Grid>
@@ -832,9 +866,9 @@ export default function SalesPage() {
               {[
                 ['Sale ID', detailSale.saleId || detailSale.id],
                 ['Vehicle', `${detailSale.vehicle?.manufacturer || ''} ${detailSale.vehicle?.model || ''} (${detailSale.vehicle?.year || ''})`],
-                ['Customer', detailSale.customer?.fullName],
+                ['Buyer', detailSale.buyerName || detailSale.customer?.fullName],
                 ['Sale Date', detailSale.saleDate ? new Date(detailSale.saleDate).toLocaleDateString() : '-'],
-                ['Selling Price', formatCurrency(detailSale.sellingPrice || 0)],
+                ['Selling Price (AFN)', formatCurrency(detailSale.sellingPriceAFN || detailSale.sellingPrice || 0)],
                 ['Down Payment', formatCurrency(detailSale.downPayment || 0)],
                 ['Paid So Far', formatCurrency(detailSale.paidAmount || detailSale.downPayment || 0)],
                 ['Remaining', formatCurrency(detailSale.remainingAmount || 0)],
@@ -909,8 +943,8 @@ export default function SalesPage() {
               {detailSale.witnessName1 && (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" color="text.secondary">Witnesses:</Typography>
-                  <Typography variant="body2">{detailSale.witnessName1}{detailSale.witnessName2 ? ` , ${detailSale.witnessName2}` : ''}</Typography>
+                  <Typography variant="caption" color="text.secondary">Witness:</Typography>
+                  <Typography variant="body2">{detailSale.witnessName1}</Typography>
                 </Grid>
               )}
             </Grid>
@@ -953,9 +987,9 @@ export default function SalesPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Card sx={{ p: 2, bgcolor: alpha(theme.palette.secondary.main, 0.05), border: `1px solid ${alpha(theme.palette.secondary.main, 0.15)}` }}>
-                  <Typography variant="caption" color="text.secondary">Selling Price</Typography>
+                  <Typography variant="caption" color="text.secondary">Selling Price (AFN)</Typography>
                   <Typography variant="h6" fontWeight={700}>
-                    {formatCurrency(detailSale.sellingPrice || 0)}
+                    {formatCurrency(detailSale.sellingPriceAFN || detailSale.sellingPrice || 0)}
                   </Typography>
                 </Card>
               </Grid>
@@ -1048,7 +1082,7 @@ export default function SalesPage() {
             <Box>
               <Typography variant="h6" fontWeight={700}>Record Payment</Typography>
               <Typography variant="caption" color="text.secondary">
-                {paymentSale?.vehicle?.manufacturer} {paymentSale?.vehicle?.model} → {paymentSale?.customer?.fullName}
+                {paymentSale?.vehicle?.manufacturer} {paymentSale?.vehicle?.model} → {paymentSale?.buyerName || paymentSale?.customer?.fullName || 'Buyer'}
               </Typography>
             </Box>
           </Box>
@@ -1060,7 +1094,7 @@ export default function SalesPage() {
               <Grid container spacing={1.5}>
                 <Grid item xs={4}>
                   <Typography variant="caption" color="text.secondary">Selling Price</Typography>
-                  <Typography variant="body1" fontWeight={700}>{formatCurrency(paymentSale.sellingPrice || 0)}</Typography>
+                  <Typography variant="body1" fontWeight={700}>{formatCurrency(paymentSale.sellingPriceAFN || paymentSale.sellingPrice || 0)}</Typography>
                 </Grid>
                 <Grid item xs={4}>
                   <Typography variant="caption" color="text.secondary">Paid So Far</Typography>
@@ -1076,11 +1110,11 @@ export default function SalesPage() {
                 </Grid>
                 <Grid item xs={12}>
                   <LinearProgress variant="determinate" sx={{ borderRadius: 1, height: 8 }}
-                    value={Math.min(((Number(paymentSale.paidAmount || paymentSale.downPayment || 0)) / Number(paymentSale.sellingPrice || 1)) * 100, 100)}
+                    value={Math.min(((Number(paymentSale.paidAmount || paymentSale.downPayment || 0)) / Number(paymentSale.sellingPriceAFN || paymentSale.sellingPrice || 1)) * 100, 100)}
                     color="success"
                   />
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                    {Math.round(((Number(paymentSale.paidAmount || paymentSale.downPayment || 0)) / Number(paymentSale.sellingPrice || 1)) * 100)}% paid
+                    {Math.round(((Number(paymentSale.paidAmount || paymentSale.downPayment || 0)) / Number(paymentSale.sellingPriceAFN || paymentSale.sellingPrice || 1)) * 100)}% paid
                   </Typography>
                 </Grid>
               </Grid>
@@ -1091,14 +1125,25 @@ export default function SalesPage() {
             💰 New Installment Payment
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Payment Amount" type="number" value={paymentForm.amount} required
                 onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                placeholder={`Max: ${Number(paymentSale?.remainingAmount || 0).toLocaleString()}`}
-                InputProps={{ endAdornment: <InputAdornment position="end">؋</InputAdornment> }}
+                placeholder="0"
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(paymentForm.currency)}</InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth>
+                <InputLabel>Currency</InputLabel>
+                <Select value={paymentForm.currency} label="Currency"
+                  onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}>
+                  <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
+                  <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
+                  <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={5}>
               <TextField fullWidth label="Payment Date" type="date" value={paymentForm.date}
                 onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
@@ -1112,14 +1157,19 @@ export default function SalesPage() {
             </Grid>
             {/* Quick amount buttons */}
             <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Remaining balance is tracked in AFN: {formatCurrency(paymentSale?.remainingAmount || 0)}
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
               <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Quick amounts:</Typography>
               <Box display="flex" gap={1} flexWrap="wrap">
-                {paymentSale && [
+                {paymentSale && paymentForm.currency === 'AFN' && [
                   { label: 'Pay Full', value: Number(paymentSale.remainingAmount || 0) },
                   { label: '½ Remaining', value: Math.round(Number(paymentSale.remainingAmount || 0) / 2) },
                   { label: '⅓ Remaining', value: Math.round(Number(paymentSale.remainingAmount || 0) / 3) },
                 ].filter(b => b.value > 0).map((btn) => (
-                  <Chip key={btn.label} label={`${btn.label} (${btn.value.toLocaleString()})`} variant="outlined" size="small"
+                  <Chip key={btn.label} label={`${btn.label} (${btn.value.toLocaleString()} AFN)`} variant="outlined" size="small"
                     onClick={() => setPaymentForm({ ...paymentForm, amount: btn.value.toString() })}
                     sx={{ cursor: 'pointer', '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.1) } }}
                   />
@@ -1150,7 +1200,7 @@ export default function SalesPage() {
                       <TableRow key={p.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell><Chip label={p.type} size="small" color={p.type === 'Installment' ? 'info' : 'success'} variant="outlined" /></TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>{Number(p.amount).toLocaleString()} {p.currency}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>{formatCurrency(p.amountInAFN || 0)}</TableCell>
                         <TableCell>{p.date ? new Date(p.date).toLocaleDateString() : '-'}</TableCell>
                         <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.purpose || '-'}</TableCell>
                       </TableRow>
@@ -1199,19 +1249,19 @@ function PaymentHistoryTab({ saleId, theme }) {
           <Grid item xs={6} sm={3}>
             <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.06), border: `1px solid ${theme.palette.divider}` }}>
               <Typography variant="caption" color="text.secondary">Selling Price</Typography>
-              <Typography variant="body1" fontWeight={700}>{Number(summary.sellingPrice).toLocaleString()} ؋</Typography>
+              <Typography variant="body1" fontWeight={700}>{formatCurrency(summary.sellingPrice || 0)}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
             <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.06), border: `1px solid ${theme.palette.divider}` }}>
               <Typography variant="caption" color="text.secondary">Total Paid</Typography>
-              <Typography variant="body1" fontWeight={700} color="success.main">{Number(summary.paidAmount).toLocaleString()} ؋</Typography>
+              <Typography variant="body1" fontWeight={700} color="success.main">{formatCurrency(summary.paidAmount || 0)}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
             <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.error.main, 0.06), border: `1px solid ${theme.palette.divider}` }}>
               <Typography variant="caption" color="text.secondary">Remaining</Typography>
-              <Typography variant="body1" fontWeight={700} color="error.main">{Number(summary.remainingAmount).toLocaleString()} ؋</Typography>
+              <Typography variant="body1" fontWeight={700} color="error.main">{formatCurrency(summary.remainingAmount || 0)}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
@@ -1239,7 +1289,7 @@ function PaymentHistoryTab({ saleId, theme }) {
                 <TableRow key={p.id}>
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell><Chip label={p.type} size="small" color={p.type === 'Installment' ? 'info' : 'success'} variant="outlined" /></TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>{Number(p.amount).toLocaleString()} {p.currency}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>{formatCurrency(p.amountInAFN || 0)}</TableCell>
                   <TableCell>{p.date ? new Date(p.date).toLocaleDateString() : '-'}</TableCell>
                   <TableCell>{p.purpose || '-'}</TableCell>
                 </TableRow>

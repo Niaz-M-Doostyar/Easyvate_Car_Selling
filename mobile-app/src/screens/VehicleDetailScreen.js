@@ -61,8 +61,8 @@ export default function VehicleDetailScreen({ navigation, route }) {
 
         {/* Price cards */}
         <View style={styles.priceRow}>
-          <SummaryCard title="Total Cost" value={formatCurrency(vehicle.totalCostPKR || 0)} icon="cash-minus" color={c.error} style={{ flex: 1 }} />
-          <SummaryCard title="Selling Price" value={formatCurrency(vehicle.sellingPrice || 0)} icon="cash-plus" color={c.success} style={{ flex: 1 }} />
+          <SummaryCard title="Total Cost" value={formatCurrency(vehicle.totalCostAFN || 0)} icon="cash-minus" color={c.error} style={{ flex: 1 }} />
+          <SummaryCard title="Selling Price" value={formatCurrency(vehicle.sellingPriceAFN || vehicle.sellingPrice || 0)} icon="cash-plus" color={c.success} style={{ flex: 1 }} />
         </View>
 
         {/* Tabs */}
@@ -96,9 +96,9 @@ export default function VehicleDetailScreen({ navigation, route }) {
             <Card.Content>
               {[
                 ['Base Purchase', vehicle.basePurchasePrice, vehicle.baseCurrency],
-                ['Transport to Dubai', vehicle.transportDubai, 'AFN'],
-                ['Import to Afghanistan', vehicle.importAfghanistan, 'AFN'],
-                ['Repair Cost', vehicle.repairCost, 'AFN'],
+                ['Transport to Dubai', vehicle.transportCostToDubai, vehicle.baseCurrency || 'AFN'],
+                ['Import to Afghanistan', vehicle.importCostToAfghanistan, vehicle.baseCurrency || 'AFN'],
+                ['Repair Cost', vehicle.repairCost, vehicle.baseCurrency || 'AFN'],
               ].map(([stage, amt, cur], i) => (
                 <View key={stage} style={[styles.infoRow, i % 2 === 0 && { backgroundColor: c.surfaceVariant + '40' }]}>
                   <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, flex: 1 }}>{stage}</Text>
@@ -108,7 +108,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
               <Divider style={{ marginVertical: 8 }} />
               <View style={styles.infoRow}>
                 <Text variant="bodyMedium" style={{ color: c.primary, fontWeight: '700', flex: 1 }}>Total Cost</Text>
-                <Text variant="titleMedium" style={{ color: c.primary, fontWeight: '800' }}>{formatCurrency(vehicle.totalCostPKR)}</Text>
+                <Text variant="titleMedium" style={{ color: c.primary, fontWeight: '800' }}>{formatCurrency(vehicle.totalCostAFN)}</Text>
               </View>
               {costs.length > 0 && costs.map((cost, i) => (
                 <View key={i} style={[styles.infoRow, { marginTop: 8 }]}>
@@ -124,8 +124,8 @@ export default function VehicleDetailScreen({ navigation, route }) {
           <Card style={[styles.card, { backgroundColor: c.surface }]} mode="elevated">
             <Card.Title title="Reference Person" titleVariant="titleSmall" />
             <Card.Content>
-              {vehicle.refFullName ? (
-                [['Name', vehicle.refFullName], ['Tazkira', vehicle.refTazkiraNumber], ['Phone', vehicle.refPhoneNumber], ['Address', vehicle.refAddress]].map(([l, v]) => (
+              {vehicle.referencePerson?.fullName ? (
+                [['Name', vehicle.referencePerson.fullName], ['Tazkira', vehicle.referencePerson.tazkiraNumber], ['Phone', vehicle.referencePerson.phoneNumber], ['Address', vehicle.referencePerson.address]].map(([l, v]) => (
                   <View key={l} style={styles.infoRow}>
                     <Text variant="labelMedium" style={{ color: c.onSurfaceVariant, flex: 1 }}>{l}</Text>
                     <Text variant="bodyMedium" style={{ color: c.onSurface, flex: 1.5 }}>{v || '—'}</Text>
@@ -143,10 +143,10 @@ export default function VehicleDetailScreen({ navigation, route }) {
               {sharing.length > 0 ? sharing.map((sp, i) => (
                 <View key={i} style={[styles.infoRow, i % 2 === 0 && { backgroundColor: c.surfaceVariant + '40' }]}>
                   <View style={{ flex: 1 }}>
-                    <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface }}>{sp.personName}</Text>
-                    <Text variant="labelSmall" style={{ color: c.onSurfaceVariant }}>{sp.phone}</Text>
+                    <Text variant="bodyMedium" style={{ fontWeight: '600', color: c.onSurface }}>{sp.customer?.fullName || sp.personName}</Text>
+                    <Text variant="labelSmall" style={{ color: c.onSurfaceVariant }}>{sp.customer?.phoneNumber || sp.phoneNumber}</Text>
                   </View>
-                  <Text variant="bodyMedium" style={{ color: c.primary, fontWeight: '700' }}>{sp.sharePercentage}%</Text>
+                  <Text variant="bodyMedium" style={{ color: c.primary, fontWeight: '700' }}>{sp.percentage}%</Text>
                   <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginLeft: 8 }}>{formatCurrency(sp.investmentAmount)}</Text>
                 </View>
               )) : <Text style={{ color: c.onSurfaceVariant, textAlign: 'center', paddingVertical: 20 }}>No sharing partners</Text>}

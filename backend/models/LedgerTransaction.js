@@ -24,9 +24,14 @@ const LedgerTransaction = sequelize.define('LedgerTransaction', {
     type: DataTypes.STRING(10),
     defaultValue: 'AFN'
   },
-  amountPKR: {
+  amountAFN: {
     type: DataTypes.DECIMAL(15, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Amount converted to Afghani'
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'Exchange rate used for conversion to AFN'
   },
   relatedEntityType: {
     type: DataTypes.STRING(50)

@@ -27,9 +27,14 @@ const CustomerLedger = sequelize.define('CustomerLedger', {
     type: DataTypes.STRING(10),
     defaultValue: 'AFN'
   },
-  amountInPKR: {
+  amountInAFN: {
     type: DataTypes.DECIMAL(15, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Amount converted to Afghani'
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'Exchange rate used for conversion to AFN'
   },
   purpose: {
     type: DataTypes.TEXT

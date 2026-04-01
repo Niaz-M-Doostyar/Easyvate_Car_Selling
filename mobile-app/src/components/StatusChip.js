@@ -12,7 +12,7 @@ const STATUS_COLORS = {
 
 const TYPE_COLORS = {
   'Exchange Car': '#1565c0', 'Container One Key': '#e65100', 'Licensed Car': '#2e7d32',
-  Buyer: '#1565c0', Investor: '#7b1fa2', 'Capital Provider': '#e65100', Borrower: '#b71c1c',
+  Buyer: '#1565c0', Investor: '#7b1fa2', Borrower: '#b71c1c',
   Lent: '#ed6c02', Borrowed: '#2e7d32', 'Owner Loan': '#7b1fa2',
   Income: '#2e7d32', Expense: '#b71c1c', 'Vehicle Purchase': '#1565c0', 'Vehicle Sale': '#2e7d32',
   Salary: '#e65100', 'Currency Exchange': '#00695c', 'Loan Given': '#ed6c02', 'Loan Received': '#7b1fa2', Commission: '#c8963e',

@@ -23,14 +23,22 @@ const contactRoutes = require('./routes/contact');
 const carouselRoutes = require('./routes/carousel');
 const testimonialRoutes = require('./routes/testimonial');
 const videoRoutes = require('./routes/chooseVideo');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
 app.use(cors({
-  origin: config.CORS.ORIGIN,
+  origin: (origin, callback) => {
+    if (!origin || config.CORS.ORIGIN.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+  },
   credentials: config.CORS.CREDENTIALS,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
 }));
 
 app.use(express.json({ limit: '50mb' }));
@@ -67,6 +75,7 @@ app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);
 app.use('/api/carousel', verifyToken, authorize(ROLE_INVENTORY), carouselRoutes);
 app.use('/api/testimonial', verifyToken, authorize(ROLE_INVENTORY), testimonialRoutes);
 app.use('/api/choose-video', verifyToken, authorize(ROLE_INVENTORY), videoRoutes);
+app.use('/api/settings', verifyToken, authorize(['Super Admin', 'Owner']), settingsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -77,6 +86,8 @@ const initializeApp = async () => {
     console.log('✓ Database connection successful');
 
     if (config.FEATURES.AUTO_SYNC_DB) {
+      const { runMigrations } = require('./migrations');
+      await runMigrations(sequelize);
       await sequelize.sync({ force: false });
       console.log('✓ Database models synchronized');
     }

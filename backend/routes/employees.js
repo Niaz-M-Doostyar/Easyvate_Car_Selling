@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
 const LedgerTransaction = require('../models/LedgerTransaction');
-const { toAFN } = require('../src/services/exchangeRate');
+const { toAFN, saveDailyRates } = require('../src/services/exchangeRate');
 
 // Get all employees
 router.get('/', async (req, res) => {
@@ -110,7 +110,7 @@ router.post('/payroll', async (req, res) => {
       transactionType: 'Salary',
       amount: totalSalary,
       currency: 'AFN',
-      amountPKR: await toAFN(totalSalary, 'AFN'),
+      amountAFN: (await toAFN(totalSalary, 'AFN')).amountAFN,
       relatedEntityType: 'Employee',
       relatedEntityId: employee.id,
       description: `Salary for ${employee.fullName} - ${month}/${year}`,

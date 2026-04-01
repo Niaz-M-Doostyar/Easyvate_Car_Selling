@@ -9,16 +9,16 @@ const nextConfig = {
       // Proxy image requests to backend's static folder
       {
         source: '/api/uploads/:path*',
-        destination: 'http://localhost:3001/uploads/:path*', // adjust port if backend runs on a different port
+        destination: 'http://localhost:3002/uploads/:path*', // adjust port if backend runs on a different port
       },
       {
         source: '/api/uploads/about-logos/:path*',
-        destination: 'http://localhost:3001/uploads/about-logos/:path*', // adjust port if backend runs on a different port
+        destination: 'http://localhost:3002/uploads/about-logos/:path*', // adjust port if backend runs on a different port
       },
       // Proxy all other API requests to backend's API
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: 'http://localhost:3002/api/:path*',
       },
     ];
   },

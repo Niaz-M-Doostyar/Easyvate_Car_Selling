@@ -19,7 +19,6 @@ import {
   MenuItem,
   alpha,
   useTheme,
-  Badge,
   Tooltip,
 } from '@mui/material';
 import {
@@ -37,11 +36,11 @@ import {
   CurrencyExchange,
   Payment,
   ManageAccounts,
-  Notifications,
   Info,
   ContactMail,
   DarkMode,
   LightMode,
+  Settings,
 } from '@mui/icons-material';
 import { useThemeMode } from '@/contexts/ThemeContext';
 import SettingsDrawer from '@/components/SettingsDrawer';
@@ -67,7 +66,8 @@ const ALL_MENU_ITEMS = [
   { text: 'Website Contact', icon: <ContactMail />, path: '/dashboard/contact'},
   { text: 'Website Slider', icon: <ContactMail />, path: '/dashboard/carousel'},
   { text: 'Website Review', icon: <ContactMail />, path: '/dashboard/testimonial'},
-  { text: 'Website Video', icon: <ContactMail />, path: '/dashboard/choose-video'}
+  { text: 'Website Video', icon: <ContactMail />, path: '/dashboard/choose-video'},
+  { text: 'Settings', icon: <Settings />, path: '/dashboard/settings'},
 ];
 
 // Role-based menu access mapping (must match backend User model ENUM roles)
@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState({ fullName: 'Admin User', role: 'Administrator' });
+  const [currentUser, setCurrentUser] = useState({ fullName: 'Admin User', role: 'Viewer' });
 
   // Check authentication on mount
   useEffect(() => {
@@ -114,7 +114,8 @@ export default function DashboardLayout({ children }) {
   const menuItems = useMemo(() => {
     const role = currentUser.role || 'Viewer';
     const allowed = ROLE_ACCESS[role];
-    if (allowed === null || allowed === undefined) return ALL_MENU_ITEMS; // Administrator or unknown = full access
+    if (allowed === null) return ALL_MENU_ITEMS;
+    if (!allowed) return ALL_MENU_ITEMS.filter((item) => ROLE_ACCESS.Viewer.includes(item.text));
     return ALL_MENU_ITEMS.filter((item) => allowed.includes(item.text));
   }, [currentUser.role]);
 
@@ -275,7 +276,7 @@ export default function DashboardLayout({ children }) {
               {currentUser.fullName || 'Admin User'}
             </Typography>
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 500, color: sidebarTextSecondary }}>
-              {currentUser.role || 'Administrator'}
+              {currentUser.role || 'Viewer'}
             </Typography>
           </Box>
         </Box>
@@ -315,28 +316,12 @@ export default function DashboardLayout({ children }) {
               onClick={toggleMode}
               size="small"
               sx={{
-                mr: 0.5,
-                color: theme.palette.text.secondary,
-                '&:hover': { color: theme.palette.text.primary },
-              }}
-            >
-              {mode === 'light' ? <DarkMode fontSize="small" /> : <LightMode fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-
-          {/* Notifications */}
-          <Tooltip title="Notifications">
-            <IconButton
-              size="small"
-              sx={{
                 mr: 1,
                 color: theme.palette.text.secondary,
                 '&:hover': { color: theme.palette.text.primary },
               }}
             >
-              <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', minWidth: 16, height: 16 } }}>
-                <Notifications fontSize="small" />
-              </Badge>
+              {mode === 'light' ? <DarkMode fontSize="small" /> : <LightMode fontSize="small" />}
             </IconButton>
           </Tooltip>
 

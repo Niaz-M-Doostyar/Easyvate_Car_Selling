@@ -71,6 +71,11 @@ mobile/android/app/build/
 mobile/ios/build/
 mobile/android/.gradle/
 
+# Backend generated/uploaded files (PDFs, images, backups)
+backend/uploads/pdf/
+backend/uploads/vehicle-images/
+backend/uploads/backups/
+
 # Temporary files
 *.tmp
 *.temp

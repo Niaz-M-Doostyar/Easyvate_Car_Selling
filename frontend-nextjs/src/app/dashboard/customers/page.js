@@ -15,12 +15,12 @@ import {
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import { validateEmail, validatePhone, validateRequired, validateNationalId } from '@/utils/validation';
+import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
 const CUSTOMER_TYPES = [
   { value: 'Buyer', label: '🛒 Buyer', color: 'primary' },
   { value: 'Investor', label: '💰 Investor', color: 'success' },
-  { value: 'Capital Provider', label: '🏦 Capital Provider', color: 'info' },
   { value: 'Borrower', label: '📋 Borrower', color: 'warning' },
 ];
 
@@ -108,7 +108,7 @@ export default function CustomersPage() {
     if (!validateRequired(formData.province)) newErrors.province = 'Province is required';
     if (!validateRequired(formData.district)) newErrors.district = 'District is required';
     if (!validateRequired(formData.nationalIdNumber)) newErrors.nationalIdNumber = 'National ID number is required';
-    else if (!validateNationalId(formData.nationalIdNumber)) newErrors.nationalIdNumber = 'National ID must be 10-15 digits';
+    else if (!validateNationalId(formData.nationalIdNumber)) newErrors.nationalIdNumber = 'National ID must be 9-15 digits';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -336,7 +336,7 @@ export default function CustomersPage() {
                     if (errors.nationalIdNumber) setErrors({ ...errors, nationalIdNumber: '' });
                   }
                 }}
-                error={!!errors.nationalIdNumber} helperText={errors.nationalIdNumber || 'Enter 10-15 digits'} required
+                error={!!errors.nationalIdNumber} helperText={errors.nationalIdNumber || 'Enter 9-15 digits'} required
                 inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                 InputProps={{ startAdornment: <InputAdornment position="start"><Badge fontSize="small" color="action" /></InputAdornment> }}
               />
@@ -471,7 +471,7 @@ export default function CustomersPage() {
                   <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.error.main, 0.08), border: `1px solid ${alpha(theme.palette.error.main, 0.2)}` }}>
                     <Typography variant="caption" color="text.secondary">Total Owed (Sales + Loans)</Typography>
                     <Typography variant="h6" fontWeight={700} color="error.main">
-                      {ledgerEntries.filter((e) => ['Sale', 'Loan'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0).toLocaleString()} ؋
+                      {ledgerEntries.filter((e) => ['Sale', 'Loan'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInAFN || e.amount) || 0), 0).toLocaleString()} ؋
                     </Typography>
                   </Card>
                 </Grid>
@@ -479,7 +479,7 @@ export default function CustomersPage() {
                   <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.08), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
                     <Typography variant="caption" color="text.secondary">Total Received (Payments)</Typography>
                     <Typography variant="h6" fontWeight={700} color="success.main">
-                      {ledgerEntries.filter((e) => ['Received', 'Installment', 'Loan Payment', 'Investment'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0).toLocaleString()} ؋
+                      {ledgerEntries.filter((e) => ['Received', 'Installment', 'Loan Payment', 'Investment'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInAFN || e.amount) || 0), 0).toLocaleString()} ؋
                     </Typography>
                   </Card>
                 </Grid>
@@ -572,7 +572,7 @@ export default function CustomersPage() {
                           <TableCell>{sale.saleId || sale.id}</TableCell>
                           <TableCell>{sale.vehicle ? `${sale.vehicle.manufacturer} ${sale.vehicle.model}` : '-'}</TableCell>
                           <TableCell>{sale.saleDate ? new Date(sale.saleDate).toLocaleDateString() : '-'}</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 600 }}>{sale.sellingPrice ? Number(sale.sellingPrice).toLocaleString() : '-'} ؋</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600 }}>{(sale.sellingPriceAFN || sale.sellingPrice) ? Number(sale.sellingPriceAFN || sale.sellingPrice).toLocaleString() : '-'} ؋</TableCell>
                           <TableCell align="right" sx={{ color: theme.palette.success.main, fontWeight: 600 }}>
                             {Number(sale.paidAmount || sale.downPayment || 0).toLocaleString()} ؋
                           </TableCell>
@@ -625,7 +625,7 @@ export default function CustomersPage() {
             <Grid item xs={8}>
               <TextField fullWidth label="Amount" type="number" placeholder="0" value={ledgerForm.amount}
                 onChange={(e) => setLedgerForm({ ...ledgerForm, amount: e.target.value })} required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(ledgerForm.currency)}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={4}>

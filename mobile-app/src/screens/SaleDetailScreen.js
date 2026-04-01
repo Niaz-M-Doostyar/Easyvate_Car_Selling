@@ -47,12 +47,12 @@ export default function SaleDetailScreen({ navigation, route }) {
 
   const s = detail || sale;
   const remaining = Number(s.remainingAmount || 0);
-  const total = Number(s.sellingPrice || 1);
+  const total = Number(s.sellingPriceAFN || s.sellingPrice || 1);
   const paid = total - remaining;
   const progress = Math.min(paid / total, 1);
   const saleTypeObj = SALE_TYPES.find(t => t.value === s.saleType) || {};
-  const veh = s.Vehicle || {};
-  const cust = s.Customer || {};
+  const veh = s.vehicle || s.Vehicle || {};
+  const cust = s.customer || s.Customer || {};
 
   const Field = ({ label, value, color }) => value ? (
     <View style={styles.fieldRow}>
@@ -94,19 +94,17 @@ export default function SaleDetailScreen({ navigation, route }) {
         <Card.Content>
           <Field label="Vehicle" value={`${veh.manufacturer || ''} ${veh.model || ''} (${veh.year || ''})`} />
           <Divider style={{ marginVertical: 4 }} />
-          <Field label="Customer" value={cust.fullName} />
+          <Field label="Buyer" value={s.buyerName || cust.fullName} />
           <Divider style={{ marginVertical: 4 }} />
           <Field label="Sale Date" value={s.saleDate ? new Date(s.saleDate).toLocaleDateString() : '-'} />
           <Divider style={{ marginVertical: 4 }} />
-          <Field label="Selling Price" value={formatCurrency(s.sellingPrice)} color={c.primary} />
+          <Field label="Selling Price" value={formatCurrency(s.sellingPriceAFN || s.sellingPrice || 0)} color={c.primary} />
           <Divider style={{ marginVertical: 4 }} />
           <Field label="Down Payment" value={formatCurrency(s.downPayment)} />
           <Divider style={{ marginVertical: 4 }} />
           <Field label="Remaining" value={formatCurrency(remaining)} color={remaining > 0 ? '#ff9800' : '#4caf50'} />
           {s.notes && <><Divider style={{ marginVertical: 4 }} /><Field label="Notes" value={s.notes} /></>}
-          {s.note2 && <><Divider style={{ marginVertical: 4 }} /><Field label="Note 2" value={s.note2} /></>}
-          {s.witnessName1 && <><Divider style={{ marginVertical: 4 }} /><Field label="Witness 1" value={s.witnessName1} /></>}
-          {s.witnessName2 && <><Divider style={{ marginVertical: 4 }} /><Field label="Witness 2" value={s.witnessName2} /></>}
+          {s.witnessName1 && <><Divider style={{ marginVertical: 4 }} /><Field label="Witness" value={s.witnessName1} /></>}
           {s.saleType === 'Licensed Car' && s.trafficTransferDate && <><Divider style={{ marginVertical: 4 }} /><Field label="Traffic Transfer" value={new Date(s.trafficTransferDate).toLocaleDateString()} /></>}
         </Card.Content>
       </Card>
@@ -115,6 +113,22 @@ export default function SaleDetailScreen({ navigation, route }) {
 
   const renderSeller = () => (
     <View style={{ gap: 12 }}>
+      {/* Buyer Info */}
+      {s.buyerName && (
+        <Card style={[styles.card, { backgroundColor: c.surface }]}>
+          <Card.Content>
+            <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>Buyer Info</Text>
+            <Field label="Name" value={s.buyerName} />
+            <Field label="Father" value={s.buyerFatherName} />
+            <Field label="Province" value={s.buyerProvince} />
+            <Field label="District" value={s.buyerDistrict} />
+            <Field label="Village" value={s.buyerVillage} />
+            <Field label="Address" value={s.buyerAddress} />
+            <Field label="ID Number" value={s.buyerIdNumber} />
+            <Field label="Phone" value={s.buyerPhone} />
+          </Card.Content>
+        </Card>
+      )}
       <Card style={[styles.card, { backgroundColor: c.surface }]}>
         <Card.Content>
           <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8 }}>Seller Info</Text>
@@ -157,7 +171,7 @@ export default function SaleDetailScreen({ navigation, route }) {
   );
 
   const renderProfit = () => {
-    const totalCost = Number(veh.totalCostPKR || veh.totalCost || 0);
+    const totalCost = Number(veh.totalCostAFN || veh.totalCost || 0);
     const profit = Number(s.profit || (total - totalCost));
     const commission = Number(s.commission || s.totalSharedAmount || 0);
     const ownerShare = Number(s.ownerShare || (profit - commission));

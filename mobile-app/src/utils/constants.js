@@ -30,7 +30,7 @@ export const ENGINE_TYPES = ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4
 export const STEERING_TYPES = ['Left', 'Right'];
 export const MONOLITHIC_CUT = ['Monolithic', 'Cut'];
 
-export const CUSTOMER_TYPES = ['Buyer', 'Investor', 'Capital Provider', 'Borrower'];
+export const CUSTOMER_TYPES = ['Buyer', 'Investor', 'Borrower'];
 export const SALE_TYPES = [
   { value: 'Exchange Car', label: 'Exchange Car', color: '#1565c0' },
   { value: 'Container One Key', label: 'Container One Key', color: '#e65100' },
@@ -39,7 +39,7 @@ export const SALE_TYPES = [
 export const LOAN_TYPES = ['Given', 'Received', 'Owner Loan'];
 export const LOAN_STATUSES = ['Active', 'Paid', 'Overdue'];
 export const PAYROLL_STATUSES = ['Pending', 'Partial', 'Paid'];
-export const LEDGER_TYPES = ['Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission'];
+export const LEDGER_TYPES = ['Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Loan Given', 'Loan Received', 'Commission'];
 
 export const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

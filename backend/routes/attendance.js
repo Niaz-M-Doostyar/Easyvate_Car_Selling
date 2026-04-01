@@ -35,6 +35,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: { message: 'Employee, month, year, and present days are required' } });
     }
 
+    // Validate employee exists and is active
+    const employee = await Employee.findByPk(employeeId);
+    if (!employee) {
+      return res.status(404).json({ error: { message: 'Employee not found' } });
+    }
+
+    // Auto-calculate absent days from days in month
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const calculatedAbsent = daysInMonth - (parseInt(presentDays) || 0);
+
     // Check if report already exists for this employee/month/year
     const existing = await Attendance.findOne({
       where: { employeeId, month, year }
@@ -48,7 +58,7 @@ router.post('/', async (req, res) => {
       month,
       year,
       presentDays: parseInt(presentDays) || 0,
-      absentDays: parseInt(absentDays) || 0,
+      absentDays: calculatedAbsent,
       notes
     });
 
@@ -88,7 +98,9 @@ router.put('/:id', async (req, res) => {
       month: month || record.month,
       year: year || record.year,
       presentDays: presentDays !== undefined ? parseInt(presentDays) : record.presentDays,
-      absentDays: absentDays !== undefined ? parseInt(absentDays) : record.absentDays,
+      absentDays: presentDays !== undefined
+        ? new Date(year || record.year, month || record.month, 0).getDate() - (parseInt(presentDays) || 0)
+        : record.absentDays,
       notes: notes !== undefined ? notes : record.notes,
     });
 

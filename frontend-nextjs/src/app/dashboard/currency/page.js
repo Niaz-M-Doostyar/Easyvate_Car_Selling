@@ -5,10 +5,11 @@ import {
   TextField, Grid, Card, CardContent, Typography, FormControl,
   InputLabel, Select, MenuItem, useTheme, alpha, Divider, Chip, InputAdornment, IconButton, Tooltip,
 } from '@mui/material';
-import { CurrencyExchange as CurrencyIcon, SwapHoriz, Add, AttachMoney, Notes, Settings, Edit, Refresh } from '@mui/icons-material';
+import { CurrencyExchange as CurrencyIcon, SwapHoriz, Add, Notes, Settings, Edit, Refresh } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
+import { getCurrencySymbol } from '@/utils/currency';
 
 const CURRENCIES = ['AFN', 'USD', 'PKR'];
 
@@ -244,7 +245,7 @@ export default function CurrencyPage() {
                 value={formData.fromAmount}
                 onChange={(e) => setFormData({ ...formData, fromAmount: e.target.value })}
                 required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><strong style={{fontSize:'0.95rem'}}>{getCurrencySymbol(formData.fromCurrency)}</strong></InputAdornment> }}
               />
             </Grid>
             <Grid item xs={6}>
@@ -264,7 +265,7 @@ export default function CurrencyPage() {
               <Box sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.06), border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}` }}>
                 <Typography variant="body2" color="text.secondary">Converted Amount</Typography>
                 <Typography variant="h5" fontWeight={700} color="primary.main">
-                  {toAmount} {formData.toCurrency}
+                  {getCurrencySymbol(formData.toCurrency)} {toAmount} {formData.toCurrency}
                 </Typography>
               </Box>
             </Grid>

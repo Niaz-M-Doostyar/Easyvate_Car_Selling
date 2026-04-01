@@ -11,7 +11,7 @@ const DEPLOY_TARGET = process.env.DEPLOY_TARGET || 'local';
 const PRESETS = {
   local: {
     HOST: '0.0.0.0',
-    PORT: 3001,
+    PORT: 3002,
     DB: {
       HOST: 'localhost',
       PORT: 8889,
@@ -19,11 +19,11 @@ const PRESETS = {
       PASSWORD: 'root',
       DATABASE: 'easyvate_cars',
     },
-    CORS_ORIGIN: 'http://localhost:3000',
+    CORS_ORIGIN: ['http://localhost:3000', 'http://localhost:3001'],
   },
   vps: {
     HOST: '0.0.0.0',
-    PORT: 3001,
+    PORT: 3002,
     DB: {
       HOST: 'localhost',
       PORT: 3308,
@@ -46,19 +46,11 @@ const config = {
   HOST: preset.HOST,
 
   DB: {
-<<<<<<< HEAD
-    HOST: process.env.DB_HOST || 'localhost',
-    PORT: parseInt(process.env.DB_PORT || '3306', 10),
-    USER: process.env.DB_USER || 'root',
-    PASSWORD: process.env.DB_PASSWORD || '',
-    DATABASE: process.env.DB_NAME || 'easyvate_cars',
-=======
-    HOST: preset.DB.HOST,
-    PORT: preset.DB.PORT,
-    USER: preset.DB.USER,
-    PASSWORD: preset.DB.PASSWORD,
-    DATABASE: preset.DB.DATABASE,
->>>>>>> a9e6e0a1c52d76eece87385461329215c7ad45ae
+    HOST: process.env.DB_HOST || preset.DB.HOST,
+    PORT: Number(process.env.DB_PORT || preset.DB.PORT),
+    USER: process.env.DB_USER || preset.DB.USER,
+    PASSWORD: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : preset.DB.PASSWORD,
+    DATABASE: process.env.DB_NAME || preset.DB.DATABASE,
     DIALECT: 'mysql',
     POOL: {
       max: 10,

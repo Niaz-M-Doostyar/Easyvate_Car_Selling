@@ -8,7 +8,7 @@ const ShowroomLedger = sequelize.define('ShowroomLedger', {
     autoIncrement: true
   },
   type: {
-    type: DataTypes.ENUM('Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Loan Payment', 'Commission'),
+    type: DataTypes.ENUM('Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Loan Given', 'Loan Received', 'Loan Payment', 'Commission'),
     allowNull: false
   },
   amount: {
@@ -19,9 +19,22 @@ const ShowroomLedger = sequelize.define('ShowroomLedger', {
     type: DataTypes.STRING(10),
     defaultValue: 'AFN'
   },
-  amountInPKR: {
+  amountInAFN: {
     type: DataTypes.DECIMAL(15, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Amount converted to Afghani'
+  },
+  exchangeRateUsed: {
+    type: DataTypes.DECIMAL(15, 6),
+    comment: 'Exchange rate used for conversion to AFN'
+  },
+  personId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'customers',
+      key: 'id'
+    },
+    comment: 'Reference to customer if applicable'
   },
   description: {
     type: DataTypes.TEXT

@@ -4,8 +4,9 @@ import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
   InputLabel, Select, MenuItem, Chip, useTheme, alpha, IconButton, Tooltip, InputAdornment,
+  Autocomplete,
 } from '@mui/material';
-import { Add, CheckCircle, AccountBalanceWallet, Person, AttachMoney, CalendarToday, Notes } from '@mui/icons-material';
+import { Add, CheckCircle, AccountBalanceWallet, Person, CalendarToday, Notes } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
@@ -14,19 +15,30 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 const CURRENCIES = ['AFN', 'USD', 'PKR'];
 const LOAN_TYPES = ['Lent', 'Borrowed', 'Owner Loan'];
 
+const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨' };
+
 export default function LoansPage() {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const [loans, setLoans] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filter, setFilter] = useState({ status: '', type: '' });
   const [formData, setFormData] = useState({
-    personName: '', amount: '', currency: 'AFN', borrowDate: new Date().toISOString().split('T')[0], type: 'Lent', notes: '',
+    personName: '', customerId: null, amount: '', currency: 'AFN',
+    borrowDate: new Date().toISOString().split('T')[0], type: 'Lent', notes: '',
   });
 
-  useEffect(() => { fetchLoans(); }, []);
+  useEffect(() => { fetchLoans(); fetchCustomers(); }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* silent */ }
+  };
 
   const fetchLoans = async () => {
     setLoading(true);
@@ -48,14 +60,15 @@ export default function LoansPage() {
   }, [loans, filter]);
 
   const summary = useMemo(() => {
-    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
-    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
+    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amountInAFN || l.amount || 0), 0);
+    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amountInAFN || l.amount || 0), 0);
     return { given, received, total: loans.length, open: loans.filter((l) => l.status === 'Open').length };
   }, [loans]);
 
   const handleEdit = (record) => {
     setFormData({
-      personName: record.personName, amount: record.amount, currency: record.currency || 'AFN',
+      personName: record.personName, customerId: record.customerId || null,
+      amount: record.amount, currency: record.currency || 'AFN',
       borrowDate: record.borrowDate?.split('T')[0] || '', type: record.type, notes: record.notes || '',
     });
     setEditingId(record.id);
@@ -84,8 +97,8 @@ export default function LoansPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.personName || !formData.amount) {
-      enqueueSnackbar('Person name and amount are required', { variant: 'warning' });
+    if (!formData.customerId || !formData.amount) {
+      enqueueSnackbar('Customer and amount are required', { variant: 'warning' });
       return;
     }
     try {
@@ -106,7 +119,7 @@ export default function LoansPage() {
   };
 
   const resetForm = () => {
-    setFormData({ personName: '', amount: '', currency: 'AFN', borrowDate: new Date().toISOString().split('T')[0], type: 'Lent', notes: '' });
+    setFormData({ personName: '', customerId: null, amount: '', currency: 'AFN', borrowDate: new Date().toISOString().split('T')[0], type: 'Lent', notes: '' });
     setEditingId(null);
   };
 
@@ -223,14 +236,22 @@ export default function LoansPage() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Person Name"
-                placeholder="e.g. Ahmad Khan"
-                value={formData.personName}
-                onChange={(e) => setFormData({ ...formData, personName: e.target.value })}
-                required
-                InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+              <Autocomplete
+                options={customers}
+                getOptionLabel={(opt) => opt.fullName ? `${opt.fullName} (${opt.customerType})` : ''}
+                value={customers.find(c => c.id === formData.customerId) || null}
+                onChange={(_, val) => setFormData({
+                  ...formData,
+                  customerId: val?.id || null,
+                  personName: val?.fullName || '',
+                })}
+                isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Person (Customer)" required
+                    placeholder="Search customer..."
+                    InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment>{params.InputProps.startAdornment}</> }}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={6}>
@@ -242,7 +263,7 @@ export default function LoansPage() {
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><strong style={{fontSize:'0.95rem'}}>{CURRENCY_SYMBOLS[formData.currency] || '؋'}</strong></InputAdornment> }}
               />
             </Grid>
             <Grid item xs={6}>

@@ -3,7 +3,7 @@ const router = express.Router();
 const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
 const Sale = require('../models/Sale');
-const { toAFN } = require('../src/services/exchangeRate');
+const { toAFN, saveDailyRates } = require('../src/services/exchangeRate');
 
 // Get all customers
 router.get('/', async (req, res) => {
@@ -79,15 +79,20 @@ router.post('/:id/ledger', async (req, res) => {
     const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
     // Credit types increase balance (customer paid us), Debit types decrease balance (customer owes us)
     const creditTypes = ['Received', 'Installment', 'Loan Payment', 'Investment'];
-    const signedAmount = creditTypes.includes(type) ? Number(amount) : -Number(amount);
+    const converted = await toAFN(amount, currency || 'AFN');
+    const signedAmount = creditTypes.includes(type) ? converted.amountAFN : -converted.amountAFN;
     const newBalance = prevBalance + signedAmount;
+    
+    // Save daily rates
+    await saveDailyRates(req.user?.id);
 
     const entry = await CustomerLedger.create({
       customerId: req.params.id,
       type,
       amount,
       currency: currency || 'AFN',
-      amountInPKR: await toAFN(amount, currency || 'AFN'),
+      amountInAFN: converted.amountAFN,
+      exchangeRateUsed: converted.rate,
       purpose,
       date: date || new Date(),
       balance: newBalance,
@@ -101,9 +106,9 @@ router.post('/:id/ledger', async (req, res) => {
     if (saleId && (type === 'Installment' || type === 'Received')) {
       const sale = await Sale.findByPk(saleId);
       if (sale && sale.paymentStatus !== 'Paid') {
-        const payAmt = Number(amount);
-        const newPaid = Number(sale.paidAmount || 0) + payAmt;
-        const newRemaining = Math.max(Number(sale.remainingAmount || 0) - payAmt, 0);
+        const payAmtAFN = Number(converted.amountAFN || 0);
+        const newPaid = Number(sale.paidAmount || 0) + payAmtAFN;
+        const newRemaining = Math.max(Number(sale.remainingAmount || 0) - payAmtAFN, 0);
         await sale.update({
           paidAmount: newPaid,
           remainingAmount: newRemaining,

@@ -55,18 +55,22 @@ export default function SalesScreen({ navigation }) {
 
   const filtered = sales.filter(x => {
     const q = search.toLowerCase();
-    const veh = x.Vehicle ? `${x.Vehicle.manufacturer} ${x.Vehicle.model}` : '';
-    const cust = x.Customer?.fullName || '';
-    const m = !search || [x.saleId, veh, cust].some(f => f?.toLowerCase().includes(q));
+    const vehicleObj = x.vehicle || x.Vehicle;
+    const veh = vehicleObj ? `${vehicleObj.manufacturer} ${vehicleObj.model}` : '';
+    const buyer = x.buyerName || x.customer?.fullName || x.Customer?.fullName || '';
+    const seller = x.sellerName || '';
+    const m = !search || [x.saleId, veh, buyer, seller].some(f => String(f || '').toLowerCase().includes(q));
     return m && (typeFilter === 'All' || x.saleType === typeFilter);
   });
 
   const renderItem = ({ item }) => {
     const remaining = Number(item.remainingAmount || 0);
-    const total = Number(item.sellingPrice || 1);
+    const total = Number(item.sellingPriceAFN || item.sellingPrice || 1);
     const paid = total - remaining;
     const progress = Math.min(paid / total, 1);
-    const veh = item.Vehicle ? `${item.Vehicle.manufacturer} ${item.Vehicle.model} (${item.Vehicle.year})` : 'N/A';
+    const vehicleObj = item.vehicle || item.Vehicle;
+    const customerObj = item.customer || item.Customer;
+    const veh = vehicleObj ? `${vehicleObj.manufacturer} ${vehicleObj.model} (${vehicleObj.year})` : 'N/A';
     const isPaid = remaining <= 0;
 
     return (
@@ -88,9 +92,9 @@ export default function SalesScreen({ navigation }) {
               <StatusChip label={item.saleType || 'Sale'} />
             </View>
             <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>{veh}</Text>
-            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.Customer?.fullName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.buyerName || customerObj?.fullName || 'Buyer'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-              <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPrice)}</Text>
+              <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPriceAFN || item.sellingPrice || 0)}</Text>
               <View style={[styles.payBadge, { backgroundColor: isPaid ? c.success + '12' : c.warning + '12' }]}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: isPaid ? c.success : c.warning }}>
                   {isPaid ? '✓ Paid' : `${formatCurrency(remaining)} left`}

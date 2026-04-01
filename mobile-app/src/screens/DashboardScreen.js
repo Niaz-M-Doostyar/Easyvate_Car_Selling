@@ -50,7 +50,7 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const { vehicles, customers, sales, loans, balance, employees } = data;
-  const totalRevenue = sales.reduce((s, x) => s + Number(x.sellingPrice || 0), 0);
+  const totalRevenue = sales.reduce((s, x) => s + Number(x.sellingPriceAFN || x.sellingPrice || 0), 0);
   const totalProfit = sales.reduce((s, x) => s + Number(x.profit || 0), 0);
   const totalCommission = sales.reduce((s, x) => s + Number(x.commission || 0), 0);
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
@@ -153,14 +153,14 @@ export default function DashboardScreen({ navigation }) {
                   </LinearGradient>
                   <View style={styles.saleInfo}>
                     <Text style={[styles.saleName, { color: c.onSurface }]} numberOfLines={1}>
-                      {sale.Vehicle?.manufacturer || ''} {sale.Vehicle?.model || sale.saleId}
+                      {sale.vehicle?.manufacturer || sale.Vehicle?.manufacturer || ''} {sale.vehicle?.model || sale.Vehicle?.model || sale.saleId}
                     </Text>
                     <Text style={[styles.saleMeta, { color: c.onSurfaceVariant }]}>
-                      {sale.Customer?.fullName || 'Customer'} • {new Date(sale.saleDate).toLocaleDateString()}
+                      {sale.buyerName || sale.customer?.fullName || sale.Customer?.fullName || 'Buyer'} • {new Date(sale.saleDate).toLocaleDateString()}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={[styles.salePrice, { color: c.success }]}>{formatCurrency(sale.sellingPrice)}</Text>
+                    <Text style={[styles.salePrice, { color: c.success }]}>{formatCurrency(sale.sellingPriceAFN || sale.sellingPrice || 0)}</Text>
                     <StatusChip label={Number(sale.remainingAmount || 0) > 0 ? 'Partial' : 'Paid'} />
                   </View>
                 </View>
