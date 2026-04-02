@@ -19,8 +19,8 @@ import {
   MenuItem,
   alpha,
   useTheme,
-  Badge,
   Tooltip,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -37,11 +37,13 @@ import {
   CurrencyExchange,
   Payment,
   ManageAccounts,
-  Notifications,
   Info,
   ContactMail,
   DarkMode,
   LightMode,
+  Settings,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 import { useThemeMode } from '@/contexts/ThemeContext';
 import SettingsDrawer from '@/components/SettingsDrawer';
@@ -67,7 +69,8 @@ const ALL_MENU_ITEMS = [
   { text: 'Website Contact', icon: <ContactMail />, path: '/dashboard/contact'},
   { text: 'Website Slider', icon: <ContactMail />, path: '/dashboard/carousel'},
   { text: 'Website Review', icon: <ContactMail />, path: '/dashboard/testimonial'},
-  { text: 'Website Video', icon: <ContactMail />, path: '/dashboard/choose-video'}
+  { text: 'Website Video', icon: <ContactMail />, path: '/dashboard/choose-video'},
+  { text: 'Settings', icon: <Settings />, path: '/dashboard/settings' },
 ];
 
 // Role-based menu access mapping (must match backend User model ENUM roles)
@@ -117,6 +120,39 @@ export default function DashboardLayout({ children }) {
     if (allowed === null || allowed === undefined) return ALL_MENU_ITEMS; // Administrator or unknown = full access
     return ALL_MENU_ITEMS.filter((item) => allowed.includes(item.text));
   }, [currentUser.role]);
+
+  // Group website-prefixed items under a single "Website" parent
+  const [openWebsite, setOpenWebsite] = useState(false);
+  const groupedMenuItems = useMemo(() => {
+    const prefix = 'Website';
+    const websites = menuItems.filter((i) => i.text.startsWith(prefix));
+    if (websites.length === 0) return menuItems;
+
+    const children = websites.map((child) => ({ ...child, text: child.text.replace(new RegExp('^' + prefix + "\\s+"), '') }));
+    const parent = { text: 'Website', icon: <Info />, children };
+
+    // Build a new ordered list, replacing the first sequence of website items with the parent
+    const res = [];
+    let inserted = false;
+    for (const it of menuItems) {
+      if (it.text.startsWith(prefix)) {
+        if (!inserted) {
+          res.push(parent);
+          inserted = true;
+        }
+        // skip individual website items
+      } else {
+        res.push(it);
+      }
+    }
+    return res;
+  }, [menuItems]);
+
+  // auto-expand Website group if a child path is active
+  useEffect(() => {
+    const active = menuItems.some((i) => i.text.startsWith('Website') && pathname.startsWith(i.path));
+    if (active) setOpenWebsite(true);
+  }, [pathname, menuItems]);
 
   // Don't render dashboard until authentication is verified
   if (!isAuthenticated) {
@@ -203,7 +239,73 @@ export default function DashboardLayout({ children }) {
 
       {/* Navigation Menu */}
       <List sx={{ flex: 1, px: 1.5, py: 1.5, overflowY: 'auto', '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { backgroundColor: sidebarScrollbar, borderRadius: 2 } }}>
-        {menuItems.map((item) => {
+        {groupedMenuItems.map((item) => {
+          // If item has children, render a collapsible group
+          if (item.children) {
+            const childActive = item.children.some((c) => pathname.startsWith(c.path));
+            return (
+              <Box key={item.text}>
+                <ListItem disablePadding sx={{ mb: 0.25 }}>
+                  <ListItemButton
+                    onClick={() => setOpenWebsite((s) => !s)}
+                    sx={{
+                      borderRadius: '8px',
+                      py: 0.9,
+                      px: 1.5,
+                      transition: 'all 0.15s ease',
+                      backgroundColor: childActive
+                        ? alpha(theme.palette.primary.main, isDarkSidebar ? 0.15 : 0.08)
+                        : 'transparent',
+                      '&:hover': {
+                        backgroundColor: childActive
+                          ? alpha(theme.palette.primary.main, isDarkSidebar ? 0.2 : 0.12)
+                          : sidebarHover,
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 34, color: childActive ? theme.palette.primary.main : sidebarTextSecondary, '& svg': { fontSize: '1.2rem' } }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{ fontSize: '0.835rem', fontWeight: childActive ? 600 : 500, color: childActive ? theme.palette.primary.main : sidebarTextColor }}
+                    />
+                    {openWebsite ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                </ListItem>
+                <Collapse in={openWebsite} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding sx={{ pl: 3 }}> 
+                    {item.children.map((child) => {
+                      const isActive = pathname === child.path || pathname.startsWith(child.path);
+                      return (
+                        <ListItem key={child.text} disablePadding sx={{ mb: 0.25 }}>
+                          <ListItemButton
+                            onClick={() => handleMenuClick(child.path)}
+                            sx={{
+                              borderRadius: '8px',
+                              py: 0.7,
+                              px: 1.5,
+                              transition: 'all 0.12s ease',
+                              backgroundColor: isActive
+                                ? alpha(theme.palette.primary.main, isDarkSidebar ? 0.12 : 0.06)
+                                : 'transparent',
+                              '&:hover': { backgroundColor: isActive ? alpha(theme.palette.primary.main, isDarkSidebar ? 0.15 : 0.09) : sidebarHover },
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 34, color: isActive ? theme.palette.primary.main : sidebarTextSecondary, '& svg': { fontSize: '1.05rem' } }}>
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText primary={child.text} primaryTypographyProps={{ fontSize: '0.82rem', fontWeight: isActive ? 600 : 500, color: isActive ? theme.palette.primary.main : sidebarTextColor }} />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </Box>
+            );
+          }
+
           const isActive = pathname === item.path;
           return (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
@@ -321,22 +423,6 @@ export default function DashboardLayout({ children }) {
               }}
             >
               {mode === 'light' ? <DarkMode fontSize="small" /> : <LightMode fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-
-          {/* Notifications */}
-          <Tooltip title="Notifications">
-            <IconButton
-              size="small"
-              sx={{
-                mr: 1,
-                color: theme.palette.text.secondary,
-                '&:hover': { color: theme.palette.text.primary },
-              }}
-            >
-              <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', minWidth: 16, height: 16 } }}>
-                <Notifications fontSize="small" />
-              </Badge>
             </IconButton>
           </Tooltip>
 

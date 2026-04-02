@@ -47,6 +47,28 @@ import { formatCurrency } from '@/utils/currency';
 /* ─────── Helpers ─────────────────────────────────────────── */
 const fmtCurrency = (n) => formatCurrency(n);
 
+const EMPTY_STATS = {
+  totalVehicles: 0,
+  totalCustomers: 0,
+  totalSales: 0,
+  totalRevenue: 0,
+  totalProfit: 0,
+  totalCommission: 0,
+  totalEmployees: 0,
+  availableVehicles: 0,
+  soldVehicles: 0,
+  openLoans: 0,
+  showroomBalance: 0,
+  ownerBalance: 0,
+  sharedPersons: [],
+  salesTrend: 0,
+  revTrend: 0,
+  thisMonthSales: 0,
+  thisMonthRevenue: 0,
+};
+
+const getResponsePayload = (result) => result.status === 'fulfilled' ? result.value.data : null;
+
 /* ─────── Main page ──────────────────────────────────────── */
 export default function DashboardPage() {
   const theme = useTheme();
@@ -67,7 +89,7 @@ export default function DashboardPage() {
 
   const fetchData = async () => {
     try {
-      const [vehicles, customers, sales, loans, balance, employees] = await Promise.all([
+      const [vehicles, customers, sales, loans, balance, employees] = await Promise.allSettled([
         apiClient.get('/vehicles'),
         apiClient.get('/customers'),
         apiClient.get('/sales'),
@@ -76,12 +98,19 @@ export default function DashboardPage() {
         apiClient.get('/employees'),
       ]);
 
-      const v = vehicles.data.data || [];
-      const s = sales.data.data || [];
-      const l = loans.data.data || [];
-      const c = customers.data.data || [];
-      const e = employees.data.data || [];
-      const bal = balance.data || {};
+      const vehiclesPayload = getResponsePayload(vehicles) || {};
+      const customersPayload = getResponsePayload(customers) || {};
+      const salesPayload = getResponsePayload(sales) || {};
+      const loansPayload = getResponsePayload(loans) || {};
+      const balancePayload = getResponsePayload(balance) || {};
+      const employeesPayload = getResponsePayload(employees) || {};
+
+      const v = vehiclesPayload.data || [];
+      const s = salesPayload.data || [];
+      const l = loansPayload.data || [];
+      const c = customersPayload.data || [];
+      const e = employeesPayload.data || [];
+      const bal = balancePayload;
 
       const statusMap = {};
       v.forEach((vh) => {
@@ -91,7 +120,7 @@ export default function DashboardPage() {
 
       const totalRevenue = s.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
       const totalProfit = s.reduce((sum, sale) => sum + parseFloat(sale.profit || 0), 0);
-      const totalCommission = s.reduce((sum, sale) => sum + parseFloat(sale.commission || 0), 0);
+      const totalCommission = bal.sharedTotal ?? s.reduce((sum, sale) => sum + parseFloat(sale.commission || 0), 0);
 
       // Monthly sales trend (current vs previous month)
       const now = new Date();
@@ -124,8 +153,8 @@ export default function DashboardPage() {
         availableVehicles: statusMap['Available'] || 0,
         soldVehicles: statusMap['Sold'] || 0,
         openLoans: l.filter((lo) => lo.status === 'Open').length,
-        showroomBalance: bal.balance || 0,
-        ownerBalance: bal.ownerBalance || 0,
+        showroomBalance: bal.showroomBalance ?? bal.balance ?? 0,
+        ownerBalance: bal.ownerBalance ?? bal.balance ?? 0,
         sharedPersons: bal.sharedPersons || [],
         salesTrend: parseFloat(salesTrend),
         revTrend: parseFloat(revTrend),
@@ -137,6 +166,9 @@ export default function DashboardPage() {
       setRecentSales(s.slice(0, 6));
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      setStats(EMPTY_STATS);
+      setRecentSales([]);
+      setVehiclesByStatus({});
     } finally {
       setLoading(false);
     }
@@ -173,6 +205,23 @@ export default function DashboardPage() {
           </Grid>
         </Grid>
       </Box>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
+        <CardContent sx={{ textAlign: 'center', py: 6 }}>
+          <Assessment sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            Dashboard data is unavailable
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Some API calls failed, so the dashboard could not be loaded yet.
+          </Typography>
+          <Button variant="contained" onClick={fetchData}>Retry</Button>
+        </CardContent>
+      </Card>
     );
   }
 

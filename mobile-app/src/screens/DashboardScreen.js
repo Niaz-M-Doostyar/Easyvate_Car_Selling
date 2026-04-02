@@ -52,7 +52,7 @@ export default function DashboardScreen({ navigation }) {
   const { vehicles, customers, sales, loans, balance, employees } = data;
   const totalRevenue = sales.reduce((s, x) => s + Number(x.sellingPrice || 0), 0);
   const totalProfit = sales.reduce((s, x) => s + Number(x.profit || 0), 0);
-  const totalCommission = sales.reduce((s, x) => s + Number(x.commission || 0), 0);
+  const totalCommission = Number(balance?.sharedTotal || sales.reduce((s, x) => s + Number(x.commission || 0), 0));
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
   const openLoans = loans.filter(l => l.status === 'Active').length;
   const soldVehicles = vehicles.filter(v => v.status === 'Sold').length;
@@ -120,8 +120,8 @@ export default function DashboardScreen({ navigation }) {
           <SummaryCard title="Profit" value={formatCurrency(totalProfit)} icon="chart-line" color="#8b5cf6" style={styles.gridItem} />
         </View>
         <View style={styles.grid2}>
-          <SummaryCard title="Showroom" value={formatCurrency(balance.showroomBalance || 0)} icon="bank" color={c.primary} style={styles.gridItem} />
-          <SummaryCard title="Owner" value={formatCurrency(balance.ownerBalance || 0)} icon="account-cash" color={c.gold || '#d4a843'} style={styles.gridItem} />
+          <SummaryCard title="Showroom" value={formatCurrency(balance.showroomBalance ?? balance.balance ?? 0)} icon="bank" color={c.primary} style={styles.gridItem} />
+          <SummaryCard title="Owner" value={formatCurrency(balance.ownerBalance ?? balance.balance ?? 0)} icon="account-cash" color={c.gold || '#d4a843'} style={styles.gridItem} />
         </View>
 
         <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Inventory</Text>

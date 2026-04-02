@@ -4,7 +4,7 @@ import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, InputAdornment,
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
-  Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha,
+  Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   ImageList, ImageListItem, ImageListItemBar, IconButton as MuiIconButton
 } from '@mui/material';
@@ -24,15 +24,12 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
 const STEPS = ['Vehicle Details', 'Reference Person', 'Sharing / Partnership', 'Images'];
 
-// Dropdown options
-const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
-const MANUFACTURERS = [
-  'Toyota', 'Honda', 'BMW', 'Mercedes-Benz', 'Audi', 'Volkswagen', 'Ford', 'Chevrolet',
-  'KIA', 'Hyundai', 'Mazda', 'Nissan', 'Suzuki', 'Daihatsu', 'FAW', 'Changan'
-];
+// Static dropdown options (not dynamically managed)
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG', 'LPG'];
-const TRANSMISSIONS = ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'];
-const ENGINE_TYPES = ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'];
+const SHARING_CALCULATION_LABELS = {
+  Investment: 'Investment based',
+  Percentage: 'Manual percentage',
+};
 
 export default function VehiclesPage() {
   const theme = useTheme();
@@ -85,8 +82,14 @@ export default function VehiclesPage() {
 
   // Form data – Section 3: Sharing Persons
   const [formSharingPersons, setFormSharingPersons] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [rates, setRates] = useState({});
 
-  useEffect(() => { fetchVehicles(); }, []);
+  // Dynamic dropdown options
+  const [dropdownOptions, setDropdownOptions] = useState({ manufacturer: [], category: [], engineType: [], transmission: [] });
+  const [addOptionDialog, setAddOptionDialog] = useState({ open: false, field: '', value: '' });
+
+  useEffect(() => { fetchVehicles(); fetchCustomers(); fetchDropdownOptions(); fetchRates(); }, []);
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -97,6 +100,40 @@ export default function VehiclesPage() {
       enqueueSnackbar('Failed to fetch vehicles', { variant: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* non-critical */ }
+  };
+
+  const fetchRates = async () => {
+    try {
+      const res = await apiClient.get('/currency/rates');
+      setRates(res.data.data || {});
+    } catch { /* non-critical */ }
+  };
+
+  const fetchDropdownOptions = async () => {
+    try {
+      const res = await apiClient.get('/vehicles/dropdown-options');
+      setDropdownOptions(res.data.data || { manufacturer: [], category: [], engineType: [], transmission: [] });
+    } catch { /* non-critical, will use empty arrays */ }
+  };
+
+  const handleAddOption = async () => {
+    const { field, value } = addOptionDialog;
+    if (!value.trim()) return;
+    try {
+      await apiClient.post('/vehicles/dropdown-options', { field, value: value.trim() });
+      await fetchDropdownOptions();
+      enqueueSnackbar('Option added', { variant: 'success' });
+      setAddOptionDialog({ open: false, field: '', value: '' });
+    } catch (err) {
+      enqueueSnackbar(err.response?.data?.error || 'Failed to add option', { variant: 'error' });
     }
   };
 
@@ -120,11 +157,41 @@ export default function VehiclesPage() {
   // Auto-calculate total cost
   const totalCost = useMemo(() => {
     const base = parseFloat(formData.basePurchasePrice) || 0;
+    const baseRate = formData.baseCurrency === 'AFN' ? 1 : (parseFloat(rates[`${formData.baseCurrency}-AFN`]) || 0);
+    const baseAFN = formData.baseCurrency === 'AFN' ? base : base * baseRate;
     const transport = parseFloat(formData.transportCostToDubai) || 0;
     const importCost = parseFloat(formData.importCostToAfghanistan) || 0;
     const repair = parseFloat(formData.repairCost) || 0;
-    return base + transport + importCost + repair;
-  }, [formData.basePurchasePrice, formData.transportCostToDubai, formData.importCostToAfghanistan, formData.repairCost]);
+    return baseAFN + transport + importCost + repair;
+  }, [formData.basePurchasePrice, formData.baseCurrency, formData.transportCostToDubai, formData.importCostToAfghanistan, formData.repairCost, rates]);
+
+  const totalCostReady = formData.baseCurrency === 'AFN' || Boolean(rates[`${formData.baseCurrency}-AFN`]);
+  const sharingUsesInvestment = useMemo(() => {
+    return formSharingPersons.some((person) => (parseFloat(person.investmentAmount) || 0) > 0);
+  }, [formSharingPersons]);
+
+  const partnershipPreview = useMemo(() => {
+    const totalInvestment = formSharingPersons.reduce((sum, person) => sum + (parseFloat(person.investmentAmount) || 0), 0);
+    const totalPercentage = formSharingPersons.reduce((sum, person) => sum + (parseFloat(person.percentage) || 0), 0);
+    const previewPartners = formSharingPersons.map((person) => {
+      const investmentAmount = parseFloat(person.investmentAmount) || 0;
+      return {
+        ...person,
+        sharePercentage: sharingUsesInvestment && totalCostReady && totalCost > 0
+          ? (investmentAmount / totalCost) * 100
+          : parseFloat(person.percentage) || 0,
+      };
+    });
+
+    return {
+      totalInvestment,
+      totalPercentage,
+      partnerPercentageTotal: previewPartners.reduce((sum, person) => sum + (person.sharePercentage || 0), 0),
+      ownerInvestment: Math.max(totalCost - totalInvestment, 0),
+      ownerPercentage: Math.max(100 - previewPartners.reduce((sum, person) => sum + (person.sharePercentage || 0), 0), 0),
+      partners: previewPartners,
+    };
+  }, [formSharingPersons, sharingUsesInvestment, totalCost, totalCostReady]);
 
   const handleSubmit = async () => {
     const newErrors = {};
@@ -142,14 +209,26 @@ export default function VehiclesPage() {
       newErrors.refFullName = 'Reference person name is required';
     }
 
-    // Validate sharing percentages sum
+    // Validate sharing percentages / investments
     if (formSharingPersons.length > 0) {
-      const totalPct = formSharingPersons.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0);
-      if (totalPct > 100) newErrors.sharingTotal = 'Total sharing percentage cannot exceed 100%';
-      formSharingPersons.forEach((p, i) => {
-        if (!p.personName) newErrors[`sharing_${i}_name`] = 'Name required';
-        if (!p.percentage || parseFloat(p.percentage) <= 0) newErrors[`sharing_${i}_pct`] = 'Valid % required';
-      });
+      if (sharingUsesInvestment) {
+        const totalInvestment = formSharingPersons.reduce((s, p) => s + (parseFloat(p.investmentAmount) || 0), 0);
+        if (totalCostReady && totalInvestment > totalCost + 0.01) {
+          newErrors.sharingTotal = 'Total partner investment cannot exceed the vehicle total cost';
+        }
+
+        formSharingPersons.forEach((p, i) => {
+          if (!p.personName && !p.customerId) newErrors[`sharing_${i}_name`] = 'Partner required';
+          if (!p.investmentAmount || parseFloat(p.investmentAmount) <= 0) newErrors[`sharing_${i}_investment`] = 'Investment required';
+        });
+      } else {
+        const totalPct = formSharingPersons.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0);
+        if (totalPct > 100) newErrors.sharingTotal = 'Total sharing percentage cannot exceed 100%';
+        formSharingPersons.forEach((p, i) => {
+          if (!p.personName && !p.customerId) newErrors[`sharing_${i}_name`] = 'Partner required';
+          if (!p.percentage || parseFloat(p.percentage) <= 0) newErrors[`sharing_${i}_pct`] = 'Valid % required';
+        });
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -189,10 +268,12 @@ export default function VehiclesPage() {
 
     if (formSharingPersons.length > 0) {
       vehicleData.sharingPersons = formSharingPersons.map((p) => ({
+        customerId: p.customerId || null,
         personName: p.personName,
-        percentage: parseFloat(p.percentage),
+        percentage: parseFloat(p.percentage) || 0,
         investmentAmount: parseFloat(p.investmentAmount) || 0,
         phoneNumber: p.phoneNumber || '',
+        calculationMethod: sharingUsesInvestment ? 'Investment' : 'Percentage',
       }));
     }
 
@@ -294,8 +375,12 @@ export default function VehiclesPage() {
     }
     if (vehicle.sharingPersons?.length > 0) {
       setFormSharingPersons(vehicle.sharingPersons.map((p) => ({
-        personName: p.personName, percentage: p.percentage,
-        investmentAmount: p.investmentAmount || '', phoneNumber: p.phoneNumber || '',
+        customerId: p.customerId || '',
+        personName: p.personName,
+        percentage: p.percentage,
+        investmentAmount: p.investmentAmount || '',
+        phoneNumber: p.phoneNumber || '',
+        calculationMethod: p.calculationMethod || 'Percentage',
       })));
     }
 
@@ -352,7 +437,7 @@ export default function VehiclesPage() {
 
   // Sharing persons helpers
   const addSharingPerson = () => {
-    setFormSharingPersons([...formSharingPersons, { personName: '', percentage: '', investmentAmount: '', phoneNumber: '' }]);
+    setFormSharingPersons([...formSharingPersons, { customerId: '', personName: '', percentage: '', investmentAmount: '', phoneNumber: '', calculationMethod: 'Percentage' }]);
   };
   const removeSharingPerson = (index) => {
     setFormSharingPersons(formSharingPersons.filter((_, i) => i !== index));
@@ -446,13 +531,14 @@ export default function VehiclesPage() {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth error={!!errors.manufacturer}>
-                  <InputLabel>Manufacturer</InputLabel>
-                  <Select value={formData.manufacturer} label="Manufacturer" onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}>
-                    {MANUFACTURERS.map((mfg) => <MenuItem key={mfg} value={mfg}>{mfg}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                {errors.manufacturer && <Typography color="error" variant="caption">{errors.manufacturer}</Typography>}
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                  <Autocomplete fullWidth freeSolo options={dropdownOptions.manufacturer || []}
+                    value={formData.manufacturer || ''} onChange={(_, val) => setFormData({ ...formData, manufacturer: val || '' })}
+                    onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, manufacturer: val }); }}
+                    renderInput={(params) => <TextField {...params} label="Manufacturer" error={!!errors.manufacturer} helperText={errors.manufacturer} required />}
+                  />
+                  <IconButton color="primary" sx={{ mt: 1 }} onClick={() => setAddOptionDialog({ open: true, field: 'manufacturer', value: '' })}><Add fontSize="small" /></IconButton>
+                </Box>
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField fullWidth label="Model" placeholder="e.g. Corolla" value={formData.model}
@@ -468,13 +554,14 @@ export default function VehiclesPage() {
                 />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select value={formData.category} label="Category" onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {CATEGORIES.map((cat) => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                  <Autocomplete fullWidth freeSolo options={dropdownOptions.category || []}
+                    value={formData.category || ''} onChange={(_, val) => setFormData({ ...formData, category: val || '' })}
+                    onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, category: val }); }}
+                    renderInput={(params) => <TextField {...params} label="Category" />}
+                  />
+                  <IconButton color="primary" sx={{ mt: 1 }} onClick={() => setAddOptionDialog({ open: true, field: 'category', value: '' })}><Add fontSize="small" /></IconButton>
+                </Box>
               </Grid>
               <Grid item xs={6} sm={3}>
                 <TextField fullWidth label="Color" placeholder="White" value={formData.color}
@@ -500,13 +587,14 @@ export default function VehiclesPage() {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={6} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Engine Type</InputLabel>
-                  <Select value={formData.engineType} label="Engine Type" onChange={(e) => setFormData({ ...formData, engineType: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {ENGINE_TYPES.map((type) => <MenuItem key={type} value={type}>{type}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                  <Autocomplete fullWidth freeSolo options={dropdownOptions.engineType || []}
+                    value={formData.engineType || ''} onChange={(_, val) => setFormData({ ...formData, engineType: val || '' })}
+                    onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, engineType: val }); }}
+                    renderInput={(params) => <TextField {...params} label="Engine Type" />}
+                  />
+                  <IconButton color="primary" sx={{ mt: 1 }} onClick={() => setAddOptionDialog({ open: true, field: 'engineType', value: '' })}><Add fontSize="small" /></IconButton>
+                </Box>
               </Grid>
               <Grid item xs={6} sm={4}>
                 <FormControl fullWidth>
@@ -518,13 +606,14 @@ export default function VehiclesPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={6} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Transmission</InputLabel>
-                  <Select value={formData.transmission} label="Transmission" onChange={(e) => setFormData({ ...formData, transmission: e.target.value })}>
-                    <MenuItem value=""><em>None</em></MenuItem>
-                    {TRANSMISSIONS.map((trans) => <MenuItem key={trans} value={trans}>{trans}</MenuItem>)}
-                  </Select>
-                </FormControl>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                  <Autocomplete fullWidth freeSolo options={dropdownOptions.transmission || []}
+                    value={formData.transmission || ''} onChange={(_, val) => setFormData({ ...formData, transmission: val || '' })}
+                    onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, transmission: val }); }}
+                    renderInput={(params) => <TextField {...params} label="Transmission" />}
+                  />
+                  <IconButton color="primary" sx={{ mt: 1 }} onClick={() => setAddOptionDialog({ open: true, field: 'transmission', value: '' })}><Add fontSize="small" /></IconButton>
+                </Box>
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label="Mileage (km)" type="number" placeholder="0" value={formData.mileage}
@@ -596,26 +685,27 @@ export default function VehiclesPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={6} sm={4}>
-                <TextField fullWidth label="Transport to Dubai" type="number" placeholder="0" value={formData.transportCostToDubai}
+                <TextField fullWidth label="Transport to Dubai (AFN)" type="number" placeholder="0" value={formData.transportCostToDubai}
                   onChange={(e) => setFormData({ ...formData, transportCostToDubai: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
                 />
               </Grid>
               <Grid item xs={6} sm={4}>
-                <TextField fullWidth label="Import to Afghanistan" type="number" placeholder="0" value={formData.importCostToAfghanistan}
+                <TextField fullWidth label="Import to Afghanistan (AFN)" type="number" placeholder="0" value={formData.importCostToAfghanistan}
                   onChange={(e) => setFormData({ ...formData, importCostToAfghanistan: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
                 />
               </Grid>
               <Grid item xs={6} sm={4}>
-                <TextField fullWidth label="Repair Cost" type="number" placeholder="0" value={formData.repairCost}
+                <TextField fullWidth label="Repair Cost (AFN)" type="number" placeholder="0" value={formData.repairCost}
                   onChange={(e) => setFormData({ ...formData, repairCost: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
                 />
               </Grid>
               <Grid item xs={6} sm={4}>
-                <TextField fullWidth label="Total Cost (Auto)" type="number" value={totalCost.toFixed(2)} disabled
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
+                <TextField fullWidth label="Total Cost (AFN Auto)" type="number" value={totalCost.toFixed(2)} disabled
+                  helperText={totalCostReady ? 'Used for investment-based partnership calculations' : `Set the ${formData.baseCurrency} exchange rate to preview AFN total cost`}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
                   sx={{ '& .MuiInputBase-root': { bgcolor: 'action.hover' } }}
                 />
               </Grid>
@@ -693,7 +783,7 @@ export default function VehiclesPage() {
               Sharing / Partnership (Optional)
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Add partners/investors who share in this vehicle. Each person&apos;s percentage and investment amount will be recorded.
+              Add showroom partners for this vehicle. If you enter investment amounts for any partner, the system will calculate each partner&apos;s profit share from the vehicle&apos;s AFN total cost. If you leave investment empty, manual share percentages will be used.
             </Typography>
 
             {errors.sharingTotal && (
@@ -708,29 +798,79 @@ export default function VehiclesPage() {
                 </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label="Person Name" placeholder="Name" size="small" value={person.personName}
-                      onChange={(e) => updateSharingPerson(index, 'personName', e.target.value)}
-                      error={!!errors[`sharing_${index}_name`]} helperText={errors[`sharing_${index}_name`]} required
-                      InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+                    <Autocomplete
+                      freeSolo
+                      options={customers}
+                      getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt.fullName || '')}
+                      value={person.customerId ? (customers.find((customer) => customer.id === person.customerId) || person.personName || '') : (person.personName || '')}
+                      onChange={(_, val) => {
+                        if (typeof val === 'string') {
+                          setFormSharingPersons((prev) => prev.map((entry, entryIndex) => entryIndex === index ? {
+                            ...entry,
+                            customerId: '',
+                            personName: val,
+                          } : entry));
+                          return;
+                        }
+
+                        if (!val) {
+                          setFormSharingPersons((prev) => prev.map((entry, entryIndex) => entryIndex === index ? {
+                            ...entry,
+                            customerId: '',
+                            personName: '',
+                          } : entry));
+                          return;
+                        }
+
+                        setFormSharingPersons((prev) => prev.map((entry, entryIndex) => entryIndex === index ? {
+                          ...entry,
+                          customerId: val.id,
+                          personName: val.fullName || '',
+                          phoneNumber: val.phoneNumber || entry.phoneNumber || '',
+                        } : entry));
+                      }}
+                      onInputChange={(_, val, reason) => {
+                        if (reason === 'input') {
+                          setFormSharingPersons((prev) => prev.map((entry, entryIndex) => entryIndex === index ? {
+                            ...entry,
+                            customerId: '',
+                            personName: val,
+                          } : entry));
+                        }
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} fullWidth label="Partner / Customer" placeholder="Search customer..." size="small" required
+                          error={!!errors[`sharing_${index}_name`]} helperText={errors[`sharing_${index}_name`]}
+                          InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+                        />
+                      )}
                     />
                   </Grid>
                   <Grid item xs={6} sm={3}>
-                    <TextField fullWidth label="Share %" type="number" size="small" value={person.percentage}
+                    <TextField fullWidth label="Share %" type="number" size="small"
+                      value={sharingUsesInvestment ? (Number(partnershipPreview.partners[index]?.sharePercentage || 0).toFixed(2)) : person.percentage}
                       onChange={(e) => updateSharingPerson(index, 'percentage', e.target.value)}
-                      error={!!errors[`sharing_${index}_pct`]} helperText={errors[`sharing_${index}_pct`]} required
+                      error={!!errors[`sharing_${index}_pct`]}
+                      helperText={sharingUsesInvestment ? (totalCostReady ? 'Calculated from investment' : 'Calculated after save using AFN total cost') : errors[`sharing_${index}_pct`]}
+                      required={!sharingUsesInvestment}
+                      disabled={sharingUsesInvestment}
                       InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
                     />
-                    <Box display="flex" gap={0.5} mt={0.5}>
-                      {[50, 33.33, 25].map((pct) => (
-                        <Chip key={pct} label={pct === 33.33 ? '⅓' : pct === 50 ? '½' : '¼'} size="small" variant="outlined"
-                          onClick={() => updateSharingPerson(index, 'percentage', pct.toString())} sx={{ cursor: 'pointer', fontSize: '0.7rem' }}
-                        />
-                      ))}
-                    </Box>
+                    {!sharingUsesInvestment && (
+                      <Box display="flex" gap={0.5} mt={0.5}>
+                        {[50, 33.33, 25].map((pct) => (
+                          <Chip key={pct} label={pct === 33.33 ? '⅓' : pct === 50 ? '½' : '¼'} size="small" variant="outlined"
+                            onClick={() => updateSharingPerson(index, 'percentage', pct.toString())} sx={{ cursor: 'pointer', fontSize: '0.7rem' }}
+                          />
+                        ))}
+                      </Box>
+                    )}
                   </Grid>
                   <Grid item xs={6} sm={3}>
                     <TextField fullWidth label="Investment" type="number" size="small" placeholder="0" value={person.investmentAmount}
                       onChange={(e) => updateSharingPerson(index, 'investmentAmount', e.target.value)}
+                      error={!!errors[`sharing_${index}_investment`]}
+                      helperText={errors[`sharing_${index}_investment`] || 'Leave empty to use manual share %'}
                       InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
                     />
                   </Grid>
@@ -749,10 +889,25 @@ export default function VehiclesPage() {
 
             {formSharingPersons.length > 0 && (
               <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.info.main, 0.06), border: `1px solid ${alpha(theme.palette.info.main, 0.15)}` }}>
-                <Typography variant="body2" color="text.secondary">
-                  Total Share: <strong>{formSharingPersons.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0).toFixed(2)}%</strong>
-                  {' '} • Owner&apos;s Share: <strong>{(100 - formSharingPersons.reduce((s, p) => s + (parseFloat(p.percentage) || 0), 0)).toFixed(2)}%</strong>
-                </Typography>
+                {sharingUsesInvestment ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Partner Capital: <strong>{formatCurrency(partnershipPreview.totalInvestment)}</strong>
+                    {' '} • Owner Capital: <strong>{formatCurrency(partnershipPreview.ownerInvestment)}</strong>
+                    {totalCostReady ? (
+                      <>
+                        {' '} • Partner Share: <strong>{partnershipPreview.partnerPercentageTotal.toFixed(2)}%</strong>
+                        {' '} • Owner&apos;s Share: <strong>{partnershipPreview.ownerPercentage.toFixed(2)}%</strong>
+                      </>
+                    ) : (
+                      <> • Percentages will be finalized after AFN total cost is available.</>
+                    )}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Total Share: <strong>{partnershipPreview.totalPercentage.toFixed(2)}%</strong>
+                    {' '} • Owner&apos;s Share: <strong>{(100 - partnershipPreview.totalPercentage).toFixed(2)}%</strong>
+                  </Typography>
+                )}
               </Box>
             )}
 
@@ -924,8 +1079,8 @@ export default function VehiclesPage() {
             const colors = { Available: 'success', Reserved: 'warning', Sold: 'error', Coming: 'info', 'Under Repair': 'secondary' };
             return <Chip label={val || '-'} size="small" color={colors[val] || 'default'} />;
           }},
-          { id: 'totalCostPKR', label: 'Total Cost', align: 'right', hiddenOnMobile: true, format: (val, row) => val ? formatCurrency(val, row?.baseCurrency || 'AFN') : '-' },
-          { id: 'sellingPrice', label: 'Selling Price', align: 'right', bold: true, format: (val, row) => val ? formatCurrency(val, row?.baseCurrency || 'AFN') : '0' },
+          { id: 'totalCostPKR', label: 'Total Cost (AFN)', align: 'right', hiddenOnMobile: true, format: (val) => val ? formatCurrency(val) : '-' },
+          { id: 'sellingPrice', label: 'Selling Price', align: 'right', bold: true, format: (val) => val ? formatCurrency(val) : '0' },
           { id: '_actions', label: '', align: 'center', format: (val, row) => (
             <Box display="flex" gap={0.5}>
               <Tooltip title="View Details"><IconButton size="small" onClick={() => handleViewDetails(row)}><Visibility fontSize="small" /></IconButton></Tooltip>
@@ -1172,6 +1327,7 @@ export default function VehiclesPage() {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>Person</strong></TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>Basis</strong></TableCell>
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>Share %</strong></TableCell>
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>Investment</strong></TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>Phone</strong></TableCell>
@@ -1182,6 +1338,7 @@ export default function VehiclesPage() {
                     {sharingPersons.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell><strong>{p.personName}</strong></TableCell>
+                        <TableCell>{SHARING_CALCULATION_LABELS[p.calculationMethod] || 'Manual percentage'}</TableCell>
                         <TableCell align="right">{p.percentage}%</TableCell>
                         <TableCell align="right">{p.investmentAmount ? formatCurrency(p.investmentAmount) : '-'}</TableCell>
                         <TableCell>{p.phoneNumber || '-'}</TableCell>
@@ -1234,6 +1391,22 @@ export default function VehiclesPage() {
             )
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Add Dropdown Option Dialog */}
+      <Dialog open={addOptionDialog.open} onClose={() => setAddOptionDialog({ open: false, field: '', value: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle>Add {addOptionDialog.field === 'engineType' ? 'Engine Type' : addOptionDialog.field?.charAt(0).toUpperCase() + addOptionDialog.field?.slice(1)} Option</DialogTitle>
+        <DialogContent>
+          <TextField autoFocus fullWidth label="New Option Value" value={addOptionDialog.value}
+            onChange={(e) => setAddOptionDialog({ ...addOptionDialog, value: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddOption(); }}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOptionDialog({ open: false, field: '', value: '' })}>Cancel</Button>
+          <Button variant="contained" onClick={handleAddOption} disabled={!addOptionDialog.value.trim()}>Add</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

@@ -22,9 +22,20 @@ const CommissionDistribution = sequelize.define('CommissionDistribution', {
       key: 'id'
     }
   },
+  customerId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'customers',
+      key: 'id'
+    }
+  },
   personName: {
     type: DataTypes.STRING(255),
     allowNull: false
+  },
+  investmentAmount: {
+    type: DataTypes.DECIMAL(15, 2)
   },
   sharePercentage: {
     type: DataTypes.DECIMAL(5, 2),
@@ -36,6 +47,11 @@ const CommissionDistribution = sequelize.define('CommissionDistribution', {
   },
   paidDate: {
     type: DataTypes.DATE
+  },
+  calculationMethod: {
+    type: DataTypes.ENUM('Investment', 'Percentage'),
+    allowNull: false,
+    defaultValue: 'Percentage'
   },
   status: {
     type: DataTypes.ENUM('Pending', 'Paid'),

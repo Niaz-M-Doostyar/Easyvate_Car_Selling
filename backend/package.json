@@ -8,7 +8,10 @@
     "dev": "nodemon app.js"
   },
   "dependencies": {
+    "@fontsource/noto-naskh-arabic": "^5.2.11",
+    "arabic-persian-reshaper": "^1.0.1",
     "bcryptjs": "^3.0.3",
+    "bidi-js": "^1.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -16,6 +19,7 @@
     "multer": "^2.1.1",
     "mysql2": "^3.16.2",
     "pdfkit": "^0.17.2",
+    "puppeteer": "^21.11.0",
     "sequelize": "^6.37.7"
   }
 }

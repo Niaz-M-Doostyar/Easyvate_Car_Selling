@@ -23,6 +23,8 @@ const contactRoutes = require('./routes/contact');
 const carouselRoutes = require('./routes/carousel');
 const testimonialRoutes = require('./routes/testimonial');
 const videoRoutes = require('./routes/chooseVideo');
+const settingsRoutes = require('./routes/settings');
+const { ensureSchemaCompatibility } = require('./src/services/schema');
 
 const app = express();
 
@@ -67,6 +69,7 @@ app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);
 app.use('/api/carousel', verifyToken, authorize(ROLE_INVENTORY), carouselRoutes);
 app.use('/api/testimonial', verifyToken, authorize(ROLE_INVENTORY), testimonialRoutes);
 app.use('/api/choose-video', verifyToken, authorize(ROLE_INVENTORY), videoRoutes);
+app.use('/api/settings', verifyToken, authorize(['Super Admin', 'Owner']), settingsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -79,6 +82,7 @@ const initializeApp = async () => {
     if (config.FEATURES.AUTO_SYNC_DB) {
       await sequelize.sync({ force: false });
       console.log('✓ Database models synchronized');
+      await ensureSchemaCompatibility();
     }
 
     // Initialize exchange rates

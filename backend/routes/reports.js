@@ -6,9 +6,11 @@ const Sale = require('../models/Sale');
 const ShowroomLedger = require('../models/ShowroomLedger');
 const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
+const SharingPerson = require('../models/SharingPerson');
+const CommissionDistribution = require('../models/CommissionDistribution');
+const { CREDIT_LEDGER_TYPES, normalizeSharingPersons, safeNum } = require('../src/services/partnership');
 
-// Helper: safely parse a numeric value, returning 0 for null/undefined/NaN
-const safeNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const buildPartnerKey = (customerId, personName) => customerId ? `customer-${customerId}` : `name-${personName || 'Unknown'}`;
 
 router.get('/vehicles', async (req, res) => {
   try {
@@ -111,7 +113,7 @@ router.get('/customer-transactions', async (req, res) => {
     
     const transactions = await CustomerLedger.findAll({
       where,
-      include: [{ model: Customer, as: 'customer' }],
+      include: [{ model: Customer }],
       order: [['date', 'DESC']]
     });
     
@@ -218,7 +220,9 @@ router.get('/export-pdf', async (req, res) => {
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
       .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
-    const showroomBalance = income - expenses;
+    const commissionLedger = ledger.filter(t => t.type === 'Commission');
+    const sharedTotal = commissionLedger.reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
+    const showroomBalance = income - expenses + sharedTotal;
 
     // Get shared persons breakdown
     const sharedPersons = await ShowroomLedger.findAll({
@@ -228,7 +232,6 @@ router.get('/export-pdf', async (req, res) => {
       raw: true
     });
 
-    const sharedTotal = sharedPersons.reduce((sum, p) => sum + safeNum(p.total), 0);
     const ownerBalance = showroomBalance - sharedTotal;
 
     // Prepare report data (values already in AFN base currency)
@@ -364,44 +367,247 @@ router.get('/yearly', async (req, res) => {
 router.get('/commission', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const where = {};
+    const saleWhere = {};
     
     if (startDate && endDate) {
-      where.date = { [Op.between]: [startDate, endDate] };
+      saleWhere.saleDate = { [Op.between]: [startDate, endDate] };
     }
 
-    const commissions = await ShowroomLedger.findAll({
-      where: {
-        type: 'Commission',
-        ...where
-      },
-      order: [['date', 'DESC']]
+    const commissions = await CommissionDistribution.findAll({
+      include: [
+        {
+          model: Sale,
+          as: 'sale',
+          attributes: ['id', 'saleId', 'saleDate', 'vehicleId'],
+          ...(Object.keys(saleWhere).length ? { where: saleWhere, required: true } : {}),
+        },
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'fullName', 'phoneNumber'],
+          required: false,
+        },
+        {
+          model: SharingPerson,
+          as: 'sharingPerson',
+          attributes: ['id', 'investmentAmount', 'calculationMethod'],
+          required: false,
+        },
+      ],
+      order: [['createdAt', 'DESC']]
     });
 
-    // Group by person
     const grouped = {};
-    commissions.forEach(c => {
-      const name = c.personName || 'Unknown';
-      if (!grouped[name]) {
-        grouped[name] = {
-          personName: name,
+    commissions.forEach((commission) => {
+      const partnerName = commission.customer?.fullName || commission.personName || 'Unknown';
+      const key = buildPartnerKey(commission.customerId, partnerName);
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          customerId: commission.customerId || null,
+          personName: partnerName,
+          phoneNumber: commission.customer?.phoneNumber || null,
           totalCommission: 0,
+          totalInvestment: 0,
+          totalSharePercentage: 0,
           count: 0,
-          transactions: []
+          sales: new Set(),
+          transactions: [],
         };
       }
-      grouped[name].totalCommission += safeNum(c.amountInPKR);
-      grouped[name].count++;
-      grouped[name].transactions.push({
-        date: c.date,
-        amount: c.amountInPKR,
-        description: c.description
+
+      grouped[key].totalCommission += safeNum(commission.amount);
+      grouped[key].totalInvestment += safeNum(commission.investmentAmount || commission.sharingPerson?.investmentAmount);
+      grouped[key].totalSharePercentage += safeNum(commission.sharePercentage);
+      grouped[key].count += 1;
+      grouped[key].sales.add(commission.saleId);
+      grouped[key].transactions.push({
+        saleId: commission.sale?.saleId || commission.saleId,
+        saleDate: commission.sale?.saleDate || commission.paidDate || commission.createdAt,
+        amount: safeNum(commission.amount),
+        sharePercentage: safeNum(commission.sharePercentage),
+        investmentAmount: safeNum(commission.investmentAmount || commission.sharingPerson?.investmentAmount),
+        status: commission.status,
       });
     });
 
-    const summary = Object.values(grouped);
+    const summary = Object.values(grouped)
+      .map((entry) => ({
+        customerId: entry.customerId,
+        personName: entry.personName,
+        phoneNumber: entry.phoneNumber,
+        totalCommission: Number(entry.totalCommission.toFixed(2)),
+        totalInvestment: Number(entry.totalInvestment.toFixed(2)),
+        averageSharePercentage: entry.count ? Number((entry.totalSharePercentage / entry.count).toFixed(2)) : 0,
+        count: entry.count,
+        salesCount: entry.sales.size,
+        transactions: entry.transactions,
+      }))
+      .sort((a, b) => b.totalCommission - a.totalCommission);
 
     res.json({ data: summary });
+  } catch (error) {
+    res.status(500).json({ error: { message: error.message } });
+  }
+});
+
+router.get('/partnerships', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const hasDateRange = Boolean(startDate && endDate);
+
+    const vehicles = await Vehicle.findAll({
+      include: [{
+        model: SharingPerson,
+        as: 'sharingPersons',
+        include: [{ model: Customer, as: 'customer', required: false }],
+        required: true,
+      }],
+      order: [['createdAt', 'DESC']],
+    });
+
+    const allSales = await Sale.findAll({
+      attributes: ['id', 'saleId', 'vehicleId', 'saleDate', 'sellingPrice', 'profit', 'commission', 'ownerShare'],
+      order: [['saleDate', 'DESC']],
+    });
+
+    const filteredSales = hasDateRange
+      ? allSales.filter((sale) => {
+          const saleDate = new Date(sale.saleDate);
+          return saleDate >= new Date(startDate) && saleDate <= new Date(`${endDate}T23:59:59.999Z`);
+        })
+      : allSales;
+
+    const relevantSalesByVehicleId = new Map(filteredSales.map((sale) => [sale.vehicleId, sale]));
+    const relevantSaleIds = filteredSales.map((sale) => sale.id);
+    const distributions = relevantSaleIds.length
+      ? await CommissionDistribution.findAll({
+          where: { saleId: { [Op.in]: relevantSaleIds } },
+          include: [{ model: Customer, as: 'customer', attributes: ['id', 'fullName', 'phoneNumber'], required: false }],
+        })
+      : [];
+
+    const distributionsBySaleId = distributions.reduce((map, distribution) => {
+      if (!map.has(distribution.saleId)) {
+        map.set(distribution.saleId, []);
+      }
+      map.get(distribution.saleId).push(distribution);
+      return map;
+    }, new Map());
+
+    const partnerSummary = {};
+    const partnershipVehicles = vehicles
+      .filter((vehicle) => !hasDateRange || vehicle.status !== 'Sold' || relevantSalesByVehicleId.has(vehicle.id))
+      .map((vehicle) => {
+        const partnership = normalizeSharingPersons(
+          vehicle.sharingPersons.map((person) => person.get({ plain: true })),
+          vehicle.totalCostPKR
+        );
+        const sale = relevantSalesByVehicleId.get(vehicle.id) || null;
+        const vehicleDistributions = sale ? (distributionsBySaleId.get(sale.id) || []) : [];
+
+        const partners = partnership.partners.map((partner) => {
+          const partnerDistribution = vehicleDistributions.filter((distribution) => {
+            if (partner.id && distribution.sharingPersonId === partner.id) {
+              return true;
+            }
+
+            if (partner.customerId && distribution.customerId === partner.customerId) {
+              return true;
+            }
+
+            return distribution.personName === partner.personName;
+          });
+
+          const realizedProfit = partnerDistribution.reduce((sum, distribution) => sum + safeNum(distribution.amount), 0);
+          const personName = partner.customer?.fullName || partner.personName;
+          const summaryKey = buildPartnerKey(partner.customerId, personName);
+
+          if (!partnerSummary[summaryKey]) {
+            partnerSummary[summaryKey] = {
+              customerId: partner.customerId || null,
+              personName,
+              phoneNumber: partner.customer?.phoneNumber || partner.phoneNumber || null,
+              activeVehicles: 0,
+              soldVehicles: 0,
+              totalInvestment: 0,
+              totalRealizedProfit: 0,
+              averageSharePercentageTotal: 0,
+              entries: 0,
+            };
+          }
+
+          partnerSummary[summaryKey].activeVehicles += sale ? 0 : 1;
+          partnerSummary[summaryKey].soldVehicles += sale ? 1 : 0;
+          partnerSummary[summaryKey].totalInvestment += safeNum(partner.investmentAmount);
+          partnerSummary[summaryKey].totalRealizedProfit += realizedProfit;
+          partnerSummary[summaryKey].averageSharePercentageTotal += safeNum(partner.percentage);
+          partnerSummary[summaryKey].entries += 1;
+
+          return {
+            sharingPersonId: partner.id || null,
+            customerId: partner.customerId || null,
+            personName,
+            phoneNumber: partner.customer?.phoneNumber || partner.phoneNumber || null,
+            investmentAmount: safeNum(partner.investmentAmount),
+            sharePercentage: safeNum(partner.percentage),
+            calculationMethod: partner.calculationMethod,
+            realizedProfit,
+            status: sale ? 'Realized' : 'Open',
+          };
+        });
+
+        return {
+          id: vehicle.id,
+          vehicleId: vehicle.vehicleId,
+          vehicleLabel: `${vehicle.manufacturer} ${vehicle.model} (${vehicle.year})`,
+          status: sale ? 'Sold' : vehicle.status,
+          totalCost: safeNum(vehicle.totalCostPKR),
+          calculationMethod: partnership.calculationMethod,
+          partnerInvestmentTotal: safeNum(partnership.totalPartnerInvestment),
+          ownerInvestment: safeNum(partnership.ownerInvestment),
+          partnerPercentageTotal: safeNum(partnership.totalPartnerPercentage),
+          ownerPercentage: safeNum(partnership.ownerPercentage),
+          saleId: sale?.saleId || null,
+          saleDate: sale?.saleDate || null,
+          sellingPrice: safeNum(sale?.sellingPrice),
+          totalProfit: safeNum(sale?.profit),
+          realizedPartnerProfit: vehicleDistributions.reduce((sum, distribution) => sum + safeNum(distribution.amount), 0),
+          ownerProfit: safeNum(sale?.ownerShare),
+          partners,
+        };
+      });
+
+    const partnerSummaryRows = Object.values(partnerSummary)
+      .map((entry) => ({
+        customerId: entry.customerId,
+        personName: entry.personName,
+        phoneNumber: entry.phoneNumber,
+        activeVehicles: entry.activeVehicles,
+        soldVehicles: entry.soldVehicles,
+        totalInvestment: Number(entry.totalInvestment.toFixed(2)),
+        totalRealizedProfit: Number(entry.totalRealizedProfit.toFixed(2)),
+        averageSharePercentage: entry.entries ? Number((entry.averageSharePercentageTotal / entry.entries).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => b.totalRealizedProfit - a.totalRealizedProfit);
+
+    const summary = {
+      totalVehicles: partnershipVehicles.length,
+      activeVehicles: partnershipVehicles.filter((vehicle) => !vehicle.saleId).length,
+      soldVehicles: partnershipVehicles.filter((vehicle) => vehicle.saleId).length,
+      totalPartnerInvestment: partnershipVehicles.reduce((sum, vehicle) => sum + vehicle.partnerInvestmentTotal, 0),
+      totalRealizedPartnerProfit: partnershipVehicles.reduce((sum, vehicle) => sum + vehicle.realizedPartnerProfit, 0),
+      totalOwnerProfit: partnershipVehicles.reduce((sum, vehicle) => sum + vehicle.ownerProfit, 0),
+      calculationNote: 'When investment amounts are entered, partner share percentage is calculated as partner investment divided by total vehicle cost. If only percentages are entered, investment amounts are derived from the vehicle total cost.'
+    };
+
+    res.json({
+      data: {
+        vehicles: partnershipVehicles,
+        partners: partnerSummaryRows,
+      },
+      summary,
+    });
   } catch (error) {
     res.status(500).json({ error: { message: error.message } });
   }
@@ -411,7 +617,7 @@ router.get('/commission', async (req, res) => {
 router.get('/balance-breakdown', async (req, res) => {
   try {
     const incomeTypes = ['Income', 'Vehicle Sale', 'Loan Received'];
-    const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
+    const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given'];
     
     const ledger = await ShowroomLedger.findAll();
     
@@ -422,19 +628,29 @@ router.get('/balance-breakdown', async (req, res) => {
     
     const showroomBalance = income - expenses;
 
-    // Get shared persons breakdown
-    const sharedPersons = await ShowroomLedger.findAll({
-      where: { type: 'Commission', personName: { [Op.not]: null } },
-      attributes: [
-        'personName', 
-        [require('sequelize').fn('SUM', require('sequelize').col('amountInPKR')), 'total'],
-        [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
-      ],
-      group: ['personName'],
-      raw: true
+    const distributions = await CommissionDistribution.findAll({
+      include: [{ model: Customer, as: 'customer', attributes: ['id', 'fullName'], required: false }],
     });
 
-    const sharedTotal = sharedPersons.reduce((sum, p) => sum + safeNum(p.total), 0);
+    const sharedByPartner = {};
+    distributions.forEach((distribution) => {
+      const personName = distribution.customer?.fullName || distribution.personName || 'Unknown';
+      const key = buildPartnerKey(distribution.customerId, personName);
+
+      if (!sharedByPartner[key]) {
+        sharedByPartner[key] = {
+          personName,
+          balance: 0,
+          transactionCount: 0,
+        };
+      }
+
+      sharedByPartner[key].balance += safeNum(distribution.amount);
+      sharedByPartner[key].transactionCount += 1;
+    });
+
+    const sharedPersons = Object.values(sharedByPartner).sort((a, b) => b.balance - a.balance);
+    const sharedTotal = sharedPersons.reduce((sum, person) => sum + safeNum(person.balance), 0);
     const ownerBalance = showroomBalance - sharedTotal;
 
     res.json({
@@ -442,11 +658,7 @@ router.get('/balance-breakdown', async (req, res) => {
         showroomBalance,
         ownerBalance,
         sharedTotal,
-        sharedPersons: sharedPersons.map(p => ({
-          personName: p.personName,
-          balance: safeNum(p.total),
-          transactionCount: safeNum(p.count)
-        }))
+        sharedPersons,
       }
     });
   } catch (error) {

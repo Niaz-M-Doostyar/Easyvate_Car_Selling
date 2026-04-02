@@ -5,6 +5,10 @@ const ShowroomLedger = require('../models/ShowroomLedger');
 const { Op, Sequelize } = require('sequelize');
 const { toAFN } = require('../src/services/exchangeRate');
 
+const SHOWROOM_INCOME_TYPES = ['Income', 'Vehicle Sale', 'Loan Received'];
+const SHOWROOM_EXPENSE_TYPES = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
+const COMMISSION_LEDGER_TYPE = 'Commission';
+
 // Get all transactions
 router.get('/', async (req, res) => {
   try {
@@ -145,25 +149,34 @@ router.get('/showroom', async (req, res) => {
 router.get('/showroom/balance', async (req, res) => {
   try {
     const income = await ShowroomLedger.sum('amountInPKR', {
-      where: { type: { [Op.in]: ['Income', 'Vehicle Sale', 'Loan Received'] } }
+      where: { type: { [Op.in]: SHOWROOM_INCOME_TYPES } }
     }) || 0;
 
     const expenses = await ShowroomLedger.sum('amountInPKR', {
-      where: { type: { [Op.in]: ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'] } }
+      where: { type: { [Op.in]: SHOWROOM_EXPENSE_TYPES } }
     }) || 0;
 
     const balance = income - expenses;
 
     const sharedPersons = await ShowroomLedger.findAll({
-      where: { type: 'Commission' },
+      where: { type: COMMISSION_LEDGER_TYPE },
       attributes: ['personName', [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']],
       group: ['personName']
     });
 
     const sharedTotal = sharedPersons.reduce((sum, p) => sum + Number(p.get('total') || 0), 0);
-    const ownerBalance = balance - sharedTotal;
+    const showroomBalance = balance + sharedTotal;
+    const ownerBalance = balance;
 
-    res.json({ balance, income, expenses, ownerBalance, sharedPersons });
+    res.json({
+      balance,
+      showroomBalance,
+      income,
+      expenses,
+      ownerBalance,
+      sharedTotal,
+      sharedPersons,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

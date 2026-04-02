@@ -11,6 +11,14 @@ const SharingPerson = sequelize.define('SharingPerson', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  customerId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'customers',
+      key: 'id'
+    }
+  },
   personName: {
     type: DataTypes.STRING(255),
     allowNull: false
@@ -24,6 +32,11 @@ const SharingPerson = sequelize.define('SharingPerson', {
   },
   phoneNumber: {
     type: DataTypes.STRING(20)
+  },
+  calculationMethod: {
+    type: DataTypes.ENUM('Investment', 'Percentage'),
+    allowNull: false,
+    defaultValue: 'Percentage'
   },
   isActive: {
     type: DataTypes.BOOLEAN,

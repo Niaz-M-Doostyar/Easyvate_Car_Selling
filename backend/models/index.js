@@ -19,6 +19,7 @@ const CommissionDistribution = require('./CommissionDistribution');
 const LedgerTransaction = require('./LedgerTransaction');
 const ExchangeRate = require('./ExchangeRate');
 const VehicleImage = require('./VehicleImage');
+const VehicleOption = require('./VehicleOption');
 const { AboutEnglish, AboutPashto, AboutDari } = require('./About');
 const { TeamEnglish, TeamPashto, TeamDari } = require('./Team');
 const { AboutLogoEnglish, AboutLogoPashto, AboutLogoDari } = require('./AboutLogo');
@@ -38,6 +39,8 @@ ReferencePerson.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
 
 Vehicle.hasMany(SharingPerson, { foreignKey: 'vehicleId', as: 'sharingPersons' });
 SharingPerson.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
+Customer.hasMany(SharingPerson, { foreignKey: 'customerId', as: 'vehiclePartnerships' });
+SharingPerson.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
 Vehicle.hasMany(EditHistory, { foreignKey: 'entityId', as: 'editHistory', scope: { entityType: 'Vehicle' } });
 
@@ -53,7 +56,11 @@ Payroll.belongsTo(Employee, { foreignKey: 'employeeId' });
 Sale.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 Sale.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 Sale.hasMany(CommissionDistribution, { foreignKey: 'saleId', as: 'commissions' });
-CommissionDistribution.belongsTo(Sale, { foreignKey: 'saleId' });
+CommissionDistribution.belongsTo(Sale, { foreignKey: 'saleId', as: 'sale' });
+SharingPerson.hasMany(CommissionDistribution, { foreignKey: 'sharingPersonId', as: 'profitDistributions' });
+CommissionDistribution.belongsTo(SharingPerson, { foreignKey: 'sharingPersonId', as: 'sharingPerson' });
+Customer.hasMany(CommissionDistribution, { foreignKey: 'customerId', as: 'profitDistributions' });
+CommissionDistribution.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
 module.exports = {
   sequelize,
@@ -76,6 +83,7 @@ module.exports = {
   CommissionDistribution,
   LedgerTransaction,
   ExchangeRate,
+  VehicleOption,
   AboutEnglish,
   AboutPashto,
   AboutDari,

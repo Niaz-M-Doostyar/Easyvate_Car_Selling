@@ -6,7 +6,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, useTheme, alpha, LinearProgress, Stepper, Step, StepLabel,
-  ToggleButton, ToggleButtonGroup, Divider,
+  ToggleButton, ToggleButtonGroup, Divider, Autocomplete,
 } from '@mui/material';
 import {
   Add, Search, PictureAsPdf, PointOfSale, DirectionsCar, Person,
@@ -29,10 +29,14 @@ const SALE_TYPES = [
 
 const defaultForm = {
   saleType: 'Container One Key',
-  vehicleId: '', customerId: '',
+  vehicleId: '',
   saleDate: new Date().toISOString().slice(0, 10),
   sellingPrice: '', downPayment: '', remainingAmount: '',
-  notes: '', note2: '',
+  paymentCurrency: 'AFN',
+  notes: '',
+  // Buyer info
+  buyerName: '', buyerFatherName: '', buyerProvince: '', buyerDistrict: '',
+  buyerVillage: '', buyerAddress: '', buyerIdNumber: '', buyerPhone: '',
   // Seller info
   sellerName: '', sellerFatherName: '', sellerProvince: '', sellerDistrict: '',
   sellerVillage: '', sellerAddress: '', sellerIdNumber: '', sellerPhone: '',
@@ -45,7 +49,7 @@ const defaultForm = {
   // Licensed fields
   trafficTransferDate: '',
   // Witnesses
-  witnessName1: '', witnessName2: '',
+  witnessName1: '',
 };
 
 export default function SalesPage() {
@@ -53,7 +57,6 @@ export default function SalesPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [sales, setSales] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -84,7 +87,6 @@ export default function SalesPage() {
   useEffect(() => {
     fetchSales();
     fetchVehicles();
-    fetchCustomers();
   }, []);
 
   const fetchSales = async () => {
@@ -103,13 +105,6 @@ export default function SalesPage() {
     try {
       const response = await apiClient.get('/vehicles');
       setVehicles(response.data.data || []);
-    } catch { /* silent */ }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await apiClient.get('/customers');
-      setCustomers(response.data.data || []);
     } catch { /* silent */ }
   };
 
@@ -149,7 +144,7 @@ export default function SalesPage() {
       return;
     }
     const remaining = Number(paymentSale?.remainingAmount || paymentSummary?.remainingAmount || 0);
-    if (Number(paymentForm.amount) > remaining) {
+    if ((paymentForm.currency || 'AFN') === 'AFN' && Number(paymentForm.amount) > remaining) {
       enqueueSnackbar(`Amount exceeds remaining balance of ${formatCurrency(remaining)}`, { variant: 'error' });
       return;
     }
@@ -180,13 +175,20 @@ export default function SalesPage() {
     setFormData({
       saleType: sale.saleType || 'Container One Key',
       vehicleId: sale.vehicleId || sale.vehicle?.id || '',
-      customerId: sale.customerId || sale.customer?.id || '',
       saleDate: sale.saleDate ? new Date(sale.saleDate).toISOString().slice(0, 10) : '',
       sellingPrice: sale.sellingPrice?.toString() || '',
       downPayment: sale.downPayment?.toString() || '',
       remainingAmount: sale.remainingAmount?.toString() || '',
+      paymentCurrency: sale.paymentCurrency || 'AFN',
       notes: sale.notes || '',
-      note2: sale.note2 || '',
+      buyerName: sale.buyerName || '',
+      buyerFatherName: sale.buyerFatherName || '',
+      buyerProvince: sale.buyerProvince || '',
+      buyerDistrict: sale.buyerDistrict || '',
+      buyerVillage: sale.buyerVillage || '',
+      buyerAddress: sale.buyerAddress || '',
+      buyerIdNumber: sale.buyerIdNumber || '',
+      buyerPhone: sale.buyerPhone || '',
       sellerName: sale.sellerName || '',
       sellerFatherName: sale.sellerFatherName || '',
       sellerProvince: sale.sellerProvince || '',
@@ -214,7 +216,6 @@ export default function SalesPage() {
       priceDifferencePaidBy: sale.priceDifferencePaidBy || 'Buyer',
       trafficTransferDate: sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toISOString().slice(0, 10) : '',
       witnessName1: sale.witnessName1 || '',
-      witnessName2: sale.witnessName2 || '',
     });
     setEditingId(sale.id);
     setOpen(true);
@@ -234,7 +235,7 @@ export default function SalesPage() {
   const handleSubmit = async () => {
     const newErrors = {};
     if (!validateRequired(formData.vehicleId)) newErrors.vehicleId = 'Vehicle is required';
-    if (!validateRequired(formData.customerId)) newErrors.customerId = 'Customer is required';
+    if (!validateRequired(formData.buyerName)) newErrors.buyerName = 'Buyer name is required';
     if (!validateRequired(formData.sellingPrice) || !validatePrice(formData.sellingPrice)) {
       newErrors.sellingPrice = 'Valid selling price is required';
     }
@@ -316,6 +317,8 @@ export default function SalesPage() {
       (s) =>
         s.vehicle?.manufacturer?.toLowerCase().includes(term) ||
         s.vehicle?.model?.toLowerCase().includes(term) ||
+        s.buyerName?.toLowerCase().includes(term) ||
+        s.buyerPhone?.toLowerCase().includes(term) ||
         s.customer?.fullName?.toLowerCase().includes(term) ||
         s.saleId?.toString().includes(term)
     );
@@ -332,7 +335,7 @@ export default function SalesPage() {
         <Box>
           <Typography variant="h4" fontWeight={700}>Sales Management</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Track sales, commissions, and profit distribution
+            Track sales, partner profit sharing, and payment distribution
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)} sx={{ borderRadius: 2 }}>
@@ -359,7 +362,7 @@ export default function SalesPage() {
           { id: 'vehicle', label: 'Vehicle', format: (val, row) =>
             `${row.vehicle?.manufacturer || ''} ${row.vehicle?.model || ''} (${row.vehicle?.year || ''})`.trim() || '-',
           },
-          { id: 'customer', label: 'Customer', format: (val, row) => row.customer?.fullName || '-' },
+          { id: 'customer', label: 'Customer', format: (val, row) => row.customer?.fullName || row.buyerName || '-' },
           { id: 'saleDate', label: 'Date', format: (date) => date ? new Date(date).toLocaleDateString() : '-' },
           { id: 'sellingPrice', label: 'Price', align: 'right', bold: true, format: (val) => formatCurrency(val) },
           { id: 'remainingAmount', label: 'Status', align: 'center', format: (val, row) => {
@@ -432,35 +435,24 @@ export default function SalesPage() {
             Transaction Details
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <FormControl fullWidth required error={!!errors.vehicleId}>
-                <InputLabel>Vehicle</InputLabel>
-                <Select value={formData.vehicleId} label="Vehicle"
-                  onChange={(e) => {
-                    const veh = vehicles.find((v) => v.id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      vehicleId: e.target.value,
-                      sellingPrice: veh?.sellingPrice?.toString() || formData.sellingPrice,
-                    });
-                    if (errors.vehicleId) setErrors({ ...errors, vehicleId: '' });
-                  }}>
-                  {availableVehicles.map((v) => (
-                    <MenuItem key={v.id} value={v.id}>{v.manufacturer} {v.model} ({v.year}) - {v.color}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <FormControl fullWidth required error={!!errors.customerId}>
-                <InputLabel>Buyer (Customer)</InputLabel>
-                <Select value={formData.customerId} label="Buyer (Customer)"
-                  onChange={(e) => { setFormData({ ...formData, customerId: e.target.value }); if (errors.customerId) setErrors({ ...errors, customerId: '' }); }}>
-                  {customers.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>{c.fullName} — {c.phoneNumber}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <Grid item xs={12} sm={8}>
+              <Autocomplete
+                options={availableVehicles}
+                getOptionLabel={(v) => `${v.manufacturer} ${v.model} (${v.year}) - ${v.color}`}
+                value={availableVehicles.find(v => v.id == formData.vehicleId) || null}
+                onChange={(event, newValue) => {
+                  setFormData({
+                    ...formData,
+                    vehicleId: newValue?.id || '',
+                    sellingPrice: newValue?.sellingPrice?.toString() || formData.sellingPrice,
+                  });
+                  if (errors.vehicleId) setErrors({ ...errors, vehicleId: '' });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Vehicle" required
+                    error={!!errors.vehicleId} helperText={errors.vehicleId} />
+                )}
+              />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Sale Date" type="date" value={formData.saleDate}
@@ -508,6 +500,34 @@ export default function SalesPage() {
               <Grid item xs={12} sm={3} key={key}>
                 <TextField fullWidth label={label} size="small" value={formData[key]}
                   onChange={(e) => setFormData({ ...formData, [key]: e.target.value })} />
+              </Grid>
+            ))}
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* ── Buyer Info ── */}
+          <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            Buyer Info (اخستونکي)
+          </Typography>
+          <Grid container spacing={2}>
+            {[
+              { key: 'buyerName', label: 'Name / نوم', required: true, err: errors.buyerName },
+              { key: 'buyerFatherName', label: 'Father Name / د پلار نوم' },
+              { key: 'buyerProvince', label: 'Province / ولایت' },
+              { key: 'buyerDistrict', label: 'District / ولسوالي' },
+              { key: 'buyerVillage', label: 'Village / قریه' },
+              { key: 'buyerAddress', label: 'Address / استوګنځاي' },
+              { key: 'buyerIdNumber', label: 'ID / Tazkira No.' },
+              { key: 'buyerPhone', label: 'Phone No.' },
+            ].map(({ key, label, required, err }) => (
+              <Grid item xs={12} sm={3} key={key}>
+                <TextField fullWidth label={label} size="small" value={formData[key]}
+                  required={!!required} error={!!err} helperText={err}
+                  onChange={(e) => {
+                    setFormData({ ...formData, [key]: e.target.value });
+                    if (err) setErrors({ ...errors, [key]: '' });
+                  }} />
               </Grid>
             ))}
           </Grid>
@@ -702,7 +722,18 @@ export default function SalesPage() {
             Payment Info / مالي معلومات
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Currency / اسعار</InputLabel>
+                <Select value={formData.paymentCurrency} label="Currency / اسعار"
+                  onChange={(e) => setFormData({ ...formData, paymentCurrency: e.target.value })}>
+                  <MenuItem value="AFN">؋ AFN (افغاني)</MenuItem>
+                  <MenuItem value="USD">$ USD</MenuItem>
+                  <MenuItem value="PKR">₨ PKR</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={3}>
               <TextField fullWidth label="Selling Price / قیمت" type="number" value={formData.sellingPrice}
                 onChange={(e) => {
                   const price = parseFloat(e.target.value) || 0;
@@ -711,9 +742,9 @@ export default function SalesPage() {
                   if (errors.sellingPrice) setErrors({ ...errors, sellingPrice: '' });
                 }}
                 error={!!errors.sellingPrice} helperText={errors.sellingPrice} required
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.paymentCurrency || 'AFN')}</InputAdornment> }} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
               <TextField fullWidth label="Down Payment / پیشکي" type="number" value={formData.downPayment}
                 onChange={(e) => {
                   const down = parseFloat(e.target.value) || 0;
@@ -722,11 +753,11 @@ export default function SalesPage() {
                   if (errors.downPayment) setErrors({ ...errors, downPayment: '' });
                 }}
                 error={!!errors.downPayment} helperText={errors.downPayment} required
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.paymentCurrency || 'AFN')}</InputAdornment> }} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={3}>
               <TextField fullWidth label="Remaining / پاتي" type="number" value={formData.remainingAmount} disabled
-                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }}
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.paymentCurrency || 'AFN')}</InputAdornment> }}
                 sx={{ '& .MuiInputBase-root': { bgcolor: 'action.hover' } }} />
             </Grid>
           </Grid>
@@ -739,20 +770,12 @@ export default function SalesPage() {
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Note 1 / لومړۍ یادښت" multiline rows={2} value={formData.notes}
+              <TextField fullWidth label="Note / یادښت" multiline rows={2} value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Note 2 / دوهمه یادښت" multiline rows={2} value={formData.note2}
-                onChange={(e) => setFormData({ ...formData, note2: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Witness 1 / لومړی شاهد" size="small" value={formData.witnessName1}
+              <TextField fullWidth label="Witness / شاهد" size="small" value={formData.witnessName1}
                 onChange={(e) => setFormData({ ...formData, witnessName1: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Witness 2 / دوهم شاهد" size="small" value={formData.witnessName2}
-                onChange={(e) => setFormData({ ...formData, witnessName2: e.target.value })} />
             </Grid>
           </Grid>
         </DialogContent>
@@ -776,7 +799,7 @@ export default function SalesPage() {
                   Sale #{detailSale?.saleId || detailSale?.id}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {detailSale?.vehicle?.manufacturer} {detailSale?.vehicle?.model} → {detailSale?.customer?.fullName}
+                  {detailSale?.vehicle?.manufacturer} {detailSale?.vehicle?.model} → {detailSale?.buyerName || detailSale?.customer?.fullName}
                 </Typography>
               </Box>
             </Box>
@@ -787,8 +810,8 @@ export default function SalesPage() {
         <Tabs value={detailTab} onChange={(e, v) => setDetailTab(v)} sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}>
           <Tab label="Sale Info" />
           <Tab label="Seller & Vehicle" />
-          <Tab label="Profit & Commission" />
-          <Tab label="Commission Distribution" />
+          <Tab label="Profit & Partner Shares" />
+          <Tab label="Partner Profit Distribution" />
           <Tab label="Payment History" />
         </Tabs>
 
@@ -832,7 +855,8 @@ export default function SalesPage() {
               {[
                 ['Sale ID', detailSale.saleId || detailSale.id],
                 ['Vehicle', `${detailSale.vehicle?.manufacturer || ''} ${detailSale.vehicle?.model || ''} (${detailSale.vehicle?.year || ''})`],
-                ['Customer', detailSale.customer?.fullName],
+                ['Buyer Name', detailSale.buyerName || detailSale.customer?.fullName],
+                ['Buyer Phone', detailSale.buyerPhone],
                 ['Sale Date', detailSale.saleDate ? new Date(detailSale.saleDate).toLocaleDateString() : '-'],
                 ['Selling Price', formatCurrency(detailSale.sellingPrice || 0)],
                 ['Down Payment', formatCurrency(detailSale.downPayment || 0)],
@@ -859,7 +883,7 @@ export default function SalesPage() {
             </Grid>
           )}
 
-          {/* Tab 1: Seller & Exchange Vehicle Info */}
+          {/* Tab 1: Buyer, Seller & Exchange Vehicle Info */}
           {detailTab === 1 && detailSale && (
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
@@ -876,47 +900,64 @@ export default function SalesPage() {
                   </Box>
                 ))}
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" fontWeight={700} gutterBottom>Buyer Info (اخستونکي)</Typography>
+                {[
+                  ['Name', detailSale.buyerName], ['Father Name', detailSale.buyerFatherName],
+                  ['Province', detailSale.buyerProvince], ['District', detailSale.buyerDistrict],
+                  ['Village', detailSale.buyerVillage], ['Address', detailSale.buyerAddress],
+                  ['ID Number', detailSale.buyerIdNumber], ['Phone', detailSale.buyerPhone],
+                ].map(([l, v]) => (
+                  <Box key={l} mb={0.5}>
+                    <Typography variant="caption" color="text.secondary">{l}</Typography>
+                    <Typography variant="body2" fontWeight={600}>{v || '-'}</Typography>
+                  </Box>
+                ))}
+              </Grid>
               {detailSale.saleType === 'Exchange Car' && (
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
                   <Typography variant="subtitle2" fontWeight={700} gutterBottom>Exchange Vehicle (د تبادلي موټر)</Typography>
                   {detailSale.exchangeVehicleId && (
                     <Chip label="✓ Added to Inventory" size="small" color="success" sx={{ mb: 1 }} />
                   )}
-                  {[
-                    ['Category', detailSale.exchVehicleCategory],
-                    ['Manufacturer', detailSale.exchVehicleManufacturer],
-                    ['Model', detailSale.exchVehicleModel],
-                    ['Year', detailSale.exchVehicleYear],
-                    ['Color', detailSale.exchVehicleColor],
-                    ['Chassis', detailSale.exchVehicleChassis],
-                    ['Engine No', detailSale.exchVehicleEngine],
-                    ['Engine Type', detailSale.exchVehicleEngineType],
-                    ['Fuel', detailSale.exchVehicleFuelType],
-                    ['Transmission', detailSale.exchVehicleTransmission],
-                    ['Mileage', detailSale.exchVehicleMileage],
-                    ['Plate', detailSale.exchVehiclePlateNo],
-                    ['License', detailSale.exchVehicleLicense],
-                    ['Steering', detailSale.exchVehicleSteering],
-                    ['Monolithic/Cut', detailSale.exchVehicleMonolithicCut],
-                  ].map(([l, v]) => (
-                    <Box key={l} mb={0.5}>
-                      <Typography variant="caption" color="text.secondary">{l}</Typography>
-                      <Typography variant="body2" fontWeight={600}>{v || '-'}</Typography>
-                    </Box>
-                  ))}
+                  <Grid container spacing={1}>
+                    {[
+                      ['Category', detailSale.exchVehicleCategory],
+                      ['Manufacturer', detailSale.exchVehicleManufacturer],
+                      ['Model', detailSale.exchVehicleModel],
+                      ['Year', detailSale.exchVehicleYear],
+                      ['Color', detailSale.exchVehicleColor],
+                      ['Chassis', detailSale.exchVehicleChassis],
+                      ['Engine No', detailSale.exchVehicleEngine],
+                      ['Engine Type', detailSale.exchVehicleEngineType],
+                      ['Fuel', detailSale.exchVehicleFuelType],
+                      ['Transmission', detailSale.exchVehicleTransmission],
+                      ['Mileage', detailSale.exchVehicleMileage],
+                      ['Plate', detailSale.exchVehiclePlateNo],
+                      ['License', detailSale.exchVehicleLicense],
+                      ['Steering', detailSale.exchVehicleSteering],
+                      ['Monolithic/Cut', detailSale.exchVehicleMonolithicCut],
+                    ].map(([l, v]) => (
+                      <Grid item xs={6} sm={3} key={l}>
+                        <Typography variant="caption" color="text.secondary">{l}</Typography>
+                        <Typography variant="body2" fontWeight={600}>{v || '-'}</Typography>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </Grid>
               )}
               {detailSale.witnessName1 && (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" color="text.secondary">Witnesses:</Typography>
-                  <Typography variant="body2">{detailSale.witnessName1}{detailSale.witnessName2 ? ` , ${detailSale.witnessName2}` : ''}</Typography>
+                  <Typography variant="caption" color="text.secondary">Witness:</Typography>
+                  <Typography variant="body2">{detailSale.witnessName1}</Typography>
                 </Grid>
               )}
             </Grid>
           )}
 
-          {/* Tab 2: Profit & Commission */}
+          {/* Tab 2: Profit & Partner Shares */}
           {detailTab === 2 && detailSale && (
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
@@ -962,7 +1003,7 @@ export default function SalesPage() {
             </Grid>
           )}
 
-          {/* Tab 3: Commission Distribution */}
+          {/* Tab 3: Partner Profit Distribution */}
           {detailTab === 3 && (
             commissionDist.length > 0 ? (
               <>
@@ -971,6 +1012,7 @@ export default function SalesPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>Person</strong></TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>Capital</strong></TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>Share %</strong></TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>Amount</strong></TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>Status</strong></TableCell>
@@ -980,6 +1022,7 @@ export default function SalesPage() {
                       {commissionDist.map((cd) => (
                         <TableRow key={cd.id}>
                           <TableCell><strong>{cd.personName}</strong></TableCell>
+                          <TableCell align="right">{cd.investmentAmount ? formatCurrency(cd.investmentAmount) : '-'}</TableCell>
                           <TableCell align="right">{cd.sharePercentage}%</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>{formatCurrency(cd.amount || 0)}</TableCell>
                           <TableCell>
@@ -990,6 +1033,7 @@ export default function SalesPage() {
                       ))}
                       <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
                         <TableCell><strong>Owner (Remaining)</strong></TableCell>
+                        <TableCell align="right">-</TableCell>
                         <TableCell align="right">
                           <strong>{(100 - commissionDist.reduce((s, c) => s + Number(c.sharePercentage || 0), 0)).toFixed(2)}%</strong>
                         </TableCell>
@@ -1005,7 +1049,7 @@ export default function SalesPage() {
                 </TableContainer>
                 <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.info.main, 0.05), borderRadius: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                    💡 Profit Distribution Summary
+                    Profit Distribution Summary
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
@@ -1013,7 +1057,7 @@ export default function SalesPage() {
                       <Typography variant="h6" fontWeight={700}>{formatCurrency(detailSale.profit || 0)}</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="text.secondary">Shared with Partners</Typography>
+                      <Typography variant="body2" color="text.secondary">Partner Profit</Typography>
                       <Typography variant="h6" fontWeight={700} color="warning.main">
                         {formatCurrency(detailSale.commission || 0)}
                       </Typography>

@@ -7,14 +7,63 @@ const ReferencePerson = require('../models/ReferencePerson');
 const SharingPerson = require('../models/SharingPerson');
 const EditHistory = require('../models/EditHistory');
 const ShowroomLedger = require('../models/ShowroomLedger');
+const Customer = require('../models/Customer');
 const path = require('path');
 const { generateVehiclePdf } = require('../src/services/pdf');
 const { verifyToken } = require('../src/middleware/auth');
 const { checkPermission } = require('../src/middleware/permissions');
 const { toAFN } = require('../src/services/exchangeRate');
+const { normalizeSharingPersons } = require('../src/services/partnership');
 const multer = require('multer');
 const fs = require('fs');
 const VehicleImage = require('../models/VehicleImage');
+const VehicleOption = require('../models/VehicleOption');
+
+// Default options (seeded on first fetch if table is empty)
+const DEFAULT_OPTIONS = {
+  manufacturer: ['Toyota', 'Honda', 'BMW', 'Mercedes-Benz', 'Audi', 'Volkswagen', 'Ford', 'Chevrolet', 'KIA', 'Hyundai', 'Mazda', 'Nissan', 'Suzuki', 'Daihatsu', 'FAW', 'Changan'],
+  category: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'],
+  engineType: ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'],
+  transmission: ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'],
+};
+
+// GET dropdown options (seeds defaults on first call)
+router.get('/dropdown-options', async (req, res) => {
+  try {
+    let options = await VehicleOption.findAll({ order: [['field', 'ASC'], ['value', 'ASC']] });
+    if (options.length === 0) {
+      const rows = [];
+      for (const [field, values] of Object.entries(DEFAULT_OPTIONS)) {
+        for (const value of values) rows.push({ field, value });
+      }
+      await VehicleOption.bulkCreate(rows, { ignoreDuplicates: true });
+      options = await VehicleOption.findAll({ order: [['field', 'ASC'], ['value', 'ASC']] });
+    }
+    const grouped = {};
+    options.forEach(o => {
+      if (!grouped[o.field]) grouped[o.field] = [];
+      grouped[o.field].push(o.value);
+    });
+    res.json({ data: grouped });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST add a new dropdown option
+router.post('/dropdown-options', async (req, res) => {
+  try {
+    const { field, value } = req.body;
+    if (!field || !value) return res.status(400).json({ error: 'Field and value are required' });
+    const allowed = ['manufacturer', 'category', 'engineType', 'transmission'];
+    if (!allowed.includes(field)) return res.status(400).json({ error: 'Invalid field' });
+    const [option, created] = await VehicleOption.findOrCreate({ where: { field, value: value.trim() }, defaults: { field, value: value.trim() } });
+    if (!created) return res.status(409).json({ error: 'Option already exists' });
+    res.status(201).json({ data: option });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 const uploadDir = path.join(__dirname, '..', 'uploads', 'vehicle-images');
 if (!fs.existsSync(uploadDir)) {
@@ -49,9 +98,129 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
+const CORE_COST_STAGES = ['Base Purchase', 'Transport to Dubai', 'Import to Afghanistan', 'Repair'];
+
+const getSharingInclude = () => ({
+  model: SharingPerson,
+  as: 'sharingPersons',
+  include: [{ model: Customer, as: 'customer', required: false }],
+});
+
+const buildPartnerToken = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const calculateVehicleBaseCost = async ({
+  basePurchasePrice,
+  baseCurrency,
+  transportCostToDubai,
+  importCostToAfghanistan,
+  repairCost,
+}) => {
+  const basePriceAFN = await toAFN(Number(basePurchasePrice) || 0, baseCurrency || 'AFN');
+  const transportAFN = await toAFN(Number(transportCostToDubai) || 0, 'AFN');
+  const importAFN = await toAFN(Number(importCostToAfghanistan) || 0, 'AFN');
+  const repairAFN = await toAFN(Number(repairCost) || 0, 'AFN');
+
+  return basePriceAFN + transportAFN + importAFN + repairAFN;
+};
+
+const resolvePartnerCustomer = async (person) => {
+  let customer = null;
+
+  if (person.customerId) {
+    customer = await Customer.findByPk(person.customerId);
+  }
+
+  if (!customer && person.phoneNumber) {
+    customer = await Customer.findOne({ where: { phoneNumber: person.phoneNumber } });
+  }
+
+  if (!customer && person.personName) {
+    customer = await Customer.findOne({ where: { fullName: person.personName } });
+  }
+
+  if (customer || !person.personName) {
+    return customer;
+  }
+
+  return Customer.create({
+    fullName: person.personName,
+    fatherName: '',
+    phoneNumber: person.phoneNumber || buildPartnerToken('partner-phone'),
+    province: '',
+    district: '',
+    village: '',
+    currentAddress: '',
+    originalAddress: '',
+    nationalIdNumber: buildPartnerToken('partner-id'),
+    customerType: 'Investor',
+    balance: 0,
+  });
+};
+
+const persistVehicleSharingPersons = async (vehicle, rawSharingPersons) => {
+  const normalized = normalizeSharingPersons(rawSharingPersons, vehicle.totalCostPKR);
+
+  await SharingPerson.destroy({ where: { vehicleId: vehicle.id } });
+
+  if (!normalized.partners.length) {
+    return normalized;
+  }
+
+  const sharingRows = [];
+  for (const partner of normalized.partners) {
+    const customer = await resolvePartnerCustomer(partner);
+    sharingRows.push({
+      vehicleId: vehicle.id,
+      customerId: customer?.id || partner.customerId || null,
+      personName: customer?.fullName || partner.personName,
+      percentage: partner.percentage,
+      investmentAmount: partner.investmentAmount,
+      phoneNumber: customer?.phoneNumber || partner.phoneNumber || '',
+      calculationMethod: partner.calculationMethod,
+      isActive: true,
+    });
+  }
+
+  await SharingPerson.bulkCreate(sharingRows);
+  return normalized;
+};
+
+const refreshVehicleSharingPercentages = async (vehicleId) => {
+  const vehicle = await Vehicle.findByPk(vehicleId);
+  if (!vehicle) {
+    return;
+  }
+
+  const currentSharing = await SharingPerson.findAll({
+    where: { vehicleId },
+    order: [['createdAt', 'ASC']],
+  });
+
+  if (!currentSharing.length) {
+    return;
+  }
+
+  await persistVehicleSharingPersons(
+    vehicle,
+    currentSharing.map((person) => person.get({ plain: true }))
+  );
+};
+
 const refreshVehicleTotalCost = async (vehicleId) => {
-  const costs = await VehicleCost.findAll({ where: { vehicleId } });
-  const total = costs.reduce((sum, c) => sum + Number(c.amountInPKR || 0), 0);
+  const vehicle = await Vehicle.findByPk(vehicleId);
+  if (!vehicle) {
+    return 0;
+  }
+
+  const costs = await VehicleCost.findAll({
+    where: {
+      vehicleId,
+      stage: { [Op.notIn]: CORE_COST_STAGES },
+    },
+  });
+  const extraCosts = costs.reduce((sum, c) => sum + Number(c.amountInPKR || 0), 0);
+  const baseCost = await calculateVehicleBaseCost(vehicle);
+  const total = baseCost + extraCosts;
   await Vehicle.update({ totalCostPKR: total }, { where: { id: vehicleId } });
   return total;
 };
@@ -84,7 +253,7 @@ router.get('/', async (req, res) => {
       where,
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' }
+        getSharingInclude()
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -101,7 +270,7 @@ router.get('/:id', async (req, res) => {
     const vehicle = await Vehicle.findByPk(req.params.id, {
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' },
+        getSharingInclude(),
         { model: VehicleImage, as: 'images', order: [['order', 'ASC']] }
       ]
     });
@@ -193,21 +362,14 @@ router.post('/', async (req, res) => {
     
     // Add sharing persons if provided
     if (sharingPersons && sharingPersons.length > 0) {
-      await Promise.all(
-        sharingPersons.map(person =>
-          SharingPerson.create({
-            vehicleId: vehicle.id,
-            ...person
-          })
-        )
-      );
+      await persistVehicleSharingPersons(vehicle, sharingPersons);
     }
     
     // Fetch complete vehicle with relations
     const completeVehicle = await Vehicle.findByPk(vehicle.id, {
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' }
+        getSharingInclude()
       ]
     });
 
@@ -237,6 +399,25 @@ router.put('/:id', async (req, res) => {
     
     const { reason, referencePerson, sharingPersons, editReason: reqEditReason, ...updates } = req.body;
     const editReason = reqEditReason || reason || 'Updated from dashboard';
+    const costFields = ['basePurchasePrice', 'baseCurrency', 'transportCostToDubai', 'importCostToAfghanistan', 'repairCost'];
+    const mergedCostData = {
+      basePurchasePrice: updates.basePurchasePrice ?? vehicle.basePurchasePrice,
+      baseCurrency: updates.baseCurrency ?? vehicle.baseCurrency,
+      transportCostToDubai: updates.transportCostToDubai ?? vehicle.transportCostToDubai,
+      importCostToAfghanistan: updates.importCostToAfghanistan ?? vehicle.importCostToAfghanistan,
+      repairCost: updates.repairCost ?? vehicle.repairCost,
+    };
+
+    if (costFields.some((field) => updates[field] !== undefined)) {
+      const extraCosts = await VehicleCost.findAll({
+        where: {
+          vehicleId: vehicle.id,
+          stage: { [Op.notIn]: CORE_COST_STAGES },
+        },
+      });
+      const extraTotal = extraCosts.reduce((sum, cost) => sum + Number(cost.amountInPKR || 0), 0);
+      updates.totalCostPKR = (await calculateVehicleBaseCost(mergedCostData)) + extraTotal;
+    }
     
     // Save edit history for each changed field
     for (const [key, newValue] of Object.entries(updates)) {
@@ -270,23 +451,15 @@ router.put('/:id', async (req, res) => {
     
     // Update sharing persons
     if (sharingPersons) {
-      await SharingPerson.destroy({ where: { vehicleId: vehicle.id } });
-      if (sharingPersons.length > 0) {
-        await Promise.all(
-          sharingPersons.map(person =>
-            SharingPerson.create({
-              vehicleId: vehicle.id,
-              ...person
-            })
-          )
-        );
-      }
+      await persistVehicleSharingPersons(vehicle, sharingPersons);
+    } else if (costFields.some((field) => updates[field] !== undefined)) {
+      await refreshVehicleSharingPercentages(vehicle.id);
     }
     
     const updatedVehicle = await Vehicle.findByPk(vehicle.id, {
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' }
+        getSharingInclude()
       ]
     });
     
@@ -365,6 +538,7 @@ router.post('/:id/costs', async (req, res) => {
     });
 
     const totalCostPKR = await refreshVehicleTotalCost(req.params.id);
+    await refreshVehicleSharingPercentages(req.params.id);
 
     res.status(201).json({ cost, totalCostPKR });
   } catch (error) {
@@ -376,6 +550,7 @@ router.get('/:id/sharing', async (req, res) => {
   try {
     const sharing = await SharingPerson.findAll({
       where: { vehicleId: req.params.id },
+      include: [{ model: Customer, as: 'customer', required: false }],
       order: [['createdAt', 'ASC']]
     });
     res.json({ data: sharing });
@@ -386,16 +561,32 @@ router.get('/:id/sharing', async (req, res) => {
 
 router.post('/:id/sharing', async (req, res) => {
   try {
-    const { personName, percentage, investmentAmount, phoneNumber } = req.body;
-    const sharing = await SharingPerson.create({
-      vehicleId: req.params.id,
-      personName,
-      percentage,
-      investmentAmount,
-      phoneNumber,
-      isActive: true
+    const vehicle = await Vehicle.findByPk(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+
+    if (vehicle.isLocked) {
+      return res.status(403).json({ error: 'Vehicle is locked and cannot be updated' });
+    }
+
+    const existingSharing = await SharingPerson.findAll({
+      where: { vehicleId: req.params.id },
+      order: [['createdAt', 'ASC']],
     });
-    res.status(201).json(sharing);
+
+    await persistVehicleSharingPersons(
+      vehicle,
+      [...existingSharing.map((person) => person.get({ plain: true })), req.body]
+    );
+
+    const sharing = await SharingPerson.findAll({
+      where: { vehicleId: req.params.id },
+      include: [{ model: Customer, as: 'customer', required: false }],
+      order: [['createdAt', 'ASC']],
+    });
+
+    res.status(201).json({ data: sharing });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -406,7 +597,7 @@ router.get('/:id/pdf', async (req, res) => {
     const vehicle = await Vehicle.findByPk(req.params.id, {
       include: [
         { model: ReferencePerson, as: 'referencePerson' },
-        { model: SharingPerson, as: 'sharingPersons' }
+        getSharingInclude()
       ]
     });
     if (!vehicle) {

@@ -237,7 +237,7 @@ export default function EmployeesPage() {
           { id: 'role', label: 'Position' },
           { id: 'phoneNumber', label: 'Phone Number' },
           { id: 'email', label: 'Email' },
-          { id: 'monthlySalary', label: 'Salary', align: 'right', color: 'success.main', bold: true },
+          { id: 'monthlySalary', label: 'Salary (AFN)', align: 'right', color: 'success.main', bold: true, format: (v) => `${Number(v || 0).toLocaleString()} ؋` },
           { id: 'joiningDate', label: 'Join Date', format: (date) => date ? new Date(date).toLocaleDateString() : '-' },
           { id: 'status', label: 'Status' },
         ]}
@@ -377,7 +377,7 @@ export default function EmployeesPage() {
                 error={!!errors.monthlySalary}
                 helperText={errors.monthlySalary}
                 required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment>, endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">؋</InputAdornment>, endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

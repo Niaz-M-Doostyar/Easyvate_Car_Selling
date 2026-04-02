@@ -20,13 +20,16 @@ const REPORT_TYPES = [
   { value: 'financial', label: 'Financial Report', icon: <AccountBalance />, desc: 'Income, expenses, and showroom ledger' },
   { value: 'vehicles', label: 'Vehicle Inventory', icon: <DirectionsCar />, desc: 'Vehicle stock, status, and pipeline' },
   { value: 'profit-loss', label: 'Profit & Loss', icon: <BarChart />, desc: 'Revenue, costs, and net profit breakdown' },
-  { value: 'commission', label: 'Commission Report', icon: <MonetizationOn />, desc: 'Commission distribution by person' },
+  { value: 'commission', label: 'Partner Profit Report', icon: <MonetizationOn />, desc: 'Realized partner profit by person' },
+  { value: 'partnerships', label: 'Partnership Report', icon: <Groups />, desc: 'Active and sold vehicle partnerships' },
   { value: 'daily', label: 'Daily Summary', icon: <CalendarMonth />, desc: 'Daily snapshot of operations' },
   { value: 'monthly', label: 'Monthly Trends', icon: <TrendingUp />, desc: 'Monthly aggregated performance' },
   { value: 'yearly', label: 'Yearly Trends', icon: <Timeline />, desc: 'Year-over-year performance comparison' },
   { value: 'balance-breakdown', label: 'Balance Breakdown', icon: <Groups />, desc: 'Owner & shared persons balance' },
   { value: 'customer-transactions', label: 'Customer Ledger', icon: <People />, desc: 'Customer transaction history' },
 ];
+
+const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', 'Profit Share'];
 
 const PERIOD_OPTIONS = [
   { value: 'today', label: 'Today' },
@@ -162,7 +165,7 @@ export default function ReportsPage() {
       { label: 'Total Sales', value: summary.totalSales, color: theme.palette.primary.main, icon: <Receipt /> },
       { label: 'Revenue', value: formatCurrency(summary.totalRevenue), color: theme.palette.success.main, icon: <TrendingUp /> },
       { label: 'Total Profit', value: formatCurrency(summary.totalProfit), color: theme.palette.info.main, icon: <ShowChart /> },
-      { label: 'Commission Paid', value: formatCurrency(summary.totalCommission), color: theme.palette.warning.main, icon: <MonetizationOn /> },
+      { label: 'Partner Profit Shared', value: formatCurrency(summary.totalCommission), color: theme.palette.warning.main, icon: <MonetizationOn /> },
     ];
     return (
       <>
@@ -176,7 +179,7 @@ export default function ReportsPage() {
             { id: 'customer', label: 'Customer', format: (_, row) => row.customer?.fullName || row.customer?.name || '-' },
             { id: 'sellingPrice', label: 'Selling Price', format: (v) => formatCurrency(v), bold: true },
             { id: 'profit', label: 'Profit', format: (v) => <Typography variant="body2" color={Number(v) >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>{formatCurrency(v)}</Typography> },
-            { id: 'commission', label: 'Commission', format: (v) => formatCurrency(v) },
+            { id: 'commission', label: 'Partner Profit', format: (v) => formatCurrency(v) },
             { id: 'saleDate', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
           emptyMessage="No sales in selected period"
@@ -292,7 +295,7 @@ export default function ReportsPage() {
     );
   };
 
-  // ─── COMMISSION REPORT ─────────────────────────
+  // ─── PARTNER PROFIT REPORT ─────────────────────
   const renderCommissionReport = () => {
     if (!reportData) return null;
     const data = Array.isArray(reportData) ? reportData : [];
@@ -300,32 +303,35 @@ export default function ReportsPage() {
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} md={4}><SummaryCard label="Total Commission" value={formatCurrency(totalCommission)} color={theme.palette.warning.main} icon={<MonetizationOn />} theme={theme} /></Grid>
-          <Grid item xs={6} md={4}><SummaryCard label="Recipients" value={data.length} color={theme.palette.info.main} icon={<People />} theme={theme} /></Grid>
-          <Grid item xs={6} md={4}><SummaryCard label="Avg per Person" value={data.length > 0 ? formatCurrency(Math.round(totalCommission / data.length)) : '0'} color={theme.palette.primary.main} icon={<BarChart />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Partner Profit" value={formatCurrency(totalCommission)} color={theme.palette.warning.main} icon={<MonetizationOn />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Partners" value={data.length} color={theme.palette.info.main} icon={<People />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Avg per Partner" value={data.length > 0 ? formatCurrency(Math.round(totalCommission / data.length)) : '0'} color={theme.palette.primary.main} icon={<BarChart />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Capital" value={formatCurrency(data.reduce((s, d) => s + (d.totalInvestment || 0), 0))} color={theme.palette.success.main} icon={<AttachMoney />} theme={theme} /></Grid>
         </Grid>
         <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
           <CardContent>
-            <Typography variant="h6" fontWeight={700} gutterBottom>Commission by Person</Typography>
+            <Typography variant="h6" fontWeight={700} gutterBottom>Partner Profit by Person</Typography>
             <TableContainer sx={{ overflow: 'auto', maxHeight: '50vh' }}>
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell><b>Person</b></TableCell>
-                    <TableCell align="center"><b>Transactions</b></TableCell>
-                    <TableCell align="right"><b>Total Commission (AFN)</b></TableCell>
-                    <TableCell align="right"><b>Share %</b></TableCell>
+                    <TableCell><b>Partner</b></TableCell>
+                    <TableCell align="center"><b>Sold Vehicles</b></TableCell>
+                    <TableCell align="right"><b>Invested Capital</b></TableCell>
+                    <TableCell align="right"><b>Avg Share %</b></TableCell>
+                    <TableCell align="right"><b>Total Partner Profit</b></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {data.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} align="center"><Typography color="text.secondary" py={2}>No commission data</Typography></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} align="center"><Typography color="text.secondary" py={2}>No partner profit data</Typography></TableCell></TableRow>
                   ) : data.map((d) => (
-                    <TableRow key={d.personName}>
+                    <TableRow key={`${d.customerId || 'name'}-${d.personName}`}>
                       <TableCell sx={{ fontWeight: 600 }}>{d.personName}</TableCell>
-                      <TableCell align="center">{d.count}</TableCell>
+                      <TableCell align="center">{d.salesCount || d.count}</TableCell>
+                      <TableCell align="right">{formatCurrency(d.totalInvestment || 0)}</TableCell>
+                      <TableCell align="right">{Number(d.averageSharePercentage || 0).toFixed(2)}%</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>{formatCurrency(d.totalCommission)}</TableCell>
-                      <TableCell align="right">{totalCommission > 0 ? ((d.totalCommission / totalCommission) * 100).toFixed(1) : 0}%</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -333,6 +339,68 @@ export default function ReportsPage() {
             </TableContainer>
           </CardContent>
         </Card>
+      </>
+    );
+  };
+
+  const renderPartnershipReport = () => {
+    if (!summary || !reportData) return null;
+    const vehicles = Array.isArray(reportData.vehicles) ? reportData.vehicles : [];
+    const partners = Array.isArray(reportData.partners) ? reportData.partners : [];
+
+    return (
+      <>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={6} md={4}><SummaryCard label="Partnered Vehicles" value={summary.totalVehicles || 0} color={theme.palette.primary.main} icon={<DirectionsCar />} theme={theme} /></Grid>
+          <Grid item xs={6} md={4}><SummaryCard label="Open Vehicles" value={summary.activeVehicles || 0} color={theme.palette.info.main} icon={<Groups />} theme={theme} /></Grid>
+          <Grid item xs={6} md={4}><SummaryCard label="Sold Vehicles" value={summary.soldVehicles || 0} color={theme.palette.success.main} icon={<Receipt />} theme={theme} /></Grid>
+          <Grid item xs={6} md={6}><SummaryCard label="Partner Capital" value={formatCurrency(summary.totalPartnerInvestment || 0)} color={theme.palette.warning.main} icon={<AttachMoney />} theme={theme} /></Grid>
+          <Grid item xs={6} md={6}><SummaryCard label="Realized Partner Profit" value={formatCurrency(summary.totalRealizedPartnerProfit || 0)} color={theme.palette.secondary.main} icon={<MonetizationOn />} theme={theme} /></Grid>
+        </Grid>
+
+        <Card sx={{ mb: 3, border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>How partnership profit is calculated</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {summary.calculationNote}
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <EnhancedDataTable
+          title="Partner Summary"
+          data={partners}
+          loading={false}
+          columns={[
+            { id: 'personName', label: 'Partner', bold: true },
+            { id: 'activeVehicles', label: 'Open Vehicles', format: (v) => v || 0 },
+            { id: 'soldVehicles', label: 'Sold Vehicles', format: (v) => v || 0 },
+            { id: 'totalInvestment', label: 'Capital', format: (v) => formatCurrency(v) },
+            { id: 'averageSharePercentage', label: 'Avg Share %', format: (v) => `${Number(v || 0).toFixed(2)}%` },
+            { id: 'totalRealizedProfit', label: 'Realized Profit', format: (v) => formatCurrency(v), bold: true },
+          ]}
+          emptyMessage="No partnership data found"
+        />
+
+        <Box sx={{ mt: 3 }}>
+          <EnhancedDataTable
+            title="Vehicle Partnerships"
+            data={vehicles}
+            loading={false}
+            columns={[
+              { id: 'vehicleLabel', label: 'Vehicle', bold: true },
+              { id: 'status', label: 'Status', format: (v) => <Chip label={v} size="small" color={v === 'Sold' ? 'success' : 'info'} variant="outlined" />, exportFormat: (v) => v },
+              { id: 'partnerInvestmentTotal', label: 'Partner Capital', format: (v) => formatCurrency(v) },
+              { id: 'ownerInvestment', label: 'Owner Capital', format: (v) => formatCurrency(v) },
+              { id: 'partnerPercentageTotal', label: 'Partner %', format: (v) => `${Number(v || 0).toFixed(2)}%` },
+              { id: 'ownerPercentage', label: 'Owner %', format: (v) => `${Number(v || 0).toFixed(2)}%` },
+              { id: 'totalProfit', label: 'Sale Profit', format: (v) => v ? formatCurrency(v) : '-' },
+              { id: 'realizedPartnerProfit', label: 'Partner Profit', format: (v) => v ? formatCurrency(v) : '-' },
+              { id: 'partners', label: 'Partners', format: (v) => (Array.isArray(v) && v.length > 0 ? v.map((partner) => `${partner.personName} ${Number(partner.sharePercentage || 0).toFixed(2)}%`).join(', ') : '-') },
+            ]}
+            emptyMessage="No vehicle partnerships found"
+          />
+        </Box>
       </>
     );
   };
@@ -444,14 +512,14 @@ export default function ReportsPage() {
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} md={3}><SummaryCard label="Showroom Balance" value={formatCurrency(d.showroomBalance)} color={theme.palette.primary.main} icon={<AccountBalance />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Gross Showroom Balance" value={formatCurrency(d.showroomBalance)} color={theme.palette.primary.main} icon={<AccountBalance />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label="Owner Balance" value={formatCurrency(d.ownerBalance)} color={d.ownerBalance >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<AttachMoney />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label="Total Shared" value={formatCurrency(d.sharedTotal)} color={theme.palette.warning.main} icon={<Groups />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Partner Profit Total" value={formatCurrency(d.sharedTotal)} color={theme.palette.warning.main} icon={<Groups />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label="Partners" value={d.sharedPersons?.length || 0} color={theme.palette.info.main} icon={<People />} theme={theme} /></Grid>
         </Grid>
         <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
           <CardContent>
-            <Typography variant="h6" fontWeight={700} gutterBottom>Shared Persons Breakdown</Typography>
+            <Typography variant="h6" fontWeight={700} gutterBottom>Partner Profit Breakdown</Typography>
             <TableContainer sx={{ overflow: 'auto', maxHeight: '50vh' }}>
               <Table stickyHeader size="small">
                 <TableHead>
@@ -489,13 +557,13 @@ export default function ReportsPage() {
   const renderCustomerTransactions = () => {
     if (!reportData) return null;
     const data = Array.isArray(reportData) ? reportData : [];
-    const totalReceived = data.filter(t => ['Received', 'Sale', 'Installment'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
+    const totalReceived = data.filter(t => CREDIT_LEDGER_TYPES.includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
     const totalPaid = data.filter(t => ['Paid', 'Loan'].includes(t.type)).reduce((s, t) => s + Number(t.amountInPKR || 0), 0);
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} md={3}><SummaryCard label="Transactions" value={data.length} color={theme.palette.primary.main} icon={<Receipt />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label="Total Received" value={formatCurrency(totalReceived)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label="Total Credit" value={formatCurrency(totalReceived)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} color={theme.palette.error.main} icon={<TrendingDown />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label="Net" value={formatCurrency(totalReceived - totalPaid)} color={theme.palette.info.main} icon={<AccountBalance />} theme={theme} /></Grid>
         </Grid>
@@ -503,7 +571,7 @@ export default function ReportsPage() {
           title="Customer Transactions" data={data} loading={false}
           columns={[
             { id: 'customer', label: 'Customer', format: (v) => v?.fullName || v?.name || '-' },
-            { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={['Received', 'Sale', 'Installment'].includes(v) ? 'success' : 'warning'} variant="outlined" />, exportFormat: (v) => v },
+            { id: 'type', label: 'Type', format: (v) => <Chip label={v} size="small" color={CREDIT_LEDGER_TYPES.includes(v) ? 'success' : 'warning'} variant="outlined" />, exportFormat: (v) => v },
             { id: 'amount', label: 'Amount', format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
             { id: 'amountInPKR', label: 'Amount (AFN)', format: (v) => formatCurrency(v) },
             { id: 'purpose', label: 'Purpose', format: (v) => v || '-' },
@@ -533,6 +601,7 @@ export default function ReportsPage() {
       case 'vehicles': return renderVehicleReport();
       case 'profit-loss': return renderProfitLoss();
       case 'commission': return renderCommissionReport();
+      case 'partnerships': return renderPartnershipReport();
       case 'daily': return renderDailySummary();
       case 'monthly': return renderMonthlyReport();
       case 'yearly': return renderYearlyReport();

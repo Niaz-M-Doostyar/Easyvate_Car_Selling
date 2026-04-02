@@ -24,8 +24,21 @@ const Sale = sequelize.define('Sale', {
   },
   customerId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true  // Auto-created from buyer fields if not provided
   },
+
+  // ── Buyer Info (پیرودونکي) ─────────────────────
+  buyerName: { type: DataTypes.STRING(255) },
+  buyerFatherName: { type: DataTypes.STRING(255) },
+  buyerProvince: { type: DataTypes.STRING(100) },
+  buyerDistrict: { type: DataTypes.STRING(100) },
+  buyerVillage: { type: DataTypes.STRING(255) },
+  buyerAddress: { type: DataTypes.TEXT },
+  buyerIdNumber: { type: DataTypes.STRING(50) },
+  buyerPhone: { type: DataTypes.STRING(20) },
+
+  // ── Payment Currency ───────────────────────────
+  paymentCurrency: { type: DataTypes.STRING(10), defaultValue: 'AFN' },
 
   // ── Seller / Exchanger Info (رانبوونکي) ─────────
   sellerName: { type: DataTypes.STRING(255) },
@@ -115,6 +128,11 @@ const Sale = sequelize.define('Sale', {
   // ── Notes & Misc ───────────────────────────────
   notes: { type: DataTypes.TEXT },
   note2: { type: DataTypes.TEXT },
+  // Traditional bill metadata
+  officeNumber: { type: DataTypes.STRING(100) },
+  bookVolume: { type: DataTypes.STRING(100) },
+  pageNumber: { type: DataTypes.STRING(50) },
+  serialNumber: { type: DataTypes.STRING(100) },
   witnessName1: { type: DataTypes.STRING(255) },
   witnessName2: { type: DataTypes.STRING(255) },
   invoicePath: { type: DataTypes.STRING(255) },

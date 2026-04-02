@@ -70,6 +70,14 @@ const calculatePayroll = async (employeeId, month, year) => {
  * @returns {Object} - Created payroll record
  */
 const generatePayroll = async (employeeId, month, year, commission = 0, deductions = 0, notes = '', userId = null) => {
+  // Prevent future-month payroll generation
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  if (year > currentYear || (year === currentYear && month > currentMonth)) {
+    throw new Error(`Cannot generate payroll for a future month (${month}/${year})`);
+  }
+
   // Check if payroll already exists
   const existing = await Payroll.findOne({
     where: { employeeId, month, year }

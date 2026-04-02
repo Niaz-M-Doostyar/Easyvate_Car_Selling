@@ -3,9 +3,9 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
-  InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment,
+  InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment, Autocomplete,
 } from '@mui/material';
-import { Add, AccountBalance, TrendingUp, TrendingDown, MenuBook, Person, AttachMoney, CalendarToday, Description, FilterList, Edit } from '@mui/icons-material';
+import { Add, AccountBalance, TrendingUp, TrendingDown, MenuBook, Person, CalendarToday, Description, FilterList, Edit } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
@@ -13,7 +13,7 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 
 const ENTRY_TYPES = [
   'Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale',
-  'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission',
+  'Salary', 'Loan Given', 'Loan Received', 'Commission',
 ];
 const INCOME_TYPES = ['Income', 'Vehicle Sale', 'Loan Received'];
 const EXPENSE_TYPES = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
@@ -22,7 +22,7 @@ export default function ShowroomLedgerPage() {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const [entries, setEntries] = useState([]);
-  const [balance, setBalance] = useState({ income: 0, expenses: 0, balance: 0, ownerBalance: 0 });
+  const [balance, setBalance] = useState({ income: 0, expenses: 0, balance: 0, showroomBalance: 0, ownerBalance: 0, sharedTotal: 0 });
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -30,8 +30,9 @@ export default function ShowroomLedgerPage() {
   const [formData, setFormData] = useState({
     type: 'Income', personName: '', amount: '', currency: 'AFN', date: new Date().toISOString().split('T')[0], description: '',
   });
+  const [customers, setCustomers] = useState([]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchCustomers(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -41,12 +42,19 @@ export default function ShowroomLedgerPage() {
         apiClient.get('/ledger/showroom/balance'),
       ]);
       setEntries(entryRes.data.data || []);
-      setBalance(balRes.data || { income: 0, expenses: 0, balance: 0, ownerBalance: 0 });
+      setBalance(balRes.data || { income: 0, expenses: 0, balance: 0, showroomBalance: 0, ownerBalance: 0, sharedTotal: 0 });
     } catch {
       enqueueSnackbar('Failed to fetch showroom ledger', { variant: 'error' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* non-critical */ }
   };
 
   const filteredEntries = useMemo(() => {
@@ -119,7 +127,7 @@ export default function ShowroomLedgerPage() {
   const summaryCards = [
     { label: 'Total Income', value: formatCurrency(balance.income), color: theme.palette.success.main, icon: <TrendingUp /> },
     { label: 'Total Expenses', value: formatCurrency(balance.expenses), color: theme.palette.error.main, icon: <TrendingDown /> },
-    { label: 'Net Balance', value: formatCurrency(balance.balance), color: theme.palette.primary.main, icon: <AccountBalance /> },
+    { label: 'Showroom Balance', value: formatCurrency(balance.showroomBalance ?? balance.balance), color: theme.palette.primary.main, icon: <AccountBalance /> },
     { label: 'Owner Balance', value: formatCurrency(balance.ownerBalance), color: theme.palette.info.main, icon: <AccountBalance /> },
   ];
 
@@ -226,7 +234,6 @@ export default function ShowroomLedgerPage() {
                   <MenuItem value="Vehicle Purchase">🚗 Vehicle Purchase</MenuItem>
                   <MenuItem value="Vehicle Sale">💰 Vehicle Sale</MenuItem>
                   <MenuItem value="Salary">💼 Salary</MenuItem>
-                  <MenuItem value="Currency Exchange">💱 Currency Exchange</MenuItem>
                   <MenuItem value="Loan Given">🟡 Loan Given</MenuItem>
                   <MenuItem value="Loan Received">🟣 Loan Received</MenuItem>
                   <MenuItem value="Commission">🟠 Commission</MenuItem>
@@ -234,15 +241,24 @@ export default function ShowroomLedgerPage() {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Person Name (optional)" placeholder="e.g. Ahmad Khan" value={formData.personName}
-                onChange={(e) => setFormData({ ...formData, personName: e.target.value })}
-                InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+              <Autocomplete
+                freeSolo
+                options={customers}
+                getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt.fullName || '')}
+                value={formData.personName || ''}
+                onChange={(_, val) => setFormData({ ...formData, personName: typeof val === 'string' ? val : (val?.fullName || '') })}
+                onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, personName: val }); }}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth label="Person Name (optional)" placeholder="Search or type..."
+                    InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={6}>
               <TextField fullWidth label="Amount" type="number" placeholder="0" value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.currency)}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={6}>

@@ -69,6 +69,13 @@ export default function PayrollPage() {
       enqueueSnackbar('Select an employee', { variant: 'warning' });
       return;
     }
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (genForm.year > currentYear || (genForm.year === currentYear && genForm.month > currentMonth)) {
+      enqueueSnackbar('Cannot generate payroll for future months', { variant: 'error' });
+      return;
+    }
     try {
       await apiClient.post('/payroll/generate', {
         employeeId: parseInt(genForm.employeeId),
@@ -88,6 +95,13 @@ export default function PayrollPage() {
   };
 
   const handleGenerateBulk = async () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (filter.year > currentYear || (filter.year === currentYear && filter.month > currentMonth)) {
+      enqueueSnackbar('Cannot generate payroll for future months', { variant: 'error' });
+      return;
+    }
     try {
       await apiClient.post('/payroll/generate-bulk', { month: filter.month, year: filter.year });
       enqueueSnackbar('Bulk payroll generated', { variant: 'success' });
@@ -143,11 +157,11 @@ export default function PayrollPage() {
     { id: 'Employee', label: 'Employee', format: (v) => v?.fullName || '-', exportFormat: (v) => v?.fullName || '-', bold: true },
     { id: 'month', label: 'Month', format: (v) => MONTHS[v - 1] || v },
     { id: 'year', label: 'Year' },
-    { id: 'calculatedSalary', label: 'Base Salary', format: (v) => `${Number(v || 0).toLocaleString()}`, hiddenOnMobile: true },
-    { id: 'commission', label: 'Commission', format: (v) => `${Number(v || 0).toLocaleString()}`, hiddenOnMobile: true },
-    { id: 'deductions', label: 'Deductions', format: (v) => `${Number(v || 0).toLocaleString()}`, hiddenOnMobile: true },
+    { id: 'calculatedSalary', label: 'Base Salary', format: (v) => `${Number(v || 0).toLocaleString()} ؋`, hiddenOnMobile: true },
+    { id: 'commission', label: 'Commission', format: (v) => `${Number(v || 0).toLocaleString()} ؋`, hiddenOnMobile: true },
+    { id: 'deductions', label: 'Deductions', format: (v) => `${Number(v || 0).toLocaleString()} ؋`, hiddenOnMobile: true },
     { id: 'totalAmount', label: 'Total', format: (v) => formatCurrency(v || 0), bold: true },
-    { id: 'paidAmount', label: 'Paid', format: (v) => `${Number(v || 0).toLocaleString()}` },
+    { id: 'paidAmount', label: 'Paid', format: (v) => `${Number(v || 0).toLocaleString()} ؋` },
     {
       id: 'status', label: 'Status',
       format: (v) => <Chip label={v} size="small" color={statusColor[v] || 'default'} />,

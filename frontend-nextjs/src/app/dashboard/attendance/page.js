@@ -95,8 +95,13 @@ export default function AttendancePage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.employeeId || !formData.presentDays) {
+    if (!formData.employeeId || formData.presentDays === '') {
       enqueueSnackbar('Employee and present days are required', { variant: 'warning' });
+      return;
+    }
+    const totalDays = new Date(formData.year, formData.month, 0).getDate();
+    if (parseInt(formData.presentDays) + parseInt(formData.absentDays || 0) > totalDays) {
+      enqueueSnackbar(`Total days cannot exceed ${totalDays} for this month`, { variant: 'error' });
       return;
     }
     try {
@@ -274,25 +279,34 @@ export default function AttendancePage() {
                 type="number"
                 placeholder="e.g. 25"
                 value={formData.presentDays}
-                onChange={(e) => setFormData({ ...formData, presentDays: e.target.value })}
+                onChange={(e) => {
+                  const totalDays = new Date(formData.year, formData.month, 0).getDate();
+                  const present = Math.min(Math.max(parseInt(e.target.value) || 0, 0), totalDays);
+                  setFormData({ ...formData, presentDays: present, absentDays: totalDays - present });
+                }}
                 required
+                helperText={`Total days in ${new Date(formData.year, formData.month - 1).toLocaleString('default', { month: 'long' })}: ${new Date(formData.year, formData.month, 0).getDate()}`}
                 InputProps={{
                   startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="success" /></InputAdornment>,
-                  inputProps: { min: 0, max: 31 },
+                  inputProps: { min: 0, max: new Date(formData.year, formData.month, 0).getDate() },
                 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Absent Days"
+                label="Absent Days (auto-calculated)"
                 type="number"
-                placeholder="e.g. 5"
                 value={formData.absentDays}
-                onChange={(e) => setFormData({ ...formData, absentDays: e.target.value })}
+                onChange={(e) => {
+                  const totalDays = new Date(formData.year, formData.month, 0).getDate();
+                  const absent = Math.min(Math.max(parseInt(e.target.value) || 0, 0), totalDays);
+                  setFormData({ ...formData, absentDays: absent, presentDays: totalDays - absent });
+                }}
+                helperText="Auto-fills when you enter Present Days"
                 InputProps={{
                   startAdornment: <InputAdornment position="start"><EventNote fontSize="small" color="error" /></InputAdornment>,
-                  inputProps: { min: 0, max: 31 },
+                  inputProps: { min: 0, max: new Date(formData.year, formData.month, 0).getDate() },
                 }}
               />
             </Grid>

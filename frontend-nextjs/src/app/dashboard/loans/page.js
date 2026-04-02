@@ -3,9 +3,9 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
-  InputLabel, Select, MenuItem, Chip, useTheme, alpha, IconButton, Tooltip, InputAdornment,
+  InputLabel, Select, MenuItem, Chip, useTheme, alpha, IconButton, Tooltip, InputAdornment, Autocomplete,
 } from '@mui/material';
-import { Add, CheckCircle, AccountBalanceWallet, Person, AttachMoney, CalendarToday, Notes } from '@mui/icons-material';
+import { Add, CheckCircle, AccountBalanceWallet, Person, CalendarToday, Notes } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
@@ -25,8 +25,9 @@ export default function LoansPage() {
   const [formData, setFormData] = useState({
     personName: '', amount: '', currency: 'AFN', borrowDate: new Date().toISOString().split('T')[0], type: 'Lent', notes: '',
   });
+  const [customers, setCustomers] = useState([]);
 
-  useEffect(() => { fetchLoans(); }, []);
+  useEffect(() => { fetchLoans(); fetchCustomers(); }, []);
 
   const fetchLoans = async () => {
     setLoading(true);
@@ -40,6 +41,13 @@ export default function LoansPage() {
     }
   };
 
+  const fetchCustomers = async () => {
+    try {
+      const res = await apiClient.get('/customers');
+      setCustomers(res.data.data || []);
+    } catch { /* non-critical */ }
+  };
+
   const filteredLoans = useMemo(() => {
     let result = [...loans];
     if (filter.status) result = result.filter((l) => l.status === filter.status);
@@ -48,8 +56,9 @@ export default function LoansPage() {
   }, [loans, filter]);
 
   const summary = useMemo(() => {
-    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
-    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amount || 0), 0);
+    // Use amountInPKR (AFN equivalent) for consistent currency display
+    const given = loans.filter((l) => l.type === 'Lent' && l.status === 'Open').reduce((s, l) => s + Number(l.amountInPKR || l.amount || 0), 0);
+    const received = loans.filter((l) => (l.type === 'Borrowed' || l.type === 'Owner Loan') && l.status === 'Open').reduce((s, l) => s + Number(l.amountInPKR || l.amount || 0), 0);
     return { given, received, total: loans.length, open: loans.filter((l) => l.status === 'Open').length };
   }, [loans]);
 
@@ -223,14 +232,18 @@ export default function LoansPage() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Person Name"
-                placeholder="e.g. Ahmad Khan"
-                value={formData.personName}
-                onChange={(e) => setFormData({ ...formData, personName: e.target.value })}
-                required
-                InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+              <Autocomplete
+                freeSolo
+                options={customers}
+                getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt.fullName || '')}
+                value={formData.personName || ''}
+                onChange={(_, val) => setFormData({ ...formData, personName: typeof val === 'string' ? val : (val?.fullName || '') })}
+                onInputChange={(_, val, reason) => { if (reason === 'input') setFormData({ ...formData, personName: val }); }}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth label="Person Name" placeholder="Search customer..." required
+                    InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={6}>
@@ -242,7 +255,7 @@ export default function LoansPage() {
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.currency)}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={6}>

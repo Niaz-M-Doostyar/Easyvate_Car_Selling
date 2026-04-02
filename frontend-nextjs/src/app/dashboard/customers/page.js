@@ -15,20 +15,22 @@ import {
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import { validateEmail, validatePhone, validateRequired, validateNationalId } from '@/utils/validation';
+import { getCurrencySymbol } from '@/utils/currency';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
 const CUSTOMER_TYPES = [
   { value: 'Buyer', label: '🛒 Buyer', color: 'primary' },
   { value: 'Investor', label: '💰 Investor', color: 'success' },
-  { value: 'Capital Provider', label: '🏦 Capital Provider', color: 'info' },
   { value: 'Borrower', label: '📋 Borrower', color: 'warning' },
 ];
+
+const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', 'Profit Share'];
 
 const LEDGER_TYPES = [
   { value: 'Received', label: '💵 Received (Credit)' },
   { value: 'Paid', label: '💸 Paid (Debit)' },
-  { value: 'Sale', label: '🚗 Sale' },
   { value: 'Investment', label: '💰 Investment' },
+  { value: 'Profit Share', label: '🤝 Partner Profit Share' },
   { value: 'Loan', label: '📋 Loan' },
   { value: 'Loan Payment', label: '💳 Loan Payment' },
   { value: 'Installment', label: '📅 Installment Payment' },
@@ -273,7 +275,6 @@ export default function CustomersPage() {
         ]}
         data={filteredCustomers}
         onEdit={handleEdit}
-        onDelete={handleDelete}
         loading={loading}
         emptyMessage={searchTerm || typeFilter ? 'No customers match your filters.' : 'No customers yet. Add your first customer!'}
       />
@@ -471,15 +472,15 @@ export default function CustomersPage() {
                   <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.error.main, 0.08), border: `1px solid ${alpha(theme.palette.error.main, 0.2)}` }}>
                     <Typography variant="caption" color="text.secondary">Total Owed (Sales + Loans)</Typography>
                     <Typography variant="h6" fontWeight={700} color="error.main">
-                      {ledgerEntries.filter((e) => ['Sale', 'Loan'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0).toLocaleString()} ؋
+                      {ledgerEntries.filter((e) => ['Sale', 'Loan'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInPKR || e.amount) || 0), 0).toLocaleString()} ؋
                     </Typography>
                   </Card>
                 </Grid>
                 <Grid item xs={4}>
                   <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.08), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
-                    <Typography variant="caption" color="text.secondary">Total Received (Payments)</Typography>
+                    <Typography variant="caption" color="text.secondary">Total Credit (Payments + Profit)</Typography>
                     <Typography variant="h6" fontWeight={700} color="success.main">
-                      {ledgerEntries.filter((e) => ['Received', 'Installment', 'Loan Payment', 'Investment'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0).toLocaleString()} ؋
+                      {ledgerEntries.filter((e) => CREDIT_LEDGER_TYPES.includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInPKR || e.amount) || 0), 0).toLocaleString()} ؋
                     </Typography>
                   </Card>
                 </Grid>
@@ -515,7 +516,7 @@ export default function CustomersPage() {
                     {ledgerEntries.length === 0 ? (
                       <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}>No ledger entries yet</TableCell></TableRow>
                     ) : ledgerEntries.map((entry) => {
-                      const isCredit = ['Received', 'Installment', 'Loan Payment', 'Investment'].includes(entry.type);
+                      const isCredit = CREDIT_LEDGER_TYPES.includes(entry.type);
                       return (
                         <TableRow key={entry.id}>
                           <TableCell>{entry.date ? new Date(entry.date).toLocaleDateString() : '-'}</TableCell>
@@ -625,7 +626,7 @@ export default function CustomersPage() {
             <Grid item xs={8}>
               <TextField fullWidth label="Amount" type="number" placeholder="0" value={ledgerForm.amount}
                 onChange={(e) => setLedgerForm({ ...ledgerForm, amount: e.target.value })} required
-                InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }}
+                InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(ledgerForm.currency)}</InputAdornment> }}
               />
             </Grid>
             <Grid item xs={4}>

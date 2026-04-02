@@ -46,19 +46,11 @@ const config = {
   HOST: preset.HOST,
 
   DB: {
-<<<<<<< HEAD
-    HOST: process.env.DB_HOST || 'localhost',
-    PORT: parseInt(process.env.DB_PORT || '3306', 10),
-    USER: process.env.DB_USER || 'root',
-    PASSWORD: process.env.DB_PASSWORD || '',
-    DATABASE: process.env.DB_NAME || 'easyvate_cars',
-=======
     HOST: preset.DB.HOST,
     PORT: preset.DB.PORT,
     USER: preset.DB.USER,
     PASSWORD: preset.DB.PASSWORD,
     DATABASE: preset.DB.DATABASE,
->>>>>>> a9e6e0a1c52d76eece87385461329215c7ad45ae
     DIALECT: 'mysql',
     POOL: {
       max: 10,

@@ -16,7 +16,7 @@ const CustomerLedger = sequelize.define('CustomerLedger', {
     }
   },
   type: {
-    type: DataTypes.ENUM('Received', 'Paid', 'Sale', 'Investment', 'Loan', 'Loan Payment', 'Installment'),
+    type: DataTypes.ENUM('Received', 'Paid', 'Sale', 'Investment', 'Loan', 'Loan Payment', 'Installment', 'Profit Share'),
     allowNull: false
   },
   amount: {

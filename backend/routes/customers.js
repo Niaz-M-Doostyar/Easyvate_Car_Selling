@@ -4,6 +4,7 @@ const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
 const Sale = require('../models/Sale');
 const { toAFN } = require('../src/services/exchangeRate');
+const { CREDIT_LEDGER_TYPES } = require('../src/services/partnership');
 
 // Get all customers
 router.get('/', async (req, res) => {
@@ -77,9 +78,8 @@ router.post('/:id/ledger', async (req, res) => {
     });
 
     const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
-    // Credit types increase balance (customer paid us), Debit types decrease balance (customer owes us)
-    const creditTypes = ['Received', 'Installment', 'Loan Payment', 'Investment'];
-    const signedAmount = creditTypes.includes(type) ? Number(amount) : -Number(amount);
+    const amountAFN = await toAFN(amount, currency || 'AFN');
+    const signedAmount = CREDIT_LEDGER_TYPES.includes(type) ? Number(amountAFN) : -Number(amountAFN);
     const newBalance = prevBalance + signedAmount;
 
     const entry = await CustomerLedger.create({
@@ -87,7 +87,7 @@ router.post('/:id/ledger', async (req, res) => {
       type,
       amount,
       currency: currency || 'AFN',
-      amountInPKR: await toAFN(amount, currency || 'AFN'),
+      amountInPKR: amountAFN,
       purpose,
       date: date || new Date(),
       balance: newBalance,
@@ -101,7 +101,7 @@ router.post('/:id/ledger', async (req, res) => {
     if (saleId && (type === 'Installment' || type === 'Received')) {
       const sale = await Sale.findByPk(saleId);
       if (sale && sale.paymentStatus !== 'Paid') {
-        const payAmt = Number(amount);
+        const payAmt = Number(amountAFN);
         const newPaid = Number(sale.paidAmount || 0) + payAmt;
         const newRemaining = Math.max(Number(sale.remainingAmount || 0) - payAmt, 0);
         await sale.update({
