@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { AboutEnglish, AboutPashto, AboutDari } = require('../models');
 const { AboutLogoEnglish, AboutLogoPashto, AboutLogoDari } = require('../models');
+const { optimizeUploadedImages } = require('../src/services/imageOptimization');
 
 // Create upload directories if they don't exist
 const uploadDir = path.join(__dirname, '..', 'uploads', 'about');
@@ -144,7 +145,9 @@ router.post('/:lang/logos', (req, res) => {
         return res.status(400).json({ error: 'No files uploaded' });
       }
 
-      const logoRecords = await Promise.all(files.map(async (file, index) => {
+      const optimizedFiles = await optimizeUploadedImages(files, { maxWidth: 1600, quality: 72 });
+
+      const logoRecords = await Promise.all(optimizedFiles.map(async (file, index) => {
         const imageUrl = `/uploads/about-logos/${file.filename}`;
         return LogoModel.create({
           aboutId: about.id,

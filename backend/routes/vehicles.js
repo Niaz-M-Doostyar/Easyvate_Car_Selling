@@ -14,6 +14,7 @@ const { verifyToken } = require('../src/middleware/auth');
 const { checkPermission } = require('../src/middleware/permissions');
 const { toAFN } = require('../src/services/exchangeRate');
 const { normalizeSharingPersons } = require('../src/services/partnership');
+const { optimizeUploadedImages } = require('../src/services/imageOptimization');
 const multer = require('multer');
 const fs = require('fs');
 const VehicleImage = require('../models/VehicleImage');
@@ -658,8 +659,10 @@ router.post('/:id/images', (req, res, next) => {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    const optimizedFiles = await optimizeUploadedImages(files, { maxWidth: 1600, quality: 72 });
+
     // Save each image record to database
-    const imageRecords = await Promise.all(files.map(async (file, index) => {
+    const imageRecords = await Promise.all(optimizedFiles.map(async (file, index) => {
       // Public URL path (adjust if your static serving is different)
       const imageUrl = `/uploads/vehicle-images/${file.filename}`;
       return VehicleImage.create({

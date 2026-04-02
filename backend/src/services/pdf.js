@@ -899,11 +899,18 @@ var generateVehiclePdf = function(vehicle, outputDir) {
 };
 
 // If available, prefer the Puppeteer-based HTML->PDF invoice generator for sale invoices
+// You can opt out of Puppeteer (e.g. when Chromium isn't available or hangs) by
+// setting the environment variable `USE_PUPPETEER=0`. In that case the pdfkit
+// generators (synchronous, no headless browser) will be used.
 try {
-  const puppeteerGen = require('./pdf_puppeteer');
-  if (puppeteerGen && puppeteerGen.generateSaleInvoicePdf) {
-    generateSaleInvoicePdf = puppeteerGen.generateSaleInvoicePdf;
-    console.info('[pdf] Using Puppeteer HTML->PDF generator for sale invoices');
+  if (process.env.USE_PUPPETEER !== '0') {
+    const puppeteerGen = require('./pdf_puppeteer');
+    if (puppeteerGen && puppeteerGen.generateSaleInvoicePdf) {
+      generateSaleInvoicePdf = puppeteerGen.generateSaleInvoicePdf;
+      console.info('[pdf] Using Puppeteer HTML->PDF generator for sale invoices');
+    }
+  } else {
+    console.info('[pdf] USE_PUPPETEER=0 detected — skipping Puppeteer, using pdfkit fallback for sale invoices');
   }
 } catch (e) {
   console.warn('[pdf] Puppeteer-based generator not available, falling back to pdfkit:', e && e.message ? e.message : e);

@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Carousel = require('../models/Carousel');
+const { optimizeUploadedImage } = require('../src/services/imageOptimization');
 
 // Setup upload directory
 const uploadDir = path.join(__dirname, '..', 'uploads', 'carousel-images');
@@ -65,7 +66,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', upload.single('image'), async (req, res) => {
   try {
     const { title, model, price, order } = req.body;
-    const imagePath = req.file ? `/uploads/carousel-images/${req.file.filename}` : null;
+    const imageFile = req.file ? await optimizeUploadedImage(req.file, { maxWidth: 1800, quality: 72 }) : null;
+    const imagePath = imageFile ? `/uploads/carousel-images/${imageFile.filename}` : null;
 
     const newItem = await Carousel.create({
       title,
@@ -97,12 +99,13 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 
     // If a new image was uploaded, replace the old one
     if (req.file) {
+      const imageFile = await optimizeUploadedImage(req.file, { maxWidth: 1800, quality: 72 });
       // Delete old image file if exists
       if (item.image) {
         const oldPath = path.join(__dirname, '..', item.image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      updateData.image = `/uploads/carousel-images/${req.file.filename}`;
+      updateData.image = `/uploads/carousel-images/${imageFile.filename}`;
     }
 
     await item.update(updateData);

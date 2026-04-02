@@ -67,6 +67,79 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
   const accentBg = types[typeKey] ? types[typeKey].accent : '#f5f5f5';
   const accentColor = types[typeKey] ? types[typeKey].color : '#1565c0';
 
+  const buildTermsSection = ({ title, summary, intro, items }) => `
+    <div class="terms-card">
+      <div class="section-title">شرطونه او تعهدات</div>
+      <div class="terms-heading">${title}</div>
+      <div class="terms-summary">${summary}</div>
+      <p class="terms-intro">${intro}</p>
+      <ol class="terms-list">
+        ${items.map((item) => `<li>${item}</li>`).join('')}
+      </ol>
+      <div class="terms-note">نوټ: ......................................................................................................................</div>
+    </div>
+  `;
+
+  // Custom Pashto terms/clauses per bill type (user-provided text)
+  const customTermsHtml = (() => {
+    if (typeKey === 'Exchange Car') {
+      return buildTermsSection({
+        title: 'د ماچه موټرانو بیل',
+        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر، سند، قیمت',
+        intro: 'شرعی اقرار کوم چی دوي عراده موثران سره متبدله به طور سره ................................. نمایی افغانی ...................... و(            ) ته ورکړي.',
+        items: [
+          'موتر تیر ترافيکي پيښي مسؤليت د غلا ضمانت او پور له دغه تاریخ (    /     /      ) په متبادله کوونکی اړه لري.',
+          'د متبادله کوونکي په رضایت سودا صورت ونیو.',
+          'موتران بعد له ترائي څخه يو او بل ته فعال سره تسلیم شوه.',
+          'باید طرفین یو د بله ضمانت سره واخلي ځکه پلورنځې د دوی په پیژند گلوی په هکله مسؤليت نه لري. د موټر پلورنځی دفتر د هیچا ضمانت نه کوی.',
+          'د رهنما کمیشن د تجارت د قانون سره سم ۲ فیصده اخیستل کیږی د معاملی د فسخی په صورت کی کمیشن نه مسترد کيږي.',
+          'د بیت المال د موترانو د خرید او فروش څخه جداً معذرت غوارو.',
+        ],
+      });
+    }
+
+    if (typeKey === 'Container One Key') {
+      return buildTermsSection({
+        title: 'د کانټینري موټرانو بیل',
+        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر',
+        intro: 'شرعی اقرار کوم چې ذکر سوي موټر قیمت ................................. افغاني چې نیمايې يې ...................... افغانی کیږي په لاندي شرايطو خرڅ کړه:',
+        items: [
+          'د ذكر سوي موټر د ترافیکی پیښي مسؤلیت تر دغه نبتي (    /     /      ) پوری د خرڅوونکي په غاړه دي تر دغه نیتی (    /     /    ) وروسته بي مسولیت درانیوونکي په غاړه دي.',
+          'ذکر شوي موټر كوم قانوني اسناد نه لري فقط يوه کيلي ده.',
+          'موتر چی مکمل چیک او ترایی سو تر خط ليکلو وروسته رانیوونکی د شکایت حق نه لري.',
+          'د ذکر سوي موټر د غلا مسؤليت په خرڅوونکي پوري اړه لري.',
+          'رانیوونکي او خرځوونکي دي يو د بله ضمانت سره و اخلي ځکه پلورنځې د هیچا ضمانت حق نه لري. پلورنځي فقط د شاهد په حيث خط ورته ليکي.',
+          'د پښیمانی په صورت کې د شورم کمیشن نه مسترد کيږي.',
+          'در هنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چي د يو فیصد د رانیونکی څخه او يو فیصد د خرڅوونکي څخه.',
+        ],
+      });
+    }
+
+    if (typeKey === 'Licensed Car') {
+      return buildTermsSection({
+        title: 'د اسناد داره موټرانو بیل',
+        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر، جواز سیر، نمبر پلیټ',
+        intro: 'شرعی اقرار کوم چې ذکر سوي موټر قیمت ................................. افغاني چې نیمايې يې ...................... افغاني کیږي په لاندې شرایطو خرڅ کړه:',
+        items: [
+          'د موټر د اسنادو او قبالي په نوم کولو مصرف په رانیونکي پورې اړه لري.',
+          'د ذکر سوي موټر د ترافیکی پیښي مسؤلیت تر دغه نبتي (    /     /      ) پوری د خرڅوونکي په غاړه دي تر دغه نیتی (    /     /    ) وروسته بي مسولیت درانیوونکي په غاړه دي.',
+          'معامله په رضایت د جانیبینو صورت ونیوی او رانیونکي موټر ټول چیک او ټرایی کړی، د اسنادو سره تسلیم سو. جانیبینو قناعت کړي دي چې بعداَ دعوا یې د اعتبار وړ نده.',
+          'د موټر پلورنځي سند درې نقله لیکل کیږي چې یو نقل یی خرڅوونکې ته دوم نقل یی رانیوونکې ته او دریم نقل یی خپله همدلته دفتر کی قیدیږي.',
+          'رانیوونکي او خرځوونکي دي يو د بله ضمانت سره و اخلي ځکه پلورنځې د هیچا ضمانت حق نه لري. پلورنځي فقط د شاهد په حيث خط ورته ليکي.',
+          'درهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چي د يو فیصد د رانیونکی څخه او يو فیصد د خرڅوونکي څخه اخیستل کیږي. د پښیمانې په صورت کې د شوروم کمیشن نه مسترد کیږي.',
+          'د بیت المال د موټرانو د خرید او فروش څخه معذرت غواړو.',
+        ],
+      });
+    }
+
+    return buildTermsSection({
+      title: safeText(sale.saleType || 'بل'),
+      summary: 'معامله د دواړو لورو په رضایت ثبت شوه.',
+      intro: 'دا سند د پلور د ثبت او تسلیمۍ لپاره ترتیب شوی دی.',
+      items: ['ټول معلومات د دواړو لورو د تایید وروسته درج شوي دي.'],
+    });
+  })();
+
   // Build HTML with all fields
   return `<!doctype html>
   <html lang="ps">
@@ -74,43 +147,54 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      :root{ --primary:#0d1b2a; --gold:#c8963e; --lightGold:#f5e6c8; --grayText:#5a5a7a; }
+      :root{ --primary:#0f172a; --gold:#c8963e; --lightGold:#fbf5ea; --grayText:#5b6474; --border:#e2e8f0; --panel:#f8fafc; --shadow:0 10px 30px rgba(15,23,42,0.08); }
       @page { size: A4; margin: 0mm; }
       @font-face{ font-family: 'BahijNazaninLocal'; src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype'); font-weight: normal; font-style: normal; }
       html,body{height:100%; margin:0; padding:0;}
-      body{ font-family:'BahijNazaninLocal', 'Noto Naskh Arabic', serif; direction:rtl; unicode-bidi:embed; background:#fff; color:var(--primary); padding:0; }
-      .page{ width:210mm; height:297mm; max-width:210mm; margin:0 auto; padding:0mm; box-sizing:border-box; overflow:hidden; }
-      .header{ background:var(--primary); color:#fff; padding:10px 14px; position:relative; border-radius:4px; }
-      .company{ font-size:15px; font-weight:800; text-align:center; }
-      .subtitle{ font-size:10px; color:#ddd; text-align:center; margin-top:4px; }
-      .address{ font-size:9px; color:var(--gold); text-align:center; margin-top:6px; }
-      .sil{ position:absolute; top:12px; width:70px; height:38px; fill:var(--gold); }
+      body{ font-family:'BahijNazaninLocal', 'Noto Naskh Arabic', serif; direction:rtl; unicode-bidi:embed; background:#fff; color:var(--primary); }
+      .page{ width:210mm; height:297mm; max-width:210mm; margin:0 auto; padding:8mm 9mm 7mm; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
+      .header{ background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color:#fff; padding:10px 14px; position:relative; border-radius:14px; box-shadow:var(--shadow); }
+      .company{ font-size:17px; font-weight:800; text-align:center; letter-spacing:.2px; }
+      .subtitle{ font-size:10px; color:#dbe4f1; text-align:center; margin-top:2px; }
+      .address{ font-size:8.5px; color:#f6dba9; text-align:center; margin-top:5px; }
+      .sil{ position:absolute; top:12px; width:52px; height:28px; fill:rgba(245, 219, 169, 0.85); }
       .sil.right{ right:12px; transform:scaleX(-1); }
       .sil.left{ left:12px; }
-      .bill-banner{ margin-top:12px; display:block; background:${accentBg}; border-radius:6px; padding:8px 10px; position:relative; }
-      .bill-banner .label{ color:${accentColor}; font-weight:800; font-size:13px; text-align:center; }
-      .meta{ display:flex; justify-content:space-between; margin-top:10px; font-size:10px; color:var(--grayText); }
-      .section{ margin-top:12px; }
-      .cols{ display:flex; gap:10px; }
+      .bill-banner{ margin-top:2px; display:inline-block; background:${accentBg}; border:1px solid rgba(15,23,42,0.08); border-radius:999px; padding:6px 12px; position:relative; align-self:flex-start; }
+      .bill-banner .label{ color:${accentColor}; font-weight:800; font-size:12px; text-align:center; }
+      .meta{ display:flex; justify-content:space-between; gap:8px; margin-top:2px; font-size:9px; color:var(--grayText); }
+      .meta-pill{ flex:1; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:6px 10px; }
+      .section{ margin-top:2px; }
+      .section-title{ font-size:10px; font-weight:800; color:var(--primary); margin-bottom:6px; }
+      .cols{ display:flex; gap:8px; }
       .col{ flex:1; }
-      .row-card{ border:1px solid #eee; padding:8px; background:#fff; margin-bottom:8px; border-radius:4px; }
+      .row-card{ border:1px solid var(--border); padding:8px 10px; background:var(--panel); margin-bottom:0; border-radius:12px; box-shadow:0 2px 10px rgba(15,23,42,0.03); }
       .row-card .lbl{ font-size:9px; color:var(--grayText); text-align:right; }
-      .row-card .val{ font-size:11px; color:var(--primary); font-weight:700; text-align:right; }
-      .specs table{ width:100%; border-collapse:collapse; }
-      .specs td{ border:1px solid #f0f0f0; padding:8px; font-size:10px; text-align:right; }
-      .price-badge{ margin-top:10px; background:var(--lightGold); border:1px solid var(--gold); padding:10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
-      .price-badge .label{ font-size:12px; color:var(--grayText); }
-      .price-badge .amount{ font-size:16px; font-weight:800; color:var(--primary); }
-      .terms{ margin-top:12px; font-size:10px; color:var(--primary); }
-      .signs{ display:flex; gap:10px; margin-top:14px; }
-      .sig{ flex:1; border:1px dashed #ddd; height:66px; display:flex; align-items:flex-end; justify-content:center; font-size:10px; color:var(--grayText); padding-bottom:6px; border-radius:4px; }
-      .footer{ margin-top:14px; background:var(--primary); color:#fff; padding:8px; text-align:center; font-size:10px; border-radius:4px; }
-      .person-table { display:grid; grid-template-columns: 110px 1fr; gap:8px 12px; align-items:start; margin-top:6px; direction:rtl; }
-      .pt-label { font-size:9px; color:var(--grayText); text-align:right; padding-right:8px; font-weight:600; }
-      .pt-value { font-size:11px; color:var(--primary); text-align:right; font-weight:600; white-space:pre-wrap; word-break:break-word; }
-      .row-card{ border:1px solid #eee; padding:10px; background:#fff; margin-bottom:8px; border-radius:6px; border-left:4px solid rgba(13,27,42,0.06); }
-      .person-header { font-size:11px; font-weight:800; color:var(--primary); margin-bottom:8px; text-align:right; }
-      .small { font-size:9px; color:var(--grayText); }
+      .row-card .val{ font-size:10.5px; color:var(--primary); font-weight:700; text-align:right; }
+      .specs{ border:1px solid var(--border); border-radius:12px; background:#fff; padding:6px 8px; }
+      .specs table{ width:100%; border-collapse:separate; border-spacing:0; }
+      .specs td{ border-bottom:1px solid var(--border); padding:5px 6px; font-size:9.3px; text-align:right; }
+      .specs tr:last-child td{ border-bottom:none; }
+      .specs td:nth-child(odd){ color:var(--grayText); font-weight:700; background:rgba(248,250,252,0.9); }
+      .price-badge{ margin-top:2px; background:linear-gradient(135deg, var(--lightGold) 0%, #fffaf0 100%); border:1px solid rgba(200,150,62,0.45); padding:9px 10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
+      .price-badge .label{ font-size:10.5px; color:var(--grayText); }
+      .price-badge .amount{ font-size:15px; font-weight:800; color:var(--primary); }
+      .financial-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+      .financial-chip{ border:1px dashed var(--border); background:var(--panel); border-radius:999px; padding:4px 8px; font-size:8.7px; color:var(--grayText); }
+      .terms-card{ border:1px solid var(--border); border-radius:12px; padding:8px 10px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
+      .terms-heading{ font-size:10.8px; font-weight:800; color:var(--primary); margin-bottom:3px; }
+      .terms-summary, .terms-intro{ font-size:8.7px; color:var(--grayText); margin:0 0 4px 0; }
+      .terms-list{ padding-right:16px; margin:0; font-size:8.7px; line-height:1.3; }
+      .terms-list li{ margin-bottom:2px; }
+      .terms-note{ margin-top:6px; min-height:24px; border:1px dashed #cfd8e3; border-radius:8px; padding:5px 8px; font-size:8.7px; color:var(--grayText); }
+      .signs{ display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+      .sig{ flex:1 1 calc(20% - 6px); border:1px dashed #cbd5e1; height:42px; display:flex; align-items:flex-end; justify-content:center; font-size:8.7px; color:var(--grayText); padding:0 4px 6px; border-radius:10px; background:#fff; text-align:center; }
+      .footer{ margin-top:2px; color:var(--grayText); padding-top:5px; text-align:center; font-size:8.5px; border-top:1px solid var(--border); }
+      .person-table { display:grid; grid-template-columns: 88px 1fr; gap:4px 8px; align-items:start; margin-top:4px; direction:rtl; }
+      .pt-label { font-size:8.8px; color:var(--grayText); text-align:right; padding-right:6px; font-weight:700; }
+      .pt-value { font-size:10.3px; color:var(--primary); text-align:right; font-weight:700; white-space:pre-wrap; word-break:break-word; }
+      .person-header { font-size:10.8px; font-weight:800; color:var(--primary); margin-bottom:6px; text-align:right; }
+      .small { font-size:8.7px; color:var(--grayText); }
     </style>
   </head>
   <body>
@@ -120,15 +204,15 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
         <svg class="sil right" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path d="M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 Z"/></svg>
         <div style="position:absolute; left:12px; top:8px; color:#d32f2f; font-weight:800; font-size:13px;">${serialNumber}</div>
         <div class="company">نیازي خپلواک</div>
-        <div class="subtitle">موټر پورانچي — د موټرو شورومه</div>
-        <div class="address">تیلیفون: ۰۷۰۰۰۰۸۹۸۳ | ۰۷۰۰۰۰۸۹۸۲ | کندهار بازار، پوراني سڑک، کوک ناخجا</div>
+        <div class="subtitle">موټر فروشی</div>
+        <div class="address">تیلیفون: ۰۷۰۰۰۰8۹۸۳ | ۰7۰۰۰۰8۹۸۲ | کندهار، شورمان</div>
       </div>
 
       <div class="bill-banner"><div class="label">${billLabel}</div></div>
 
       <div class="meta small">
-        <div>دفتر: ${officeNumber} — جلد: ${bookVolume} — صفحه: ${pageNumber}</div>
-        <div>د بل شمیره: ${safeText(sale.saleId)} — نیټه: ${date}</div>
+        <div class="meta-pill">دفتر: ${officeNumber} — جلد: ${bookVolume} — صفحه: ${pageNumber}</div>
+        <div class="meta-pill">د بل شمیره: ${safeText(sale.saleId)} — نیټه: ${date}</div>
       </div>
 
       <div class="section cols">
@@ -165,6 +249,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       </div>
 
       <div class="section specs">
+        <div class="section-title">مشخصات موټر</div>
         <table>
           <tr><td>جوړونکی</td><td>${veh.manufacturer}</td><td>ماډل</td><td>${veh.model}</td></tr>
           <tr><td>کال</td><td>${veh.year}</td><td>ډول</td><td>${veh.category}</td></tr>
@@ -177,16 +262,14 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       </div>
 
       ${typeKey === 'Exchange Car' ? `
-        <div class="section">
-          <div class="small" style="font-weight:700; margin-bottom:6px;">بدیل شوی موټر (تبادله)</div>
-          <div class="specs">
-            <table>
-              <tr><td>جوړونکی</td><td>${exch.manufacturer}</td><td>ماډل</td><td>${exch.model}</td></tr>
-              <tr><td>کال</td><td>${exch.year}</td><td>ډول</td><td>${exch.category}</td></tr>
-              <tr><td>رنګ</td><td>${exch.color}</td><td>چاسيس</td><td>${exch.chassis}</td></tr>
-              <tr><td>انجن</td><td>${exch.engine}</td><td>پلیت</td><td>${exch.plate}</td></tr>
-            </table>
-          </div>
+        <div class="section specs">
+          <div class="section-title">بدیل شوی موټر (تبادله)</div>
+          <table>
+            <tr><td>جوړونکی</td><td>${exch.manufacturer}</td><td>ماډل</td><td>${exch.model}</td></tr>
+            <tr><td>کال</td><td>${exch.year}</td><td>ډول</td><td>${exch.category}</td></tr>
+            <tr><td>رنګ</td><td>${exch.color}</td><td>چاسيس</td><td>${exch.chassis}</td></tr>
+            <tr><td>انجن</td><td>${exch.engine}</td><td>پلیت</td><td>${exch.plate}</td></tr>
+          </table>
         </div>
       ` : ''}
 
@@ -195,19 +278,13 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
         <div class="amount">${price}</div>
       </div>
 
-      ${downPayment ? `<div class="small" style="margin-top:6px;">پیش پیسه: ${downPayment} — پاتې: ${remaining || '—'}</div>` : ''}
-      ${priceDiff ? `<div class="small" style="margin-top:6px;">د قیمت توپیر: ${priceDiff} — ادا کوونکی: ${priceDiffBy || '—'}</div>` : ''}
-      ${trafficDate ? `<div class="small" style="margin-top:6px;">د ټرافیک د لیږد نیټه: ${trafficDate}</div>` : ''}
-
-      <div class="terms">
-        <div style="font-weight:800; margin-bottom:6px;">شرطونه او تعهدات</div>
-        <ol style="padding-right:18px; margin:0;">
-          <li>دواړه موټرونه تبادله شوي — له نن ورځ نه بیا د ټرافيک مسؤلیت نوي مالک سره دی.</li>
-          <li>تبادله/پلور د دواړو خواوو د رضایت او موافقت سره ترسره شوه.</li>
-          <li>موټرونه له بشپړ معاینې وروسته تسلیم شوي — دواړه خواوې له حالت نه راضي دي.</li>
-          <li>کمیسیون: ${safeText(sale.commission || '—')}</li>
-        </ol>
+      <div class="financial-meta">
+        ${downPayment ? `<div class="financial-chip">پیش پیسه: ${downPayment} — پاتې: ${remaining || '—'}</div>` : ''}
+        ${priceDiff ? `<div class="financial-chip">د قیمت توپیر: ${priceDiff} — ادا کوونکی: ${priceDiffBy || '—'}</div>` : ''}
+        ${trafficDate ? `<div class="financial-chip">د ټرافیک د لیږد نیټه: ${trafficDate}</div>` : ''}
       </div>
+
+       ${customTermsHtml}
 
       <div class="signs" style="flex-wrap:wrap;">
         <div class="sig">د پلورونکی لاسلیک<br/><span class="small">${safeText(sale.sellerName)}</span></div>
@@ -217,7 +294,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
         <div class="sig">شاهد ۲<br/><span class="small">${safeText(sale.witnessName2)}</span></div>
       </div>
 
-      <div class="footer">دا سند د نیازي خپلواک موټر پورانچي رسمي د پلور ریکارډ دی.</div>
+      <div class="footer">دا سند د نیازي خپلواک موټر فروشی رسمي د پلور ثبت او تسلیمۍ ریکارډ دی.</div>
     </div>
   </body>
   </html>`;
@@ -263,11 +340,30 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
 
     try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 0 });
+    // Use 'load' instead of 'networkidle0' because Chrome may keep
+    // background connections open (GCM/updater) which prevents
+    // networkidle0 from ever firing and causes a hang.
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
     await page.emulateMediaType('screen');
 
-    // wait for fonts to be ready so measurements are accurate
-    try { await page.evaluateHandle('document.fonts.ready'); } catch (e) { /* ignore */ }
+    // Wait briefly for fonts to settle. Prefer document.fonts.ready but
+    // don't block indefinitely if it misbehaves on some Chrome builds.
+    try {
+      await page.evaluate(async () => {
+        if (!document.fonts || !document.fonts.ready) {
+          return;
+        }
+
+        await Promise.race([
+          document.fonts.ready,
+          new Promise((resolve) => setTimeout(resolve, 1200)),
+        ]);
+      });
+      console.info('[pdf] document.fonts.ready resolved');
+    } catch (e) {
+      console.warn('[pdf] document.fonts.ready did not resolve quickly, continuing');
+    }
+    await page.waitForTimeout(200);
 
     // Measure content (.page) and compute scale to fit single A4
     const contentSize = await page.evaluate(() => {

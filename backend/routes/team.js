@@ -6,6 +6,7 @@ const fs = require('fs');
 const { TeamEnglish, TeamPashto, TeamDari } = require('../models');
 const { verifyToken } = require('../src/middleware/auth');
 const { checkPermission } = require('../src/middleware/permissions');
+const { optimizeUploadedImage } = require('../src/services/imageOptimization');
 
 // Allowed roles (adjust as needed)
 // const ROLE_TEAM = ['Super Admin', 'Owner', 'Manager'];
@@ -99,7 +100,8 @@ router.post('/:lang', upload.single('image'), async (req, res) => {
     const data = { name, position, description, facebook, instagram, x };
 
     if (req.file) {
-      data.image = `/uploads/team/${req.file.filename}`;
+      const imageFile = await optimizeUploadedImage(req.file, { maxWidth: 1400, quality: 72 });
+      data.image = `/uploads/team/${imageFile.filename}`;
     }
 
     const member = await Model.create(data);
@@ -140,6 +142,7 @@ router.put('/:lang/:id', upload.single('image'), async (req, res) => {
 
     // If new image uploaded, replace old one
     if (req.file) {
+      const imageFile = await optimizeUploadedImage(req.file, { maxWidth: 1400, quality: 72 });
       // Delete old image if exists
       if (member.image) {
         const oldFilename = path.basename(member.image);
@@ -148,7 +151,7 @@ router.put('/:lang/:id', upload.single('image'), async (req, res) => {
           fs.unlinkSync(oldPath);
         }
       }
-      data.image = `/uploads/team/${req.file.filename}`;
+      data.image = `/uploads/team/${imageFile.filename}`;
     }
 
     await member.update(data);

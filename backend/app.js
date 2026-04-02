@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const config = require('./src/config');
@@ -27,6 +28,10 @@ const settingsRoutes = require('./routes/settings');
 const { ensureSchemaCompatibility } = require('./src/services/schema');
 
 const app = express();
+const uploadsDir = path.join(__dirname, 'uploads');
+
+app.disable('x-powered-by');
+app.set('etag', 'strong');
 
 app.use(cors({
   origin: config.CORS.ORIGIN,
@@ -35,9 +40,36 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+app.use(compression({
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsDir, {
+  etag: true,
+  lastModified: true,
+  maxAge: '30d',
+  setHeaders: (res, filePath) => {
+    if (/\.pdf$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+      return;
+    }
+    if (/\.(?:mp4|webm|mov|avi|mkv)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+      return;
+    }
+    if (/\.(?:jpg|jpeg|png|webp|avif|gif|svg)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    }
+  },
+}));
 app.use(requestLogger);
 
 app.get('/health', (req, res) => {
