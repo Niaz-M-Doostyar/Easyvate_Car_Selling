@@ -12,7 +12,7 @@ import {
   CloudUpload, Delete as DeleteIcon, PhotoLibrary, ZoomIn
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
-import apiClient from '@/utils/api';
+import apiClient, { getUploadUrl } from '@/utils/api';
 import { validateRequired } from '@/utils/validation';
 
 const LANGUAGES = [
@@ -234,9 +234,8 @@ export default function AboutPage() {
 
   const getImageUrl = (path) => {
     if (!path) return '';
-    // If path starts with /api, use as is; otherwise prepend /api for rewrite
-    if (path.startsWith('/api')) return path;
-    return `/api${path}`;
+    if (path.startsWith('http')) return path;
+    return getUploadUrl(path.startsWith('/uploads') ? path : `/uploads${path}`);
   };
 
   const renderContentSummary = (data) => {

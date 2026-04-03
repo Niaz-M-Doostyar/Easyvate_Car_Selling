@@ -29,7 +29,13 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(username.trim(), password);
     } catch (e) {
-      setError(e.response?.data?.error || e.response?.data?.message || 'Login failed. Check your credentials.');
+      if (!e.response) {
+        setError('Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e.response.status === 401) {
+        setError('Invalid username or password. Please try again.');
+      } else {
+        setError(e.response?.data?.error || e.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -67,7 +73,7 @@ export default function LoginScreen({ navigation }) {
               <MaterialCommunityIcons name="car-sports" size={44} color="#fff" />
             </View>
             <Text style={styles.appName}>Niazi Khpalwak</Text>
-            <Text style={styles.subtitle}>Motor Puranchi — Car Showroom</Text>
+            <Text style={styles.subtitle}>Car Showroom</Text>
           </View>
 
           {/* Login Card */}
@@ -133,7 +139,7 @@ export default function LoginScreen({ navigation }) {
             </LinearGradient>
           </View>
 
-          <Text style={styles.footer}>Easyvate Car Selling v1.0</Text>
+          <Text style={styles.footer}>Niazi Khpalwak Car Selling v1.0</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

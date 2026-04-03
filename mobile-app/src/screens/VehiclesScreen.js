@@ -8,12 +8,14 @@ import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, VEHICLE_STATUSES } from '../utils/constants';
 import apiClient from '../api/client';
 
 export default function VehiclesScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const { canWrite } = useAuth();
 
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,6 @@ export default function VehiclesScreen({ navigation }) {
       const { data } = await apiClient.get('/vehicles');
       setVehicles(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (e) {
-      console.log('Fetch vehicles error:', e.message);
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ export default function VehiclesScreen({ navigation }) {
         {/* Actions */}
         <View style={styles.actions}>
           <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })} style={styles.actionBtn} />
-          {item.status !== 'Sold' && (
+          {item.status !== 'Sold' && canWrite('Vehicles') && (
             <>
               <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('VehicleForm', { vehicle: item })} style={styles.actionBtn} />
               <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
@@ -118,8 +119,10 @@ export default function VehiclesScreen({ navigation }) {
         </Menu>
       }
       fab={
-        <FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff"
-          onPress={() => navigation.navigate('VehicleForm')} />
+        canWrite('Vehicles') ? (
+          <FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff"
+            onPress={() => navigation.navigate('VehicleForm')} />
+        ) : null
       }
     >
       <View style={styles.filterRow}>

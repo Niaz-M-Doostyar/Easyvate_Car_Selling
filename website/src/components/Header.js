@@ -74,7 +74,7 @@ export default function Header() {
       <div className="offcanvas-menu-overlay"></div>
       <div className="offcanvas-menu-wrapper">
         <div className="offcanvas__widget">
-          <a href="http://localhost:3000/login" className="primary-btn">{t('login')}</a>
+          <Link href="/admin" locale={false} className="primary-btn">{t('login')}</Link>
         </div>
         <div className="offcanvas__logo">
           <Link href={`/${locale}`}><img src="/img/header-logo.png" alt="logo" /></Link>
@@ -189,7 +189,7 @@ export default function Header() {
                       </ul>
                     )}
                   </div>
-                  <a href="http://localhost:3000/login" className="primary-btn" target='blank'>{t('login')}</a>
+                  <Link href="/admin" locale={false} className="primary-btn" target="_blank" rel="noopener noreferrer">{t('login')}</Link>
                 </div>
               </div>
             </div>

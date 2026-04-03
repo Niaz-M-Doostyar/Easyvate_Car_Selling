@@ -5,7 +5,8 @@ module.exports = {
     cwd: '/var/www/easyvate/backend',
     env: {
       DEPLOY_TARGET: 'vps',
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
+      USE_PUPPETEER: '0'
     }
   }]
 };

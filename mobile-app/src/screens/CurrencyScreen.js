@@ -40,7 +40,11 @@ export default function CurrencyScreen({ navigation }) {
       });
       const hData = hRes.data?.data || hRes.data;
       setHistory(Array.isArray(hData) ? hData : []);
-    } catch (e) { console.log(e.message); } finally { setLoading(false); }
+    } catch (e) {
+      // ignore — show whatever data was loaded
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { const unsub = navigation.addListener('focus', fetch); return unsub; }, [navigation, fetch]);

@@ -42,7 +42,6 @@ export default function ReportsScreen({ navigation }) {
       const { data } = await apiClient.get(report.endpoint, { params });
       setReportData(data);
     } catch (e) {
-      console.log(e.message);
       setReportData({ error: typeof e.response?.data?.error === 'string' ? e.response.data.error : e.response?.data?.error?.message || e.message || 'Failed to load report' });
     }
     setLoading(false);

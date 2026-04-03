@@ -52,7 +52,9 @@ app.use(compression({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static(uploadsDir, {
+
+// Serve uploads at both /uploads (direct) and /api/uploads (when Nginx proxies /api/ to backend)
+const uploadsStaticOptions = {
   etag: true,
   lastModified: true,
   maxAge: '30d',
@@ -69,7 +71,10 @@ app.use('/uploads', express.static(uploadsDir, {
       res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
     }
   },
-}));
+};
+app.use('/uploads', express.static(uploadsDir, uploadsStaticOptions));
+// Also serve at /api/uploads so image URLs work when Nginx routes /api directly to backend
+app.use('/api/uploads', express.static(uploadsDir, uploadsStaticOptions));
 app.use(requestLogger);
 
 app.get('/health', (req, res) => {

@@ -898,26 +898,49 @@ var generateVehiclePdf = function(vehicle, outputDir) {
   });
 };
 
-// If available, prefer the Puppeteer-based HTML->PDF invoice generator for sale invoices
-// You can opt out of Puppeteer (e.g. when Chromium isn't available or hangs) by
-// setting the environment variable `USE_PUPPETEER=0`. In that case the pdfkit
-// generators (synchronous, no headless browser) will be used.
+// Try to require the Puppeteer-based HTML->PDF generator at load time, but do
+// not replace the pdfkit dispatcher outright. Instead keep a reference to the
+// puppeteer generator (if available) and use a runtime wrapper that attempts
+// Puppeteer first and falls back to the pdfkit implementation on any failure.
+let puppeteerGen = null;
 try {
   if (process.env.USE_PUPPETEER !== '0') {
-    const puppeteerGen = require('./pdf_puppeteer');
+    puppeteerGen = require('./pdf_puppeteer');
     if (puppeteerGen && puppeteerGen.generateSaleInvoicePdf) {
-      generateSaleInvoicePdf = puppeteerGen.generateSaleInvoicePdf;
-      console.info('[pdf] Using Puppeteer HTML->PDF generator for sale invoices');
+      console.info('[pdf] Puppeteer HTML->PDF generator is available and will be used when possible.');
+    } else {
+      puppeteerGen = null;
+      console.info('[pdf] Puppeteer module loaded but missing expected export — using pdfkit fallback.');
     }
   } else {
     console.info('[pdf] USE_PUPPETEER=0 detected — skipping Puppeteer, using pdfkit fallback for sale invoices');
   }
 } catch (e) {
-  console.warn('[pdf] Puppeteer-based generator not available, falling back to pdfkit:', e && e.message ? e.message : e);
+  console.warn('[pdf] Puppeteer-based generator not available at require time, will use pdfkit fallback:', e && e.message ? e.message : e);
+}
+
+// Keep a reference to the pdfkit dispatcher defined earlier in this file.
+const pdfkitGenerateSaleInvoicePdf = generateSaleInvoicePdf;
+
+// Runtime wrapper used by other modules. Tries Puppeteer (if available) and
+// falls back to the pdfkit generator if Puppeteer fails at runtime.
+async function generateSaleInvoicePdfWrapper(sale, vehicle, customer, outputDir) {
+  // Guard against null vehicle/customer to prevent pdfkit null-pointer errors
+  const safeVehicle = vehicle || {};
+  const safeCustomer = customer || {};
+  if (process.env.USE_PUPPETEER !== '0' && puppeteerGen && puppeteerGen.generateSaleInvoicePdf) {
+    try {
+      return await puppeteerGen.generateSaleInvoicePdf(sale, safeVehicle, safeCustomer, outputDir);
+    } catch (err) {
+      console.error('[pdf] Puppeteer generator failed at runtime; falling back to pdfkit:', err && (err.message || err));
+      // fall through to pdfkit fallback
+    }
+  }
+  return pdfkitGenerateSaleInvoicePdf(sale, safeVehicle, safeCustomer, outputDir);
 }
 
 module.exports = {
   generateVehiclePdf: generateVehiclePdf,
-  generateSaleInvoicePdf: generateSaleInvoicePdf,
+  generateSaleInvoicePdf: generateSaleInvoicePdfWrapper,
   generateFinancialReportPdf: generateFinancialReportPdf
 };

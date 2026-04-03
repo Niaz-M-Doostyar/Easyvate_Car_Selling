@@ -32,9 +32,6 @@ if (typeof window !== 'undefined') {
 
 const apiClient = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Request interceptor to add token
@@ -58,7 +55,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       try {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        localStorage.removeItem('user');
+        window.location.href = '/admin/login';
       } catch { /* SSR */ }
     }
     return Promise.reject(error);
@@ -66,3 +64,15 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+/**
+ * Returns the correct URL for a backend upload file path.
+ * Works on both local dev (through Next.js rewrite proxy) and VPS.
+ * - Local: /admin/api/uploads/... → Next.js rewrites → http://localhost:3001/uploads/...
+ * - VPS:   /admin/api/uploads/... → Next.js rewrites → http://localhost:3001/uploads/...
+ * @param {string} filePath  e.g. '/uploads/vehicle-images/file.jpg'
+ */
+export function getUploadUrl(filePath) {
+  if (!filePath) return '';
+  return `/admin/api${filePath}`;
+}

@@ -1,3 +1,9 @@
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // i18n: {
@@ -5,6 +11,7 @@ const nextConfig = {
   //   defaultLocale: 'en',
   //   localeDetection: true,
   // },
+  outputFileTracingRoot: __dirname,
   /* config options here */
   compress: true,
   poweredByHeader: false,

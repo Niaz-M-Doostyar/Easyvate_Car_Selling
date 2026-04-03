@@ -13,7 +13,7 @@ import {
   AttachMoney, Tag, DirectionsCar
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
-import apiClient from '@/utils/api'; // adjust path to your api utility
+import apiClient, { getUploadUrl } from '@/utils/api'; // adjust path to your api utility
 
 export default function CarouselPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -79,9 +79,9 @@ export default function CarouselPage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size and type
-    if (file.size > 500 * 1024) {
-      setImageError('Image must be less than 500KB');
+    // Validate size and type (limit 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('Image must be less than 2MB');
       return;
     }
     if (!file.type.startsWith('image/')) {
@@ -108,15 +108,12 @@ export default function CarouselPage() {
     if (selectedImage) submitData.append('image', selectedImage);
 
     try {
+      // Let the browser set the Content-Type (including boundary) for FormData
       if (editingId) {
-        await apiClient.put(`/carousel/${editingId}`, submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await apiClient.put(`/carousel/${editingId}`, submitData);
         enqueueSnackbar('Carousel item updated', { variant: 'success' });
       } else {
-        await apiClient.post('/carousel', submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await apiClient.post('/carousel', submitData);
         enqueueSnackbar('Carousel item added', { variant: 'success' });
       }
       handleClose();
@@ -139,9 +136,8 @@ export default function CarouselPage() {
   
   const getImageUrl = (path) => {
     if (!path) return '';
-    // Already has /api? return as is (for safety)
-    if (path.startsWith('/api')) return path;
-    return `/api${path}`;
+    if (path.startsWith('http')) return path;
+    return getUploadUrl(path.startsWith('/uploads') ? path : `/uploads${path}`);
   };
 
   return (
@@ -295,9 +291,14 @@ export default function CarouselPage() {
               {imagePreview && (
                 <Box sx={{ mt: 2, position: 'relative', width: 'fit-content' }}>
                     <img
-                    src={editingId ? (typeof getImageUrl === 'function' ? getImageUrl(imagePreview) : imagePreview) : imagePreview}
-                    alt="Preview"
-                    style={{ maxWidth: '100%', maxHeight: 150, borderRadius: 8 }}
+                      src={
+                        // If preview is a blob URL (newly selected file), use it directly.
+                        typeof imagePreview === 'string' && imagePreview.startsWith('blob:')
+                          ? imagePreview
+                          : (typeof imagePreview === 'string' ? getImageUrl(imagePreview) : imagePreview)
+                      }
+                      alt="Preview"
+                      style={{ maxWidth: '100%', maxHeight: 150, borderRadius: 8 }}
                     />
                     <IconButton
                     size="small"

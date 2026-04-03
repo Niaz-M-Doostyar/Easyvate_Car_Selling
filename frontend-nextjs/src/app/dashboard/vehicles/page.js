@@ -17,7 +17,7 @@ import {
   ZoomIn,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
-import apiClient from '@/utils/api';
+import apiClient, { getUploadUrl } from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 import { validateRequired, validatePrice, validateYear } from '@/utils/validation';
 import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
@@ -58,6 +58,7 @@ export default function VehiclesPage() {
 
   // Image states
   const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedImagePreviews, setSelectedImagePreviews] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [imageErrors, setImageErrors] = useState([]);
   const [imageUploading, setImageUploading] = useState(false);
@@ -90,6 +91,13 @@ export default function VehiclesPage() {
   const [addOptionDialog, setAddOptionDialog] = useState({ open: false, field: '', value: '' });
 
   useEffect(() => { fetchVehicles(); fetchCustomers(); fetchDropdownOptions(); fetchRates(); }, []);
+
+  // Create and revoke blob URLs for local image previews to avoid memory leaks
+  useEffect(() => {
+    const urls = selectedImages.map(file => URL.createObjectURL(file));
+    setSelectedImagePreviews(urls);
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); };
+  }, [selectedImages]);
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -328,6 +336,7 @@ export default function VehiclesPage() {
     setActiveStep(0);
     setEditReason('');
     setSelectedImages([]);
+    setSelectedImagePreviews([]);
     setExistingImages([]);
     setImageErrors([]);
   };
@@ -940,7 +949,7 @@ export default function VehiclesPage() {
                     {existingImages.map((img) => (
                       <ImageListItem key={img.id}>
                         <img
-                          src={`/api${img.path}`}
+                          src={getUploadUrl(img.path)}
                           alt={img.filename}
                           loading="lazy"
                           style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
@@ -998,7 +1007,7 @@ export default function VehiclesPage() {
                     {selectedImages.map((file, index) => (
                       <ImageListItem key={index}>
                         <img
-                          src={URL.createObjectURL(file)}
+                          src={selectedImagePreviews[index] || ''}
                           alt={file.name}
                           loading="lazy"
                           style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
@@ -1185,18 +1194,18 @@ export default function VehiclesPage() {
               {galleryImages.map((img) => (
                 <ImageListItem key={img.id}>
                   <img
-                    src={`/api${img.path}`}
+                    src={getUploadUrl(img.path)}
                     alt={img.filename}
                     loading="lazy"
                     style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
-                    onClick={() => window.open(`/api${img.path}`, '_blank')}
+                    onClick={() => window.open(getUploadUrl(img.path), '_blank')}
                   />
                   <ImageListItemBar
                     title={img.filename}
                     subtitle={`${(img.size / 1024).toFixed(1)} KB`}
                     actionIcon={
                       <Tooltip title="Open full size">
-                        <MuiIconButton size="small" onClick={() => window.open(`/api${img.path}`, '_blank')} sx={{ color: 'white' }}>
+                        <MuiIconButton size="small" onClick={() => window.open(getUploadUrl(img.path), '_blank')} sx={{ color: 'white' }}>
                           <ZoomIn fontSize="small" />
                         </MuiIconButton>
                       </Tooltip>

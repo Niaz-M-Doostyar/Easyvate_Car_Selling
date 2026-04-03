@@ -1,16 +1,68 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Text, Switch, TouchableRipple } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { Text, Switch, TouchableRipple, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useAppTheme, ACCENT_PRESETS } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import apiClient from '../api/client';
 
 export default function SettingsScreen({ navigation }) {
   const { paperTheme, isDark, setIsDark, accentKey, setAccentKey } = useAppTheme();
   const { user, logout } = useAuth();
   const c = paperTheme.colors;
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+
+  const isSuperAdmin = user?.role === 'Super Admin' || user?.role === 'Owner';
+
+  const handleBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const response = await apiClient.get('/settings/backup', { responseType: 'text' });
+      const filename = `backup-${new Date().toISOString().slice(0, 10)}.sql`;
+      const fileUri = FileSystem.documentDirectory + filename;
+      await FileSystem.writeAsStringAsync(fileUri, response.data, { encoding: FileSystem.EncodingType.UTF8 });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, { mimeType: 'text/plain', dialogTitle: 'Save Database Backup' });
+      } else {
+        Alert.alert('Backup Saved', `File saved to app documents.`);
+      }
+    } catch (e) {
+      Alert.alert('Backup Failed', e.response?.data?.error || e.message);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    Alert.alert('Restore Database', 'This will overwrite the current database. Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restore', style: 'destructive', onPress: async () => {
+          const r = await DocumentPicker.getDocumentAsync({ type: ['application/sql', 'text/plain', '*/*'], copyToCacheDirectory: true });
+          if (r.canceled || !r.assets?.[0]) return;
+          setRestoreLoading(true);
+          try {
+            const asset = r.assets[0];
+            const fd = new FormData();
+            fd.append('backup', { uri: asset.uri, name: asset.name || 'restore.sql', type: asset.mimeType || 'application/octet-stream' });
+            await apiClient.post('/settings/restore', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            Alert.alert('Success', 'Database restored successfully.');
+          } catch (e) {
+            Alert.alert('Restore Failed', e.response?.data?.error || e.message);
+          } finally {
+            setRestoreLoading(false);
+          }
+        },
+      },
+    ]);
+  };
 
   const initials = (user?.fullName || user?.username || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
@@ -87,6 +139,36 @@ export default function SettingsScreen({ navigation }) {
           <InfoRow icon="account-outline" label="Developer" value="Niaz Mohammad Doostyar" last />
         </View>
 
+        {/* Database (Super Admin / Owner only) */}
+        {isSuperAdmin && (
+          <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
+            <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Database</Text>
+            <TouchableRipple onPress={handleBackup} disabled={backupLoading} borderless style={[styles.dbRow, { backgroundColor: c.primary + '10' }]}>
+              <View style={styles.dbRowInner}>
+                <LinearGradient colors={[c.primary + '22', c.primary + '08']} style={styles.dbIcon}>
+                  {backupLoading ? <ActivityIndicator size="small" color={c.primary} /> : <MaterialCommunityIcons name="database-export-outline" size={20} color={c.primary} />}
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: c.onSurface }}>Create Backup</Text>
+                  <Text style={{ fontSize: 11, color: c.onSurfaceVariant, marginTop: 1 }}>Export database as SQL file</Text>
+                </View>
+              </View>
+            </TouchableRipple>
+            <View style={[styles.divder, { backgroundColor: c.border, height: 1, marginVertical: 8 }]} />
+            <TouchableRipple onPress={handleRestore} disabled={restoreLoading} borderless style={[styles.dbRow, { backgroundColor: c.error + '08' }]}>
+              <View style={styles.dbRowInner}>
+                <LinearGradient colors={[c.error + '22', c.error + '08']} style={styles.dbIcon}>
+                  {restoreLoading ? <ActivityIndicator size="small" color={c.error} /> : <MaterialCommunityIcons name="database-import-outline" size={20} color={c.error} />}
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: c.onSurface }}>Restore Database</Text>
+                  <Text style={{ fontSize: 11, color: c.onSurfaceVariant, marginTop: 1 }}>Import from SQL backup file</Text>
+                </View>
+              </View>
+            </TouchableRipple>
+          </View>
+        )}
+
         {/* Logout */}
         <TouchableRipple onPress={logout} borderless style={[styles.logoutBtn, { backgroundColor: c.error + '10' }, paperTheme.shadows?.sm]}>
           <View style={styles.logoutInner}>
@@ -121,4 +203,8 @@ const styles = StyleSheet.create({
   logoutBtn: { borderRadius: 16, overflow: 'hidden' },
   logoutInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 10 },
   logoutIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  dbRow: { borderRadius: 12, overflow: 'hidden' },
+  dbRowInner: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
+  dbIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  divder: {},
 });

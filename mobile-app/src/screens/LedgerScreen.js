@@ -30,7 +30,10 @@ export default function LedgerScreen({ navigation }) {
       const eData = eRes.data;
       setEntries(Array.isArray(eData?.data) ? eData.data : Array.isArray(eData) ? eData : []);
       setBalance(bRes.data);
-    } catch (e) { console.log(e.message); } finally { setLoading(false); }
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { const unsub = navigation.addListener('focus', fetch); return unsub; }, [navigation, fetch]);

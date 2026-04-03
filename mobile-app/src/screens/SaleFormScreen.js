@@ -55,7 +55,9 @@ export default function SaleFormScreen({ navigation, route }) {
         const vList = Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [];
         setVehicles(vList.filter(v => ['Available', 'Reserved'].includes(v.status) || (editing && v.id === editing.vehicleId)));
         setCustomers(Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : []);
-      } catch (e) { console.log(e); }
+      } catch (e) {
+        // ignore — dropdowns may be empty
+      }
     };
     loadDropdowns();
   }, []);

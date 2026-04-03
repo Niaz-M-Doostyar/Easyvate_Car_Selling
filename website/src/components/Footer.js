@@ -55,8 +55,8 @@ export default function Footer() {
             <div className="col-lg-4 col-md-6">
               <div className="footer__about">
                 <div className="footer__logo">
-                  <img 
-                    src="/img/niazi1.png" 
+                  <img
+                    src="/img/Niazi1.png"
                     alt="logo"
                   />
                 </div>

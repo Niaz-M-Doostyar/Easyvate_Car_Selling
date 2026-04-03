@@ -34,8 +34,11 @@ export default function CustomerDetailScreen({ navigation, route }) {
         ]);
         setLedger(Array.isArray(ledRes.data?.data) ? ledRes.data.data : Array.isArray(ledRes.data) ? ledRes.data : []);
         setPurchases(Array.isArray(purRes.data?.data) ? purRes.data.data : Array.isArray(purRes.data) ? purRes.data : []);
-      } catch (e) { console.log(e); }
-      setLoading(false);
+      } catch (e) {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, [customer]);
@@ -99,7 +102,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
         <Card key={i} style={[styles.card, { backgroundColor: c.surface }]} onPress={() => navigation.navigate('Sales', { screen: 'SaleDetail', params: { sale: s } })}>
           <Card.Content>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{s.Vehicle?.manufacturer} {s.Vehicle?.model}</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{s.vehicle?.manufacturer} {s.vehicle?.model}</Text>
               <StatusChip label={s.saleType || 'Sale'} />
             </View>
             <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{formatCurrency(s.sellingPrice)} • {s.saleDate ? new Date(s.saleDate).toLocaleDateString() : ''}</Text>

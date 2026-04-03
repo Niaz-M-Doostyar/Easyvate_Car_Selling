@@ -33,6 +33,12 @@ import ReportsScreen from '../screens/ReportsScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserFormScreen from '../screens/UserFormScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import CarouselManagerScreen from '../screens/CarouselManagerScreen';
+import AboutManagerScreen from '../screens/AboutManagerScreen';
+import TeamManagerScreen from '../screens/TeamManagerScreen';
+import TestimonialsManagerScreen from '../screens/TestimonialsManagerScreen';
+import ContactManagerScreen from '../screens/ContactManagerScreen';
+import ChooseVideoManagerScreen from '../screens/ChooseVideoManagerScreen';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -154,6 +160,54 @@ function SettingsStack() {
   );
 }
 
+function CarouselStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CarouselManager" component={CarouselManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function AboutCMSStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AboutManager" component={AboutManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function TeamCMSStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="TeamManager" component={TeamManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function TestimonialsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="TestimonialsManager" component={TestimonialsManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ContactCMSStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ContactManager" component={ContactManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ChooseVideoStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ChooseVideoManager" component={ChooseVideoManagerScreen} />
+    </Stack.Navigator>
+  );
+}
+
 const NAV_ITEMS = [
   { name: 'Dashboard', component: DashboardStack, icon: 'view-dashboard', access: 'Dashboard' },
   { name: 'Vehicles', component: VehiclesStack, icon: 'car', access: 'Vehicles' },
@@ -168,6 +222,12 @@ const NAV_ITEMS = [
   { name: 'Reports', component: ReportsStack, icon: 'chart-bar', access: 'Reports' },
   { name: 'Users', component: UsersStack, icon: 'shield-account', access: 'Users & Roles' },
   { name: 'Settings', component: SettingsStack, icon: 'cog', access: null },
+  { name: 'CarouselCMS', component: CarouselStack, icon: 'view-carousel-outline', access: 'Vehicles', label: 'Carousel CMS' },
+  { name: 'AboutCMS', component: AboutCMSStack, icon: 'information-outline', access: 'Vehicles', label: 'About CMS' },
+  { name: 'TeamCMS', component: TeamCMSStack, icon: 'account-group-outline', access: 'Vehicles', label: 'Team CMS' },
+  { name: 'TestimonialsCMS', component: TestimonialsStack, icon: 'star-outline', access: 'Vehicles', label: 'Testimonials' },
+  { name: 'ContactCMS', component: ContactCMSStack, icon: 'phone-settings-outline', access: 'Vehicles', label: 'Contact CMS' },
+  { name: 'ChooseVideoCMS', component: ChooseVideoStack, icon: 'video-outline', access: 'Vehicles', label: 'Choose Video' },
 ];
 
 export default function AppDrawer() {
@@ -194,7 +254,7 @@ export default function AppDrawer() {
           key={item.name}
           name={item.name}
           component={item.component}
-          options={{ drawerIcon: ({ color, size }) => <Icon name={item.icon} color={color} size={size} />, title: item.name === 'ShowroomLedger' ? 'Showroom Ledger' : item.name }}
+          options={{ drawerIcon: ({ color, size }) => <Icon name={item.icon} color={color} size={size} />, title: item.label || (item.name === 'ShowroomLedger' ? 'Showroom Ledger' : item.name) }}
         />
       ))}
     </Drawer.Navigator>

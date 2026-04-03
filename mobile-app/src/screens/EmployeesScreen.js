@@ -24,7 +24,10 @@ export default function EmployeesScreen({ navigation }) {
     try {
       const { data } = await apiClient.get('/employees');
       setEmployees(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
-    } catch (e) { console.log(e.message); } finally { setLoading(false); }
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { const unsub = navigation.addListener('focus', fetch); return unsub; }, [navigation, fetch]);
@@ -37,7 +40,7 @@ export default function EmployeesScreen({ navigation }) {
 
   const filtered = employees.filter(x => {
     const q = search.toLowerCase();
-    return !search || [x.fullName, x.fatherName, x.position, x.phoneNumber].filter(Boolean).some(f => f.toLowerCase().includes(q));
+    return !search || [x.fullName, x.fatherName, x.position, x.role, x.phoneNumber].filter(Boolean).some(f => f.toLowerCase().includes(q));
   });
 
   const getInitials = (name) => {
@@ -57,11 +60,11 @@ export default function EmployeesScreen({ navigation }) {
         </LinearGradient>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, { color: c.onSurface }]}>{item.fullName}</Text>
-          <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.position || 'Employee'} • {item.phoneNumber}</Text>
+          <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.role || item.position || 'Employee'} • {item.phoneNumber}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <StatusChip label={item.status || 'Active'} />
             <View style={[styles.salaryBadge, { backgroundColor: c.primary + '12' }]}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: c.primary }}>{formatCurrency(item.salary || 0, 'AFN')}/mo</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: c.primary }}>{formatCurrency(item.monthlySalary || item.salary || 0, 'AFN')}/mo</Text>
             </View>
           </View>
         </View>

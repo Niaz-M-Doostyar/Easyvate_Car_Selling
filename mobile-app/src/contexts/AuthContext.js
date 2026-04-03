@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient, { setLogoutCallback } from '../api/client';
+import { ROLE_ACCESS } from '../utils/constants';
 
 const AuthContext = createContext(null);
 
@@ -43,8 +44,25 @@ export function AuthProvider({ children }) {
     return newUser;
   };
 
+  // Check if current user's role has access to a module
+  const hasPermission = useCallback((module) => {
+    if (!user) return false;
+    const isSuperAdmin = user.role === 'Super Admin';
+    if (isSuperAdmin) return true;
+    const allowed = ROLE_ACCESS[user.role] || [];
+    return allowed.includes(module);
+  }, [user]);
+
+  // Check if user can perform write (create/update/delete) actions
+  const canWrite = useCallback((module) => {
+    if (!user) return false;
+    const readOnlyRoles = ['Viewer'];
+    if (readOnlyRoles.includes(user.role)) return false;
+    return hasPermission(module);
+  }, [user, hasPermission]);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, setUser, hasPermission, canWrite }}>
       {children}
     </AuthContext.Provider>
   );

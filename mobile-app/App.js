@@ -9,6 +9,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 
 function AppContent() {
   const { paperTheme, isDark } = useAppTheme();
+
   return (
     <PaperProvider theme={paperTheme}>
       <SafeAreaProvider>

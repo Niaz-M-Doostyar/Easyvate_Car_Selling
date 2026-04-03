@@ -297,9 +297,19 @@ export default function SalesPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
       enqueueSnackbar('Invoice generated successfully', { variant: 'success' });
-    } catch {
-      enqueueSnackbar('Failed to generate invoice', { variant: 'error' });
+    } catch (error) {
+      let errorMsg = 'Failed to generate invoice';
+      try {
+        if (error.response?.data instanceof Blob) {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          if (json.error) errorMsg = json.error;
+        }
+      } catch { /* ignore parse errors */ }
+      console.error('[invoice] Error:', errorMsg);
+      enqueueSnackbar(errorMsg, { variant: 'error' });
     }
   };
 

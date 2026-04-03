@@ -8,12 +8,14 @@ import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, SALE_TYPES } from '../utils/constants';
 import apiClient from '../api/client';
 
 export default function SalesScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const { canWrite } = useAuth();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -30,7 +32,10 @@ export default function SalesScreen({ navigation }) {
     try {
       const { data } = await apiClient.get('/sales');
       setSales(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
-    } catch (e) { console.log(e.message); } finally { setLoading(false); }
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { const unsub = navigation.addListener('focus', fetch); return unsub; }, [navigation, fetch]);
@@ -55,8 +60,8 @@ export default function SalesScreen({ navigation }) {
 
   const filtered = sales.filter(x => {
     const q = search.toLowerCase();
-    const veh = x.Vehicle ? `${x.Vehicle.manufacturer} ${x.Vehicle.model}` : '';
-    const cust = x.Customer?.fullName || '';
+    const veh = x.vehicle ? `${x.vehicle.manufacturer} ${x.vehicle.model}` : '';
+    const cust = x.customer?.fullName || '';
     const m = !search || [x.saleId, veh, cust].some(f => f?.toLowerCase().includes(q));
     return m && (typeFilter === 'All' || x.saleType === typeFilter);
   });
@@ -66,7 +71,7 @@ export default function SalesScreen({ navigation }) {
     const total = Number(item.sellingPrice || 1);
     const paid = total - remaining;
     const progress = Math.min(paid / total, 1);
-    const veh = item.Vehicle ? `${item.Vehicle.manufacturer} ${item.Vehicle.model} (${item.Vehicle.year})` : 'N/A';
+    const veh = item.vehicle ? `${item.vehicle.manufacturer} ${item.vehicle.model} (${item.vehicle.year})` : (item.vehicleId ? `Vehicle #${item.vehicleId}` : 'N/A');
     const isPaid = remaining <= 0;
 
     return (
@@ -88,7 +93,7 @@ export default function SalesScreen({ navigation }) {
               <StatusChip label={item.saleType || 'Sale'} />
             </View>
             <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>{veh}</Text>
-            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.Customer?.fullName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.customer?.fullName || item.buyerName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
               <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPrice)}</Text>
               <View style={[styles.payBadge, { backgroundColor: isPaid ? c.success + '12' : c.warning + '12' }]}>
@@ -100,9 +105,9 @@ export default function SalesScreen({ navigation }) {
             <ProgressBar progress={progress} color={isPaid ? c.success : c.warning} style={styles.progress} />
             <View style={styles.actionsRow}>
               <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('SaleDetail', { sale: item })} style={styles.actionBtn} />
-              {remaining > 0 && <IconButton icon="cash" size={18} iconColor={c.success} onPress={() => { setPayDialog(item); setPayAmount(String(remaining)); }} style={styles.actionBtn} />}
-              <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('SaleForm', { sale: item })} style={styles.actionBtn} />
-              <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
+              {remaining > 0 && canWrite('Sales') && <IconButton icon="cash" size={18} iconColor={c.success} onPress={() => { setPayDialog(item); setPayAmount(String(remaining)); }} style={styles.actionBtn} />}
+              {canWrite('Sales') && <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('SaleForm', { sale: item })} style={styles.actionBtn} />}
+              {canWrite('Sales') && <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />}
             </View>
           </View>
         </View>

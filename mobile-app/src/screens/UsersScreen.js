@@ -29,7 +29,10 @@ export default function UsersScreen({ navigation }) {
     try {
       const { data } = await apiClient.get('/auth/users');
       setUsers(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
-    } catch (e) { console.log(e.message); } finally { setLoading(false); }
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { const unsub = navigation.addListener('focus', fetch); return unsub; }, [navigation, fetch]);

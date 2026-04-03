@@ -37,8 +37,11 @@ export default function SaleDetailScreen({ navigation, route }) {
         setDetail(sRes.data?.data || sRes.data);
         const pData = pRes.data;
         setPayments(Array.isArray(pData?.data) ? pData.data : Array.isArray(pData) ? pData : []);
-      } catch (e) { console.log(e); }
-      setLoading(false);
+      } catch (e) {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [sale]);
@@ -51,8 +54,8 @@ export default function SaleDetailScreen({ navigation, route }) {
   const paid = total - remaining;
   const progress = Math.min(paid / total, 1);
   const saleTypeObj = SALE_TYPES.find(t => t.value === s.saleType) || {};
-  const veh = s.Vehicle || {};
-  const cust = s.Customer || {};
+  const veh = s.vehicle || {};
+  const cust = s.customer || {};
 
   const Field = ({ label, value, color }) => value ? (
     <View style={styles.fieldRow}>

@@ -4,6 +4,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
+  basePath: '/admin',
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30,

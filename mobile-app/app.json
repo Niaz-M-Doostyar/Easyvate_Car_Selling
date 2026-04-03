@@ -1,11 +1,13 @@
 {
   "expo": {
-    "name": "Easyvate Car Selling",
-    "slug": "easyvate-mobile",
+    "name": "Niazi Khpalwak Showroom",
+    "slug": "niazi-khpalwak-motors",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "niazikhpalwak",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -16,21 +18,93 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.easyvate.carselling"
+      "bundleIdentifier": "com.niazikhpalwak.motors",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload vehicle images and team photos.",
+        "NSPhotoLibraryAddUsageDescription": "This app saves selected images to your photo library.",
+        "NSCameraUsageDescription": "This app uses the camera to capture vehicle and team member photos.",
+        "NSFileProviderDomainUsageDescription": "This app needs access to files to upload vehicle images, team photos, and database backups.",
+        "NSMicrophoneUsageDescription": "This app does not use the microphone.",
+        "NSDocumentsDirectoryUsageDescription": "This app accesses documents for uploading files.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "mailto",
+          "maps"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "niazikhpalwak.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionRequiresForwardSecrecy": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1b2a"
       },
-      "package": "com.easyvate.carselling"
+      "package": "com.niazikhpalwak.motors",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "extra": {
+      "webBaseUrl": "https://niazikhpalwak.com",
+      "publicApiUrl": "https://niazikhpalwak.com/api",
+      "adminApiUrl": "https://niazikhpalwak.com/admin/api"
+    },
     "plugins": [
       "expo-file-system",
-      "expo-font"
+      "expo-font",
+      "expo-video",
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      "expo-video"
     ]
   }
 }

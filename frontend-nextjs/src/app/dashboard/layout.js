@@ -191,7 +191,7 @@ export default function DashboardLayout({ children }) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    router.push('/login');
+    window.location.href = '/admin/login';
   };
 
   const drawer = (

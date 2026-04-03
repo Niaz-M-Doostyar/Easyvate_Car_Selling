@@ -12,7 +12,7 @@ import {
   Facebook, Instagram, Twitter, Person
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
-import apiClient from '@/utils/api';
+import apiClient, { getUploadUrl } from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 import { validateRequired } from '@/utils/validation';
 
@@ -176,9 +176,8 @@ export default function TeamPage() {
 
   const getImageUrl = (path) => {
     if (!path) return '';
-    // Already has /api? return as is (for safety)
-    if (path.startsWith('/api')) return path;
-    return `/api${path}`;
+    if (path.startsWith('http')) return path;
+    return getUploadUrl(path.startsWith('/uploads') ? path : `/uploads${path}`);
   };
 
   return (

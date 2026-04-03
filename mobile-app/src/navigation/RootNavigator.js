@@ -4,8 +4,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { ActivityIndicator, View } from 'react-native';
-import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
+import PublicCarDetailScreen from '../screens/PublicCarDetailScreen';
+import PublicTabNavigator from './PublicTabNavigator';
 import AppDrawer from './AppDrawer';
 
 const Stack = createStackNavigator();
@@ -45,7 +46,8 @@ export default function RootNavigator() {
           <Stack.Screen name="Main" component={AppDrawer} />
         ) : (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="PublicTabs" component={PublicTabNavigator} />
+            <Stack.Screen name="CarDetail" component={PublicCarDetailScreen} options={{ animationTypeForReplace: 'push' }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ animationTypeForReplace: 'push' }} />
           </>
         )}

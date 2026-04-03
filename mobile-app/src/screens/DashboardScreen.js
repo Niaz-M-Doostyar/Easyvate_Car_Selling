@@ -41,7 +41,6 @@ export default function DashboardScreen({ navigation }) {
         employees: Array.isArray(eRes.data?.data) ? eRes.data.data : Array.isArray(eRes.data) ? eRes.data : [],
       });
     } catch (e) {
-      console.log('Dashboard fetch error:', e.message);
     } finally {
       setLoading(false);
     }
@@ -153,10 +152,10 @@ export default function DashboardScreen({ navigation }) {
                   </LinearGradient>
                   <View style={styles.saleInfo}>
                     <Text style={[styles.saleName, { color: c.onSurface }]} numberOfLines={1}>
-                      {sale.Vehicle?.manufacturer || ''} {sale.Vehicle?.model || sale.saleId}
+                      {sale.vehicle?.manufacturer || ''} {sale.vehicle?.model || sale.saleId}
                     </Text>
                     <Text style={[styles.saleMeta, { color: c.onSurfaceVariant }]}>
-                      {sale.Customer?.fullName || 'Customer'} • {new Date(sale.saleDate).toLocaleDateString()}
+                      {sale.customer?.fullName || sale.buyerName || 'Customer'} • {new Date(sale.saleDate).toLocaleDateString()}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>

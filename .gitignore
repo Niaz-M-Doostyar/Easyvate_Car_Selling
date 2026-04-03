@@ -43,6 +43,9 @@ pids/
 *.seed
 *.pid.lock
 
+# Expo local state
+.expo/
+
 # Coverage directory used by tools like istanbul
 coverage/
 

@@ -28,9 +28,22 @@ export default function EmployeeFormScreen({ navigation, route }) {
 
   useEffect(() => {
     if (editing) {
-      const f = {};
-      Object.keys(form).forEach(k => { if (editing[k] != null) f[k] = String(editing[k]); });
-      setForm(prev => ({ ...prev, ...f }));
+      const addrParts = (editing.address || '').split(',').map(s => s.trim()).filter(Boolean);
+      setForm(prev => ({
+        ...prev,
+        fullName: editing.fullName ?? prev.fullName,
+        fatherName: editing.fatherName ?? prev.fatherName,
+        phoneNumber: editing.phoneNumber ?? prev.phoneNumber,
+        nationalIdNumber: editing.tazkiraNumber ?? editing.tazkiraNumber ?? prev.nationalIdNumber,
+        position: editing.role ?? editing.position ?? prev.position,
+        salary: editing.monthlySalary != null ? String(editing.monthlySalary) : prev.salary,
+        status: editing.status ?? prev.status,
+        hireDate: editing.joiningDate ? new Date(editing.joiningDate).toISOString().split('T')[0] : prev.hireDate,
+        province: addrParts[0] ?? prev.province,
+        district: addrParts[1] ?? prev.district,
+        village: addrParts[2] ?? prev.village,
+        address: addrParts.slice(3).join(', ') || prev.address,
+      }));
     }
   }, [editing]);
 
@@ -51,7 +64,16 @@ export default function EmployeeFormScreen({ navigation, route }) {
     if (!validate()) return;
     setSaving(true);
     try {
-      const payload = { ...form, salary: Number(form.salary) };
+      const payload = {
+        fullName: form.fullName,
+        phoneNumber: form.phoneNumber,
+        tazkiraNumber: form.nationalIdNumber || undefined,
+        role: form.position || undefined,
+        monthlySalary: Number(form.salary),
+        joiningDate: form.hireDate,
+        status: form.status,
+        address: [form.province, form.district, form.village, form.address].filter(Boolean).join(', '),
+      };
       if (editing) {
         await apiClient.put(`/employees/${editing.id}`, payload);
       } else {

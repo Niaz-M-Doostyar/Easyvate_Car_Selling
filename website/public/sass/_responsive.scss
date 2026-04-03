@@ -569,6 +569,42 @@
     .blog__details__hero__text ul li span::after {
       right: -16px;
     }
+
+    /* Ensure car filter is responsive on small screens and stacks above carousel */
+    .car__sidebar,
+    .car__filter {
+      width: 100%;
+      position: relative;
+      z-index: 1050;
+      margin-bottom: 20px;
+    }
+
+    /* Make native selects/nice-select lists overlay other content on mobile */
+    .car__filter form .nice-select .list,
+    .car__filter select {
+      z-index: 9999 !important;
+    }
+
+    /* Ensure any custom dropdown list from nice-select is positioned above the carousel */
+    .car__filter form .nice-select .list {
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100%;
+      margin-top: 0;
+    }
+    /* Elevate the carousel on small screens so it sits above the filter */
+    .car__item__pic__slider,
+    .car__item__pic__slider .owl-stage-outer,
+    .car__item__pic__slider .owl-stage {
+      position: relative !important;
+      z-index: 2000 !important;
+    }
+    /* Keep filter interactive but behind the carousel images */
+    .car__sidebar,
+    .car__filter {
+      z-index: 1000;
+    }
   }
   
   /* Small Device = 320px */

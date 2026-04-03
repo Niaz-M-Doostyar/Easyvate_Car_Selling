@@ -302,6 +302,13 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
 
 async function findChromeExecutable() {
   const candidates = [
+    // Linux (VPS / server)
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/snap/bin/chromium',
+    // macOS
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
   ];
@@ -363,7 +370,7 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
     } catch (e) {
       console.warn('[pdf] document.fonts.ready did not resolve quickly, continuing');
     }
-    await page.waitForTimeout(200);
+    await new Promise((r) => setTimeout(r, 200));
 
     // Measure content (.page) and compute scale to fit single A4
     const contentSize = await page.evaluate(() => {
@@ -386,7 +393,7 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
         el.style.transform = `scale(${s})`;
       }, scale);
       // allow reflow after scaling
-      await page.waitForTimeout(80);
+      await new Promise((r) => setTimeout(r, 80));
     }
 
     // Produce a single A4 page (no margins) — content has been scaled to fit
