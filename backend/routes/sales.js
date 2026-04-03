@@ -597,31 +597,22 @@ router.get('/:id/invoice', async (req, res) => {
     const customer = await Customer.findByPk(sale.customerId);
     const pdfOutputDir = path.join(__dirname, '..', 'uploads', 'pdf');
 
-    // If an invoice already exists on disk, serve it immediately.
+    // Always regenerate the invoice so changes (font, layout, data) are reflected.
+    // Delete the old cached file first if it exists.
     if (sale.invoicePath && fs.existsSync(sale.invoicePath)) {
-      return res.download(sale.invoicePath, path.basename(sale.invoicePath));
+      try { fs.unlinkSync(sale.invoicePath); } catch (_) {}
     }
 
-    // Otherwise attempt to (re)generate the invoice. If Puppeteer fails or any
-    // error occurs, try to fallback to an existing invoicePath if available,
-    // otherwise return a 500 with a friendly message.
     try {
       const pdfInfo = await generateSaleInvoicePdf(sale, vehicle, customer, pdfOutputDir);
       if (pdfInfo && pdfInfo.filePath) {
         await sale.update({ invoicePath: pdfInfo.filePath });
         return res.download(pdfInfo.filePath, pdfInfo.fileName);
       }
-      // If generator returned nothing useful, try previous path
-      if (sale.invoicePath && fs.existsSync(sale.invoicePath)) {
-        return res.download(sale.invoicePath, path.basename(sale.invoicePath));
-      }
       return res.status(500).json({ error: 'Failed to generate invoice: generator returned no file' });
     } catch (err) {
       const detail = (err && (err.stack || err.message)) || String(err);
       console.error('Invoice generation failed:', detail);
-      if (sale.invoicePath && fs.existsSync(sale.invoicePath)) {
-        return res.download(sale.invoicePath, path.basename(sale.invoicePath));
-      }
       return res.status(500).json({ error: `Failed to generate invoice: ${err && err.message ? err.message : 'unknown error'}` });
     }
   } catch (error) {
