@@ -26,7 +26,7 @@ const PRESETS = {
     PORT: 3001,
     DB: {
       HOST: 'localhost',
-      PORT: 3308,
+      PORT: 3306,
       USER: 'root',
       PASSWORD: '',
       DATABASE: 'easyvate_cars',
