@@ -31,7 +31,7 @@ const PRESETS = {
       PASSWORD: 'easyvate123',
       DATABASE: 'easyvate_cars',
     },
-    CORS_ORIGIN: 'http://194.163.170.240',
+    CORS_ORIGIN: 'https://niazikhpalwak.com',
   },
   
 };

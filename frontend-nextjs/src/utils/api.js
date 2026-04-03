@@ -6,7 +6,7 @@ import axios from 'axios';
 // ============================================================
 const API_URLS = {
   local: 'http://localhost:3001/api',
-  vps: '/api',
+  vps: '/admin/api',
 };
 
 function getDefaultApiUrl() {
