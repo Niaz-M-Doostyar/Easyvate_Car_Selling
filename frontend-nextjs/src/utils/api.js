@@ -1,18 +1,29 @@
 import axios from 'axios';
 
 // ============================================================
-// DEPLOYMENT PRESETS – controlled by NEXT_PUBLIC_DEPLOY_TARGET
-// in frontend-nextjs/.env.local
-//   local  →  your Mac (localhost:3001)
-//   vps    →  remote VPS (194.163.170.240) – no port, served via Nginx
+// Production should use the same origin and let Nginx proxy /api.
+// Local development still talks directly to the backend on port 3001.
 // ============================================================
 const API_URLS = {
   local: 'http://localhost:3001/api',
-  vps:   'http://194.163.170.240/api',
+  vps: '/api',
 };
 
-const DEPLOY_TARGET = process.env.NEXT_PUBLIC_DEPLOY_TARGET || 'local';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || API_URLS[DEPLOY_TARGET] || API_URLS.local;
+function getDefaultApiUrl() {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return API_URLS.local;
+    }
+    return API_URLS.vps;
+  }
+
+  return process.env.NEXT_PUBLIC_DEPLOY_TARGET === 'local'
+    ? API_URLS.local
+    : API_URLS.vps;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || getDefaultApiUrl();
 
 // debug: show which base URL is being used
 if (typeof window !== 'undefined') {

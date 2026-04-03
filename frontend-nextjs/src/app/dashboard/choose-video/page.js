@@ -126,12 +126,11 @@ export default function ChooseVideoPage() {
 
   // Helper to get full video URL (same origin)
   const getVideoUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  // If you have an API base URL (e.g., from env), prepend it
-  const baseUrl = `http://localhost:3001`;
-  return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
-};
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    if (path.startsWith('/')) return path;
+    return `/${path}`;
+  };
 
   return (
     <Box>
