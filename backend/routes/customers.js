@@ -3,6 +3,8 @@ const router = express.Router();
 const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
 const Sale = require('../models/Sale');
+const Vehicle = require('../models/Vehicle');
+const CommissionDistribution = require('../models/CommissionDistribution');
 const { toAFN } = require('../src/services/exchangeRate');
 const { CREDIT_LEDGER_TYPES } = require('../src/services/partnership');
 
@@ -151,13 +153,42 @@ router.get('/:id/history', async (req, res) => {
       return res.status(404).json({ error: 'Customer not found' });
     }
 
-    const sales = await Sale.findAll({ where: { customerId: customer.id } });
-    const ledger = await CustomerLedger.findAll({
+    // Fetch direct sales where this customer is the buyer
+    const directSales = await Sale.findAll({
       where: { customerId: customer.id },
-      order: [['date', 'DESC']]
+      include: [
+        { model: Vehicle, as: 'vehicle' },
+        { model: Customer, as: 'customer' },
+        { model: CommissionDistribution, as: 'commissions', include: [{ model: Customer, as: 'customer', required: false }] }
+      ],
+      order: [['saleDate', 'DESC']]
     });
 
-    res.json({ customer, sales, ledger });
+    // Also include sales where this customer received commission (partner/ investor)
+    const commissionRows = await CommissionDistribution.findAll({ where: { customerId: customer.id }, attributes: ['saleId'] });
+    const partnerSaleIds = commissionRows.map(r => r.saleId).filter(Boolean);
+    let partnerSales = [];
+    if (partnerSaleIds.length > 0) {
+      partnerSales = await Sale.findAll({
+        where: { id: partnerSaleIds },
+        include: [
+          { model: Vehicle, as: 'vehicle' },
+          { model: Customer, as: 'customer' },
+          { model: CommissionDistribution, as: 'commissions', include: [{ model: Customer, as: 'customer', required: false }] }
+        ],
+        order: [['saleDate', 'DESC']]
+      });
+    }
+
+    // Merge and dedupe sales (direct buyer sales first)
+    const allMap = new Map();
+    directSales.forEach(s => allMap.set(String(s.id), s));
+    partnerSales.forEach(s => allMap.set(String(s.id), s));
+    const allSales = Array.from(allMap.values()).sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate));
+
+    const ledger = await CustomerLedger.findAll({ where: { customerId: customer.id }, order: [['date', 'DESC']] });
+
+    res.json({ customer, sales: allSales, ledger });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
