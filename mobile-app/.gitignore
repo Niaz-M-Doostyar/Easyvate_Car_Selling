@@ -1,0 +1,9 @@
+# Local keys and keystore
+android/key.properties
+android/app/my-release-key.jks
+android/app/*.keystore
+
+# React Native artifacts
+node_modules/
+android/app/build/
+ios/build/
