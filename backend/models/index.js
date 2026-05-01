@@ -10,7 +10,6 @@ const Customer = require('./Customer');
 const CustomerLedger = require('./CustomerLedger');
 const ShowroomLedger = require('./ShowroomLedger');
 const CurrencyExchange = require('./CurrencyExchange');
-const Loan = require('./Loan');
 const Employee = require('./Employee');
 const Attendance = require('./Attendance');
 const Payroll = require('./Payroll');
@@ -75,7 +74,6 @@ module.exports = {
   CustomerLedger,
   ShowroomLedger,
   CurrencyExchange,
-  Loan,
   Employee,
   Attendance,
   Payroll,

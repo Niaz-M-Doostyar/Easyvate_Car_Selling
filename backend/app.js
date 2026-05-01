@@ -17,7 +17,6 @@ const currencyRoutes = require('./routes/currency');
 const attendanceRoutes = require('./routes/attendance');
 const payrollRoutes = require('./routes/payroll');
 const reportsRoutes = require('./routes/reports');
-const loansRoutes = require('./routes/loans');
 const aboutRoutes = require('./routes/about');
 const teamRoutes = require('./routes/team');
 const contactRoutes = require('./routes/contact');
@@ -85,8 +84,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-const ROLE_INVENTORY = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Sales'];
-const ROLE_FINANCIAL = ['Super Admin', 'Owner', 'Manager', 'Accountant', 'Financial'];
+const ROLE_INVENTORY = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Sales', 'Accountant', 'Viewer'];
+const ROLE_FINANCIAL = ['Super Admin', 'Owner', 'Manager', 'Accountant', 'Financial', 'Viewer'];
 const ROLE_EMPLOYEE = ['Super Admin', 'Owner', 'Manager', 'Financial', 'Accountant'];
 
 app.use('/api/auth', authRoutes);
@@ -99,7 +98,6 @@ app.use('/api/currency', verifyToken, authorize(ROLE_FINANCIAL), currencyRoutes)
 app.use('/api/attendance', verifyToken, authorize(ROLE_EMPLOYEE), attendanceRoutes);
 app.use('/api/payroll', verifyToken, authorize(ROLE_FINANCIAL), payrollRoutes);
 app.use('/api/reports', verifyToken, authorize([...ROLE_FINANCIAL, ...ROLE_INVENTORY]), reportsRoutes);
-app.use('/api/loans', verifyToken, authorize(ROLE_FINANCIAL), loansRoutes);
 app.use('/api/about', verifyToken, authorize(ROLE_INVENTORY), aboutRoutes);
 app.use('/api/team', verifyToken, authorize(ROLE_INVENTORY), teamRoutes);
 app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);

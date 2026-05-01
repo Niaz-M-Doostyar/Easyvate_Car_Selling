@@ -89,6 +89,7 @@ export default function Footer() {
                   <li><a href={`/${locale}/car`}><i className="fa fa-angle-right"></i> {t('cars')}</a></li>
                   <li><a href={`/${locale}/about`}><i className="fa fa-angle-right"></i> {t('about')}</a></li>
                   <li><a href={`/${locale}/contact`}><i className="fa fa-angle-right"></i> {t('contact')}</a></li>
+                  <li><a href={`/${locale}/privacy-policy`}><i className="fa fa-angle-right"></i> {t('privacy_title') || 'Privacy Policy'}</a></li>
                 </ul>
               </div>
             </div>

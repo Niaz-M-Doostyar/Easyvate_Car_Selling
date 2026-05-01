@@ -126,8 +126,8 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
   try {
     const { amount } = req.body;
 
-    if (!amount || parseFloat(amount) <= 0) {
-      return res.status(400).json({ error: 'Valid payment amount is required' });
+    if (amount === undefined || amount === null || parseFloat(amount) < 0) {
+      return res.status(400).json({ error: 'Valid payment amount (>=0) is required' });
     }
 
     const payroll = await markPayrollPaid(
@@ -155,15 +155,17 @@ router.post('/:id/pay', verifyToken, checkPermission('payroll', 'update'), async
       createdBy: req.user.id
     });
 
+    // ✅ Changed: Use 'Expense' type instead of 'Salary' so it deducts from showroom balance
     await ShowroomLedger.create({
-      type: 'Salary',
+      type: 'Expense',
       amount: parseFloat(amount),
       currency: 'AFN',
       amountInPKR: amountAFN,
-      description: `Salary for ${employee.fullName}`,
+      description: `Salary payment for ${employee.fullName} (${payroll.month}/${payroll.year})`,
       date: new Date(),
       referenceId: payroll.id,
       referenceType: 'Payroll',
+      personName: employee.fullName,
       addedBy: req.user.id
     });
 

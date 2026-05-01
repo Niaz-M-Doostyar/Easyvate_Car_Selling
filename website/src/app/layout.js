@@ -7,6 +7,7 @@ export default async function RootLayout({ children }) {
   const headersList = await headers();
   const locale = headersList.get('x-locale') || 'en';
   const dir = locale === 'en' ? 'ltr' : 'rtl';
+  console.log('Detected locale:', locale, 'Direction:', dir);
 
   // Common styles (always loaded)
   const commonStyles = [

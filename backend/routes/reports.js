@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 const Vehicle = require('../models/Vehicle');
 const Sale = require('../models/Sale');
 const ShowroomLedger = require('../models/ShowroomLedger');
@@ -201,25 +201,26 @@ router.get('/daily', async (req, res) => {
 // Generate Financial Report PDF
 router.get('/export-pdf', async (req, res) => {
   try {
-    const { generateFinancialReportPdf } = require('../src/services/pdf');
+    const { generateFinancialReportPdf } = require('../src/services/pdf_puppeteer');
     const path = require('path');
 
     // Get sales data
     const sales = await Sale.findAll();
     const revenue = sales.reduce((sum, s) => sum + safeNum(s.sellingPrice), 0);
     const profit = sales.reduce((sum, s) => sum + safeNum(s.profit), 0);
-    const commission = sales.reduce((sum, s) => sum + safeNum(s.commission), 0);
+    // const commission = sales.reduce((sum, s) => sum + safeNum(s.commission), 0);
 
-    // Get showroom balance
-    const incomeTypes = ['Income', 'Vehicle Sale', 'Loan Received'];
-    const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given', 'Commission'];
-    
+    // Get showroom ledger for balance breakdown
     const ledger = await ShowroomLedger.findAll();
+    const incomeTypes = ['Income', 'Vehicle Sale', 'Loan Received'];
+    const expenseTypes = ['Expense', 'Vehicle Purchase', 'Salary', 'Loan Given'];
+    
     const income = ledger.filter(t => incomeTypes.includes(t.type))
       .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     const expenses = ledger.filter(t => expenseTypes.includes(t.type))
       .reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     
+    // Commission is added (not subtracted)
     const commissionLedger = ledger.filter(t => t.type === 'Commission');
     const sharedTotal = commissionLedger.reduce((sum, t) => sum + safeNum(t.amountInPKR), 0);
     const showroomBalance = income - expenses + sharedTotal;
@@ -227,12 +228,13 @@ router.get('/export-pdf', async (req, res) => {
     // Get shared persons breakdown
     const sharedPersons = await ShowroomLedger.findAll({
       where: { type: 'Commission' },
-      attributes: ['personName', [require('sequelize').fn('SUM', require('sequelize').col('amountInPKR')), 'total']],
+      attributes: ['personName', [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']],
       group: ['personName'],
       raw: true
     });
 
     const ownerBalance = showroomBalance - sharedTotal;
+    const commissionFromLedger = sharedTotal;
 
     // Prepare report data (values already in AFN base currency)
     const reportData = {
@@ -240,7 +242,7 @@ router.get('/export-pdf', async (req, res) => {
       expenses: Math.round(expenses),
       profit: Math.round(profit),
       vehiclesSold: sales.length,
-      commission: Math.round(commission),
+      commission: Math.round(commissionFromLedger),
       showroomBalance: Math.round(showroomBalance),
       ownerBalance: Math.round(ownerBalance),
       sharedTotal: Math.round(sharedTotal),
@@ -255,6 +257,7 @@ router.get('/export-pdf', async (req, res) => {
 
     res.download(filePath, fileName);
   } catch (error) {
+    console.error('PDF generation error:', error);
     res.status(500).json({ error: { message: error.message } });
   }
 });

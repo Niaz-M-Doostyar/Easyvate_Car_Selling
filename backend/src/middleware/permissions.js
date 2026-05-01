@@ -16,7 +16,6 @@ const PERMISSIONS = {
     attendance: ['read', 'create', 'update'],
     payroll: ['read', 'create', 'update'],
     currency: ['read', 'create'],
-    loans: ['read', 'create', 'update', 'delete'],
     AboutEnglish: ['read', 'create', 'update', 'delete'],
     AboutPashto: ['read', 'create', 'update', 'delete'],
     AboutDari: ['read', 'create', 'update', 'delete'],
@@ -44,7 +43,6 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: ['read', 'create', 'update'],
     currency: ['read', 'create'],
-    loans: ['read', 'create', 'update'],
     AboutEnglish: ['read', 'create', 'update', 'delete'],
     AboutPashto: ['read', 'create', 'update', 'delete'],
     AboutDari: ['read', 'create', 'update', 'delete'],
@@ -72,7 +70,6 @@ const PERMISSIONS = {
     attendance: ['read', 'create'],
     payroll: ['read'],
     currency: ['read'],
-    loans: ['read'],
     AboutEnglish: ['read', 'create', 'update', 'delete'],
     AboutPashto: ['read', 'create', 'update', 'delete'],
     AboutDari: ['read', 'create', 'update', 'delete'],
@@ -128,7 +125,6 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: [],
     currency: ['read'],
-    loans: [],
     AboutEnglish: ['read', 'create', 'update', 'delete'],
     AboutPashto: ['read', 'create', 'update', 'delete'],
     AboutDari: ['read', 'create', 'update', 'delete'],
@@ -156,7 +152,6 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: [],
     currency: [],
-    loans: [],
     AboutEnglish: ['read', 'create', 'update', 'delete'],
     AboutPashto: ['read', 'create', 'update', 'delete'],
     AboutDari: ['read', 'create', 'update', 'delete'],
@@ -184,7 +179,6 @@ const PERMISSIONS = {
     attendance: ['read'],
     payroll: [],
     currency: [],
-    loans: []
   }
 };
 

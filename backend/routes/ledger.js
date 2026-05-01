@@ -129,6 +129,7 @@ router.get('/yearly', async (req, res) => {
   }
 });
 
+// GET /ledger/showroom - list all entries
 router.get('/showroom', async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query;
@@ -136,9 +137,7 @@ router.get('/showroom', async (req, res) => {
     if (startDate && endDate) {
       where.date = { [Op.between]: [new Date(startDate), new Date(endDate)] };
     }
-    if (type) {
-      where.type = type;
-    }
+    if (type) where.type = type;
     const ledger = await ShowroomLedger.findAll({ where, order: [['date', 'DESC']] });
     res.json({ success: true, data: ledger });
   } catch (error) {
@@ -146,36 +145,50 @@ router.get('/showroom', async (req, res) => {
   }
 });
 
+// GET /ledger/showroom/balance - new calculation
 router.get('/showroom/balance', async (req, res) => {
   try {
-    const income = await ShowroomLedger.sum('amountInPKR', {
-      where: { type: { [Op.in]: SHOWROOM_INCOME_TYPES } }
+    // Total Income = sum of all 'Vehicle Sale' entries (full selling prices from sales)
+    const totalIncome = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Vehicle Sale' }
     }) || 0;
 
-    const expenses = await ShowroomLedger.sum('amountInPKR', {
-      where: { type: { [Op.in]: SHOWROOM_EXPENSE_TYPES } }
+    // Expenses (operational outflows)
+    const totalExpenses = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Expense' }
     }) || 0;
 
-    const balance = income - expenses;
+    // Vehicle purchases (outflow)
+    const totalVehiclePurchases = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Vehicle Purchase' }
+    }) || 0;
 
-    const sharedPersons = await ShowroomLedger.findAll({
-      where: { type: COMMISSION_LEDGER_TYPE },
-      attributes: ['personName', [Sequelize.fn('SUM', Sequelize.col('amountInPKR')), 'total']],
-      group: ['personName']
-    });
+    // Owner withdrawals (outflow)
+    const totalOwnerWithdrawal = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Owner Withdrawal' }
+    }) || 0;
 
-    const sharedTotal = sharedPersons.reduce((sum, p) => sum + Number(p.get('total') || 0), 0);
-    const showroomBalance = balance + sharedTotal;
-    const ownerBalance = balance;
+    // Commission is added (plus) to the balance
+    const totalCommission = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Commission' }
+    }) || 0;
+
+    // Total outflows = expenses + purchases + withdrawals
+    const totalOutflows = totalExpenses + totalVehiclePurchases + totalOwnerWithdrawal;
+
+    // Showroom balance = totalIncome + commission - outflows
+    const showroomBalance = totalIncome + totalCommission - totalOutflows;
+
+    const ownerProfit = totalIncome - totalVehiclePurchases - totalExpenses + totalCommission;
 
     res.json({
-      balance,
+      totalIncome,           // revenue from sales (selling prices)
+      totalExpenses,
+      totalVehiclePurchases,
+      totalCommission,
+      totalOwnerWithdrawal,
       showroomBalance,
-      income,
-      expenses,
-      ownerBalance,
-      sharedTotal,
-      sharedPersons,
+      ownerProfit  // keep for compatibility
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -270,14 +283,12 @@ router.get('/time-balance', async (req, res) => {
   }
 });
 
-// Create showroom ledger entry
+// POST /ledger/showroom - create entry (type validation handled by model)
 router.post('/showroom', async (req, res) => {
   try {
     const { type, personName, amount, currency, date, description } = req.body;
-    
     const finalCurrency = currency || 'AFN';
     const amountInPKR = await toAFN(amount, finalCurrency);
-    
     const entry = await ShowroomLedger.create({
       type,
       personName: personName || null,
@@ -287,25 +298,20 @@ router.post('/showroom', async (req, res) => {
       date: date || new Date(),
       description
     });
-    
     res.status(201).json({ success: true, data: entry });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update showroom ledger entry
+// PUT /ledger/showroom/:id - update entry
 router.put('/showroom/:id', async (req, res) => {
   try {
     const entry = await ShowroomLedger.findByPk(req.params.id);
-    if (!entry) {
-      return res.status(404).json({ error: 'Showroom ledger entry not found' });
-    }
-    
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
     const { type, personName, amount, currency, date, description } = req.body;
     const finalCurrency = currency || entry.currency || 'AFN';
     const amountInPKR = amount ? await toAFN(amount, finalCurrency) : entry.amountInPKR;
-    
     await entry.update({
       type: type || entry.type,
       personName: personName !== undefined ? personName : entry.personName,
@@ -315,22 +321,19 @@ router.put('/showroom/:id', async (req, res) => {
       date: date || entry.date,
       description: description !== undefined ? description : entry.description
     });
-    
     res.json({ success: true, data: entry });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete showroom ledger entry
+// DELETE /ledger/showroom/:id
 router.delete('/showroom/:id', async (req, res) => {
   try {
     const entry = await ShowroomLedger.findByPk(req.params.id);
-    if (!entry) {
-      return res.status(404).json({ error: 'Showroom ledger entry not found' });
-    }
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
     await entry.destroy();
-    res.json({ message: 'Showroom ledger entry deleted successfully' });
+    res.json({ message: 'Entry deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

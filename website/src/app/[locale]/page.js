@@ -157,8 +157,8 @@ export default function HomePage() {
                           <h2>{slide.title}</h2>
                         </div>
                         <div className="hero__text__price">
-                          <div className="car-model">Model {slide.model}</div>
-                          <h2>Price: ؋{slide.price}</h2>
+                          <div className="car-model">{t('model_label')}: {slide.model}</div>
+                          <h2>{t('price_label')}: ؋{slide.price}</h2>
                         </div>
                       </div>
                     </div>
@@ -186,7 +186,7 @@ export default function HomePage() {
             <h5 style={{ marginBottom: '15px' }}>{t('car_filter') || 'Car Filter'}</h5>
             <form onSubmit={(e) => e.preventDefault()}>
               {/* Search input – full width */}
-              <div className="car__search" style={{ marginBottom: '15px' }}>
+              {/* <div className="car__search" style={{ marginBottom: '15px' }}>
                 <input
                   type="text"
                   placeholder={t('search_placeholder') || "Search cars..."}
@@ -194,7 +194,7 @@ export default function HomePage() {
                   onChange={handleSearchChange}
                   style={{ width: '100%', padding: '8px' }}
                 />
-              </div>
+              </div> */}
 
               {/* Two‑column grid for dropdowns */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -292,6 +292,12 @@ export default function HomePage() {
                 width: calc(100% - 40px);
                 max-width: 400px;
                 margin: 20px auto;
+                display: none;
+                visibility: hidden;
+                pointer-events: none;
+              }
+              .hero__tab .filter-grid {
+                grid-template-columns: 1fr 1fr !important;
               }
             }
           @media (max-width: 576px) {

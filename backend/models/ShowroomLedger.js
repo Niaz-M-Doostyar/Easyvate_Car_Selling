@@ -8,7 +8,7 @@ const ShowroomLedger = sequelize.define('ShowroomLedger', {
     autoIncrement: true
   },
   type: {
-    type: DataTypes.ENUM('Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Loan Payment', 'Commission'),
+    type: DataTypes.ENUM('Showroom Balance', 'Expense', 'Commission', 'Owner Withdrawal', 'Currency Exchange', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Loan Given', 'Loan Received'),
     allowNull: false
   },
   amount: {

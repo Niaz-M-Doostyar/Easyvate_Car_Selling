@@ -59,14 +59,11 @@ export default function Header() {
   const isActive = (path) => currentPath === path;
 
   const changeLanguage = (newLocale) => {
-    // Replace the current locale in the URL with the new one
-    const newPathname = pathname.replace(/^\/[^\/]+/, `/${newLocale}`);
-
-    window.location.href = newPathname;
-    // Change the i18n language explicitly
-    i18n.changeLanguage(newLocale);
-    setShowLangDropdown(false);
-  };
+  const newPathname = pathname.replace(/^\/[^\/]+/, `/${newLocale}`);
+  const search = window.location.search;
+  window.location.href = `${newPathname}${search}`;
+  setShowLangDropdown(false);
+};
 
   return (
     <>
@@ -74,7 +71,41 @@ export default function Header() {
       <div className="offcanvas-menu-overlay"></div>
       <div className="offcanvas-menu-wrapper">
         <div className="offcanvas__widget">
-          <Link href="/admin" locale={false} className="primary-btn">{t('login')}</Link>
+          <div className="language-dropdown" style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              className="primary-btn"
+              onClick={() => setShowLangDropdown(!showLangDropdown)}
+              aria-expanded={showLangDropdown}
+            >
+              {t('language')}
+            </button>
+            {showLangDropdown && (
+              <ul className="dropdown-menu" style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: '#fff',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                listStyle: 'none',
+                padding: '0.5rem 0',
+                margin: 0,
+                zIndex: 1000,
+                minWidth: '120px',
+                display: 'block'
+              }}>
+                <li style={{ padding: '0.25rem 1rem', cursor: 'pointer' }} onClick={() => changeLanguage('en')}>
+                  English
+                </li>
+                <li style={{ padding: '0.25rem 1rem', cursor: 'pointer' }} onClick={() => changeLanguage('ps')}>
+                  پښتو
+                </li>
+                <li style={{ padding: '0.25rem 1rem', cursor: 'pointer' }} onClick={() => changeLanguage('fa')}>
+                  دری
+                </li>
+              </ul>
+            )}
+          </div>
+          <Link href="http://localhost:3000/admin/login" locale={false} className="primary-btn">{t('login')}</Link>
         </div>
         <div className="offcanvas__logo">
           <Link href={`/${locale}`}><img src="/img/header-logo.png" alt="logo" /></Link>
@@ -189,7 +220,7 @@ export default function Header() {
                       </ul>
                     )}
                   </div>
-                  <Link href="/admin" locale={false} className="primary-btn" target="_blank" rel="noopener noreferrer">{t('login')}</Link>
+                  <Link href="http://localhost:3000/admin/login" className="primary-btn" target="_blank" rel="noopener noreferrer">{t('login')}</Link>
                 </div>
               </div>
             </div>

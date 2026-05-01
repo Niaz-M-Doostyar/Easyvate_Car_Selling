@@ -14,9 +14,9 @@ const PRESETS = {
     PORT: 3001,
     DB: {
       HOST: 'localhost',
-      PORT: 8889,
+      PORT: 3306,
       USER: 'root',
-      PASSWORD: 'root',
+      PASSWORD: '',
       DATABASE: 'easyvate_cars',
     },
     CORS_ORIGIN: 'http://localhost:3000',

@@ -181,8 +181,8 @@ export default function CarDetailsPage() {
                         <div className="col-lg-12 col-md-6">
                           <div className="car__details__tab__info__item">
                             <h5>{t('general_information') || 'General Information'}</h5>
-                            <p style={{ textAlign: "left" }}>
-                              {vehicle.description || t('no_description_available') || 'No description available.'}
+                            <p>
+                              {t('car_description') || 'No description available.'}
                             </p>
                           </div>
                         </div>

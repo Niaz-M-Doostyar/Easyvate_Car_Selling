@@ -10,6 +10,14 @@ function safeText(v) {
   return v === undefined || v === null || v === '' ? '—' : String(v);
 }
 
+function toPashtoNumber(n) {
+  try { return new Intl.NumberFormat('fa-AF').format(Number(n)); } catch (e) { return String(n || '—'); }
+}
+
+function toPashtoDate(d) {
+  try { return d ? new Date(d).toLocaleDateString('fa-AF') : '—'; } catch (e) { return d || '—'; }
+}
+
 function buildHtmlForSale(sale, vehicle, customer, fontB64) {
   const toPashtoNumber = (n) => {
     try { return new Intl.NumberFormat('fa-AF').format(Number(n)); } catch (e) { return String(n || '—'); }
@@ -76,7 +84,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       <ol class="terms-list">
         ${items.map((item) => `<li>${item}</li>`).join('')}
       </ol>
-      <div class="terms-note">نوټ: ......................................................................................................................</div>
+      <div class="terms-note">نوټ: ${safeText(sale.notes)}</div>
     </div>
   `;
 
@@ -160,7 +168,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       .sil{ position:absolute; top:12px; width:52px; height:28px; fill:rgba(245, 219, 169, 0.85); }
       .sil.right{ right:12px; transform:scaleX(-1); }
       .sil.left{ left:12px; }
-      .bill-banner{ margin-top:2px; display:inline-block; background:${accentBg}; border:1px solid rgba(15,23,42,0.08); border-radius:999px; padding:6px 12px; position:relative; align-self:flex-start; }
+      .bill-banner{ margin:0px auto; display:inline-block; background:${accentBg}; border:1px solid rgba(15,23,42,0.08); border-radius:999px; padding:6px 12px; position:relative; align-self:flex-start; }
       .bill-banner .label{ color:${accentColor}; font-weight:800; font-size:12px; text-align:center; }
       .meta{ display:flex; justify-content:space-between; gap:8px; margin-top:2px; font-size:9px; color:var(--grayText); }
       .meta-pill{ flex:1; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:6px 10px; }
@@ -203,15 +211,12 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
         <svg class="sil left" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path d="M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 Z"/></svg>
         <svg class="sil right" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path d="M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 Z"/></svg>
         <div style="position:absolute; left:12px; top:8px; color:#d32f2f; font-weight:800; font-size:13px;">${serialNumber}</div>
-        <div class="company">نیازي خپلواک</div>
-        <div class="subtitle">موټر فروشی</div>
-        <div class="address">تیلیفون: ۰۷۰۰۰۰8۹۸۳ | ۰7۰۰۰۰8۹۸۲ | کندهار، شورمان</div>
+        <div class="company">نیازي خپلواک موټر پلورنځي</div>
+        <div style="text-align: center;"><div class="bill-banner"><div class="label">${billLabel}</div></div></div>
+        <div class="address">تیلیفون: ۰۷۰۰۰۰8۹۸۳ | ۰7۰۰۰۰8۹۸۲ | سپین بولدک عمومی سړک، ګمرک ته مخامخ. کندهار. افغانستان</div>
       </div>
 
-      <div class="bill-banner"><div class="label">${billLabel}</div></div>
-
       <div class="meta small">
-        <div class="meta-pill">دفتر: ${officeNumber} — جلد: ${bookVolume} — صفحه: ${pageNumber}</div>
         <div class="meta-pill">د بل شمیره: ${safeText(sale.saleId)} — نیټه: ${date}</div>
       </div>
 
@@ -287,14 +292,16 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
        ${customTermsHtml}
 
       <div class="signs" style="flex-wrap:wrap;">
-        <div class="sig">د پلورونکی لاسلیک<br/><span class="small">${safeText(sale.sellerName)}</span></div>
+        <div class="sig"><span class="small">د پلورونکی لاسلیک  (${safeText(sale.sellerName)})</span></div>
         <div class="sig">مهر</div>
-        <div class="sig">د پیرودونکی لاسلیک<br/><span class="small">${safeText(sale.buyerName)}</span></div>
-        <div class="sig">شاهد ۱<br/><span class="small">${safeText(sale.witnessName1)}</span></div>
-        <div class="sig">شاهد ۲<br/><span class="small">${safeText(sale.witnessName2)}</span></div>
+        <div class="sig"><span class="small">د پیرودونکی لاسلیک  (${safeText(sale.buyerName)})</span></div>
+      </div>
+      <div class="signs" style="flex-wrap:wrap;">
+        <div class="sig"><span class="small">شاهد۱  (${safeText(sale.witnessName1)})</span></div>
+        <div class="sig"><span class="small">شاهد۲  (${safeText(sale.witnessName2)})</span></div>
       </div>
 
-      <div class="footer">دا سند د نیازي خپلواک موټر فروشی رسمي د پلور ثبت او تسلیمۍ ریکارډ دی.</div>
+      <div class="footer">دا سند د نیازي خپلواک موټر پلورنځي رسمي د پلور ثبت او تسلیمۍ ریکارډ دی.</div>
     </div>
   </body>
   </html>`;
@@ -406,4 +413,273 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
   }
 }
 
-module.exports = { generateSaleInvoicePdf };
+// 2. Financial report PDF – NEW Puppeteer version (Pashto)
+// ----------------------------------------------------------------------
+function buildFinancialReportHtml(reportData, fontB64) {
+  const totalRevenue = toPashtoNumber(reportData.revenue);
+  const totalExpenses = toPashtoNumber(reportData.expenses);
+  const netProfit = toPashtoNumber(reportData.profit);
+  const vehiclesSold = toPashtoNumber(reportData.vehiclesSold);
+  const totalCommission = toPashtoNumber(reportData.commission);
+  const showroomBalance = toPashtoNumber(reportData.showroomBalance);
+  const ownerBalance = toPashtoNumber(reportData.ownerBalance);
+  const sharedTotal = toPashtoNumber(reportData.sharedTotal);
+  const sharedPersons = reportData.sharedPersons || [];
+  const dateStr = toPashtoDate(new Date());
+
+  const renderCard = (label, value, icon) => `
+    <div class="summary-card">
+      <div class="summary-icon">${icon}</div>
+      <div class="summary-label">${label}</div>
+      <div class="summary-value">${value} <span class="currency">افغانۍ</span></div>
+    </div>
+  `;
+
+  return `<!doctype html>
+  <html lang="ps">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>مالي راپور</title>
+    <style>
+      :root {
+        --primary: #0f172a;
+        --gold: #c8963e;
+        --gray-text: #5b6474;
+        --border: #e2e8f0;
+        --panel: #f8fafc;
+        --shadow: 0 10px 30px rgba(15,23,42,0.08);
+        --warning: #f59e0b;
+      }
+      @page { size: A4; margin: 0mm; }
+      @font-face {
+        font-family: 'BahijNazaninLocal';
+        src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; background: #f1f5f9; }
+      body {
+        font-family: 'BahijNazaninLocal', 'Noto Naskh Arabic', serif;
+        direction: rtl;
+        unicode-bidi: embed;
+        padding: 8mm;
+        background: #f1f5f9;
+      }
+      .page {
+        max-width: 210mm;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        padding: 8mm 9mm;
+      }
+      .header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+        text-align: center;
+        position: relative;
+      }
+      .company { font-size: 22px; font-weight: 800; }
+      .report-title { font-size: 14px; color: #f6dba9; margin-top: 6px; }
+      .address { font-size: 9px; color: #94a3b8; margin-top: 8px; }
+      .date-badge {
+        position: absolute;
+        left: 20px;
+        bottom: 12px;
+        background: rgba(255,255,255,0.15);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 9px;
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .summary-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px;
+        text-align: center;
+      }
+      .summary-icon { font-size: 28px; margin-bottom: 6px; }
+      .summary-label { font-size: 11px; color: var(--gray-text); text-transform: uppercase; margin-bottom: 6px; }
+      .summary-value { font-size: 18px; font-weight: 800; color: var(--primary); }
+      .currency { font-size: 11px; font-weight: normal; color: var(--gray-text); }
+      .section-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--primary);
+        margin: 20px 0 12px 0;
+        padding-right: 12px;
+        border-right: 4px solid var(--gold);
+      }
+      .balance-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .balance-table th, .balance-table td {
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        text-align: right;
+        font-size: 11px;
+      }
+      .balance-table th {
+        background: #f1f5f9;
+        font-weight: 800;
+      }
+      .shared-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .shared-list li {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+      }
+      .shared-name { font-weight: 700; }
+      .shared-amount { font-weight: 800; color: var(--warning); }
+      .footer {
+        margin-top: 24px;
+        text-align: center;
+        font-size: 8px;
+        color: var(--gray-text);
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="header">
+        <div class="company">نیازي خپلواک موټر پلورنځي</div>
+        <div class="report-title">مالي راپور</div>
+        <div class="address">کندهار، سپین بولدک عمومی سړک، ګمرک ته مخامخ | تلیفون: ۰۷۰۰۰۰۸۹۸۳</div>
+        <div class="date-badge">نیټه: ${dateStr}</div>
+      </div>
+
+      <div class="summary-grid">
+        ${renderCard('ټول عواید', totalRevenue, '💰')}
+        ${renderCard('ټول لګښتونه', totalExpenses, '📉')}
+        ${renderCard('خالص ګټه', netProfit, '📈')}
+        ${renderCard('پلورل شوي موټرې', vehiclesSold, '🚗')}
+        ${renderCard('ټول کمیشن', totalCommission, '🏷️')}
+      </div>
+
+      <div class="section-title">باقي مانده (توازن)</div>
+      <table class="balance-table">
+        <thead>
+          <tr><th>توضیح</th><th>قیمت (افغانۍ)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>شوروم موجوده پیسه</td><td>${showroomBalance}</td></tr>
+          <tr><td>د خاوند ونډه</td><td>${ownerBalance}</td></tr>
+          <tr><td>شریکانو ټوله برخه</td><td>${sharedTotal}</td></tr>
+        </tbody>
+      </table>
+
+      ${sharedPersons.length > 0 ? `
+        <div class="section-title">د شریکانو جلا جلا برخه</div>
+        <ul class="shared-list">
+          ${sharedPersons.map(p => `<li><span class="shared-name">${safeText(p.personName)}</span><span class="shared-amount">${toPashtoNumber(p.total)} افغانۍ</span></li>`).join('')}
+        </ul>
+      ` : '<div style="margin: 12px 0; color: var(--gray-text);">هیڅ شریک نشته</div>'}
+
+      <div class="footer">
+        دا راپور د شوروم د مالیاتو د ثبت اتوماتیک سیسټم لخوا چاپ شوی دی.
+      </div>
+    </div>
+  </body>
+  </html>`;
+}
+
+async function generateFinancialReportPdf(reportData, outputDir) {
+  ensureDir(outputDir);
+  const timestamp = Date.now();
+  const fileName = `financial_report_${timestamp}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  const fontsDir = path.join(__dirname, '..', '..', 'fonts');
+  const bahijPath = path.join(fontsDir, 'BahijNazanin.ttf');
+  if (!fs.existsSync(bahijPath)) {
+    throw new Error('BahijNazanin.ttf not found in backend/fonts');
+  }
+  const fontB64 = fs.readFileSync(bahijPath).toString('base64');
+
+  const html = buildFinancialReportHtml(reportData, fontB64);
+
+  let browser = null;
+  let launched = false;
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+  try {
+    browser = await puppeteer.launch({ headless: 'new', args: launchArgs });
+    launched = true;
+  } catch (err) {
+    const chrome = await findChromeExecutable();
+    if (!chrome) throw err;
+    browser = await puppeteer.launch({ headless: 'new', executablePath: chrome, args: launchArgs });
+    launched = true;
+  }
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    await page.emulateMediaType('screen');
+    await new Promise(r => setTimeout(r, 200));
+
+    const contentSize = await page.evaluate(() => {
+      const el = document.querySelector('.page') || document.body;
+      const rect = el.getBoundingClientRect();
+      return { width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+    });
+    const mmToPx = (mm) => (mm * 96) / 25.4;
+    const a4WidthPx = Math.round(mmToPx(210));
+    const a4HeightPx = Math.round(mmToPx(297));
+    const scaleX = a4WidthPx / Math.max(contentSize.width, 1);
+    const scaleY = a4HeightPx / Math.max(contentSize.height, 1);
+    const scale = Math.min(scaleX, scaleY, 1);
+    if (scale < 1) {
+      await page.$eval('.page', (el, s) => {
+        el.style.transformOrigin = 'top left';
+        el.style.transform = `scale(${s})`;
+      }, scale);
+      await new Promise(r => setTimeout(r, 80));
+    }
+
+    await page.pdf({
+      path: filePath,
+      printBackground: true,
+      width: '210mm',
+      height: '297mm',
+      margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' }
+    });
+    await browser.close();
+    return { filePath, fileName };
+  } catch (err) {
+    if (browser && launched) try { await browser.close(); } catch (e) {}
+    throw err;
+  }
+}
+
+module.exports = {
+  generateSaleInvoicePdf,
+  generateFinancialReportPdf,
+};

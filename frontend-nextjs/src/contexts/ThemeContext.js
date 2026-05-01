@@ -337,7 +337,7 @@ export function ThemeProvider({ children }) {
       },
 
       typography: {
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+        fontFamily: 'var(--font-family)',
         fontSize: 14 * fsMul,
         h1: { fontWeight: 800, fontSize: `${2.25 * fsMul}rem`, letterSpacing: '-0.02em', lineHeight: 1.2 },
         h2: { fontWeight: 700, fontSize: `${1.875 * fsMul}rem`, letterSpacing: '-0.01em', lineHeight: 1.25 },
@@ -378,6 +378,7 @@ export function ThemeProvider({ children }) {
               transition: 'none !important',
             },
             body: {
+              fontFamily: 'var(--font-family) !important',
               scrollbarWidth: 'thin',
               scrollbarColor: `${isLight ? '#cbd5e1' : '#475569'} transparent`,
               '&::-webkit-scrollbar': { width: 6, height: 6 },
