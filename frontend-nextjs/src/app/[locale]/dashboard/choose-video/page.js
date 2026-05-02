@@ -126,11 +126,14 @@ export default function ChooseVideoPage() {
 
   // Helper to get full video URL (same origin)
   const getVideoUrl = (path) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    if (path.startsWith('/')) return path;
-    return `/${path}`;
-  };
+  if (!path) return '';
+  if (path.startsWith('http')) return path;        // absolute URL
+  if (path.startsWith('blob:')) return path;       // local blob preview
+  // If the path already includes the correct prefix, return as is
+  if (path.startsWith('/admin/api/uploads/')) return path;
+  // Otherwise, prepend the API static files base
+  return `/admin/api${path.startsWith('/') ? path : `/${path}`}`;
+};
 
   return (
     <Box>
@@ -167,9 +170,13 @@ export default function ChooseVideoPage() {
                   <TableCell>
                     {video.videoPath ? (
                       <video
-                        src={getVideoUrl(video.videoPath)}
+                        src={
+                          editingId && typeof videoPreview === 'string' && !videoPreview.startsWith('blob:')
+                            ? getVideoUrl(videoPreview)
+                            : videoPreview
+                        }
                         controls
-                        style={{ width: 200, height: 120, objectFit: 'cover', borderRadius: 4 }}
+                        style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
                       >
                         Your browser does not support the video tag.
                       </video>

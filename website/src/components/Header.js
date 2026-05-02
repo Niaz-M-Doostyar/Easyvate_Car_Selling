@@ -105,7 +105,7 @@ export default function Header() {
               </ul>
             )}
           </div>
-          <Link href="http://localhost:3000/admin/login" locale={false} className="primary-btn">{t('login')}</Link>
+          <Link href="http://localhost:3000/admin/en/login" locale={false} className="primary-btn">{t('login')}</Link>
         </div>
         <div className="offcanvas__logo">
           <Link href={`/${locale}`}><img src="/img/header-logo.png" alt="logo" /></Link>
