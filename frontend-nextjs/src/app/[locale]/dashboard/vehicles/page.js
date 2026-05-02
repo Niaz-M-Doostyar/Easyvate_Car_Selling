@@ -541,20 +541,34 @@ export default function VehiclesPage() {
   };
 
   const filteredVehicles = useMemo(() => {
-    let result = vehicles;
-    if (statusFilter) result = result.filter((v) => v.status === statusFilter);
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter((v) =>
+  let result = vehicles;
+  if (statusFilter) result = result.filter((v) => v.status === statusFilter);
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    result = result.filter((v) => {
+      // Check vehicle fields
+      if (
+        v.vehicleId?.toLowerCase().includes(term) ||
         v.manufacturer?.toLowerCase().includes(term) ||
         v.model?.toLowerCase().includes(term) ||
         v.category?.toLowerCase().includes(term) ||
         v.chassisNumber?.toLowerCase().includes(term) ||
-        v.vehicleId?.toString().includes(term)
-      );
-    }
-    return result;
-  }, [vehicles, searchTerm, statusFilter]);
+        v.year?.toString().includes(term)
+      ) return true;
+      
+      // Check reference person fields (if any)
+      if (v.referencePerson) {
+        if (
+          v.referencePerson.fullName?.toLowerCase().includes(term) ||
+          v.referencePerson.tazkiraNumber?.toLowerCase().includes(term) ||
+          v.referencePerson.phoneNumber?.toLowerCase().includes(term)
+        ) return true;
+      }
+      return false;
+    });
+  }
+  return result;
+}, [vehicles, searchTerm, statusFilter]);
 
   // Step content renderer
   const renderStepContent = (step) => {
@@ -585,7 +599,7 @@ export default function VehiclesPage() {
                   error={!!errors.model} helperText={errors.model} required />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <TextField fullWidth label={t('labelYear')} type="number" value={formData.year}
+                <TextField fullWidth label={t('labelYear')} type="Text" value={formData.year}
                   onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                   error={!!errors.year} helperText={errors.year} required
                   InputProps={{ startAdornment: <InputAdornment position="start"><CalendarToday fontSize="small" color="action" /></InputAdornment> }} />
@@ -652,7 +666,7 @@ export default function VehiclesPage() {
                 </IconButton>
               </Grid>
               <Grid item xs={6} sm={4}>
-                <TextField fullWidth label={t('labelMileage')} type="number" value={formData.mileage}
+                <TextField fullWidth label={t('labelMileage')} type="text" value={formData.mileage}
                   onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
                   InputProps={{ startAdornment: <InputAdornment position="start"><Speed fontSize="small" color="action" /></InputAdornment> }} />
               </Grid>
@@ -1069,7 +1083,6 @@ export default function VehiclesPage() {
         loading={loading}
         emptyMessage={searchTerm || statusFilter ? t('noVehiclesMatchFilters') : t('noVehicles')}
       />
-
       {/* Add / Edit Dialog */}
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="md" fullWidth>
         <DialogTitle sx={{ pb: 1 }}>

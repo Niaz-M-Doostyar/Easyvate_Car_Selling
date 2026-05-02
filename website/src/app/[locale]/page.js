@@ -564,7 +564,7 @@ export default function HomePage() {
                 <div className="app-text" style={{ color: '#fff' }}>
                   <h4>{t('downloadPlayStore')}</h4>
                   <p>{t('playStoreDesc')}</p>
-                  <a href="#"><img src="/img/cta/playStore.png" alt="Play Store" style={{ width: '120px', marginTop: '10px' }} /></a>
+                  <a href="https://play.google.com/store/apps/details?id=com.niazi.khpalwak.motors&pcampaignid" target='blank'><img src="/img/cta/playStore.png" alt="Play Store" style={{ width: '120px', marginTop: '10px' }} /></a>
                 </div>
                 <div className="app-image"><img src="/img/cta/app.png" alt="App Screenshot" style={{ maxHeight: '150px', borderRadius: '10px' }} /></div>
               </div>

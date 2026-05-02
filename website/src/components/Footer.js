@@ -68,7 +68,7 @@ export default function Footer() {
                     <i className="fa-brands fa-facebook"></i>
                   </a>
                   <a href={twitter} className="x" target="_blank" rel="noopener noreferrer">
-                    <i className="fa-brands fa-x-twitter"></i>
+                    <i className="fa-brands fa-tiktok"></i>
                   </a>
                   <a href={instagram} className="instagram" target="_blank" rel="noopener noreferrer">
                     <i className="fa-brands fa-instagram"></i>

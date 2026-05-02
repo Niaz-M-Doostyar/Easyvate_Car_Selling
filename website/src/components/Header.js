@@ -147,7 +147,7 @@ export default function Header() {
                   </div>
                   <div className="header__top__social">
                     <a href={facebook} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-facebook"></i></a>
-                    <a href={twitter} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-x-twitter"></i></a>
+                    <a href={twitter} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-tiktok"></i></a>
                     <a href={instagram} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-instagram"></i></a>
                     <a href={youtube} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-youtube"></i></a>
                   </div>

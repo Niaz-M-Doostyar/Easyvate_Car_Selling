@@ -55,13 +55,13 @@ const resolveBuyerCustomerId = async ({
     const createdCustomer = await Customer.create({
       fullName: buyerName,
       fatherName: buyerFatherName || '',
-      phoneNumber: buyerPhone || `buyer-${Date.now()}`,
+      phoneNumber: buyerPhone || '',
       province: buyerProvince || '',
       district: buyerDistrict || '',
       village: buyerVillage || '',
       currentAddress: buyerAddress || '',
       originalAddress: buyerAddress || '',
-      nationalIdNumber: buyerIdNumber || String(Date.now()),
+      nationalIdNumber: buyerIdNumber || '',
       customerType: 'Buyer',
       balance: 0,
     });

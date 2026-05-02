@@ -226,34 +226,45 @@ const refreshVehicleTotalCost = async (vehicleId) => {
   return total;
 };
 
-// Get all vehicles
+// Get all vehicles – with reference person search
 router.get('/', async (req, res) => {
   try {
     const { status, search, category } = req.query;
     
     let where = {};
+    if (status) where.status = status;
+    if (category) where.category = category;
     
-    if (status) {
-      where.status = status;
-    }
-    
-    if (category) {
-      where.category = category;
-    }
-    
+    // Build search condition including reference person fields
     if (search) {
-      where[Op.or] = [
-        { vehicleId: { [Op.like]: `%${search}%` } },
-        { model: { [Op.like]: `%${search}%` } },
-        { manufacturer: { [Op.like]: `%${search}%` } },
-        { chassisNumber: { [Op.like]: `%${search}%` } }
-      ];
+      // Escape single quotes to prevent SQL injection
+      const escapedSearch = search.replace(/'/g, "\\'");
+      
+      // Vehicle fields to search
+      const vehicleSearch = {
+        [Op.or]: [
+          { vehicleId: { [Op.like]: `%${search}%` } },
+          { model: { [Op.like]: `%${search}%` } },
+          { manufacturer: { [Op.like]: `%${search}%` } },
+          { chassisNumber: { [Op.like]: `%${search}%` } }
+        ]
+      };
+      
+      // Reference person subquery (exists with OR on name, tazkira, phone)
+      const referenceSearch = Sequelize.where(
+        Sequelize.literal(`EXISTS (SELECT 1 FROM reference_persons WHERE reference_persons.vehicleId = Vehicle.id AND (reference_persons.fullName LIKE '%${escapedSearch}%' OR reference_persons.tazkiraNumber LIKE '%${escapedSearch}%' OR reference_persons.phoneNumber LIKE '%${escapedSearch}%'))`),
+        '=',
+        true
+      );
+      
+      // Combine both searches with OR
+      where[Op.or] = [vehicleSearch, referenceSearch];
     }
     
     const vehicles = await Vehicle.findAll({
       where,
       include: [
-        { model: ReferencePerson, as: 'referencePerson' },
+        { model: ReferencePerson, as: 'referencePerson', required: false },
         getSharingInclude()
       ],
       order: [['createdAt', 'DESC']]
@@ -261,6 +272,7 @@ router.get('/', async (req, res) => {
     
     res.json({ success: true, data: vehicles });
   } catch (error) {
+    console.error('Vehicle search error:', error);
     res.status(500).json({ error: error.message });
   }
 });

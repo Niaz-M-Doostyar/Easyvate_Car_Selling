@@ -6,6 +6,9 @@ import {
   TextField, IconButton, Tooltip, Divider, CircularProgress,
   Tabs, Tab
 } from '@mui/material';
+import { 
+  SvgIcon, // add this
+} from '@mui/material';
 import {
   Add, Edit, Delete, Language, Email, Phone, Facebook,
   Instagram, Twitter, YouTube, AccessTime, LocationOn, Business
@@ -14,6 +17,12 @@ import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 import { validateRequired, validateEmail } from '@/utils/validation';
+
+const TikTokIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </SvgIcon>
+);
 
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -156,7 +165,7 @@ export default function ContactPage() {
             <Box display="flex" gap={0.5}>
             {row.facebook && <Facebook fontSize="small" color="primary" />}
             {row.instagram && <Instagram fontSize="small" color="secondary" />}
-            {row.x && <Twitter fontSize="small" />}
+            {row.x && <TikTokIcon fontSize="small" />}
             {row.youtube && <YouTube fontSize="small" color="error" />}
             </Box>
         )
@@ -277,10 +286,10 @@ export default function ContactPage() {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="X (Twitter) URL"
+                label="Tiktok URL"
                 value={formData.x}
                 onChange={(e) => setFormData({ ...formData, x: e.target.value })}
-                InputProps={{ startAdornment: <Twitter fontSize="small" sx={{ mr: 1 }} /> }}
+                InputProps={{ startAdornment: <TikTokIcon fontSize="small" sx={{ mr: 1 }} /> }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

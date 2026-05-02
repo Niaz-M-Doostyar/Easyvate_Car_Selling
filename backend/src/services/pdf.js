@@ -102,7 +102,6 @@ var VEHICLE_PDF_LABELS = {
   monolithicCut: 'Monolithic / Cut',
   status: 'Status',
   sellingPrice: 'Selling Price (AFN)',
-  totalCost: 'Total Cost (AFN)',
 };
 
 function containsPashtoScript(value) {
@@ -860,7 +859,6 @@ var generateVehiclePdf = function(vehicle, outputDir) {
       [VEHICLE_PDF_LABELS.monolithicCut, vehicle.monolithicCut],
       [VEHICLE_PDF_LABELS.status, vehicle.status],
       [VEHICLE_PDF_LABELS.sellingPrice, vehicle.sellingPrice],
-      [VEHICLE_PDF_LABELS.totalCost, vehicle.totalCostPKR],
     ];
 
     var columnGap = 12;

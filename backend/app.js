@@ -85,7 +85,7 @@ app.get('/health', (req, res) => {
 });
 
 const ROLE_INVENTORY = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Sales', 'Accountant', 'Viewer'];
-const ROLE_FINANCIAL = ['Super Admin', 'Owner', 'Manager', 'Accountant', 'Financial', 'Viewer'];
+const ROLE_FINANCIAL = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Sales', 'Accountant', 'Viewer'];
 const ROLE_EMPLOYEE = ['Super Admin', 'Owner', 'Manager', 'Financial', 'Accountant'];
 
 app.use('/api/auth', authRoutes);

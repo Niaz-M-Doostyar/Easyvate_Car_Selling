@@ -319,9 +319,17 @@ export default function SalesPage() {
   };
 
   const filteredSales = useMemo(() => {
-    if (!searchTerm) return sales;
+  // First, sort all sales by saleId descending (numeric part)
+    const sortedSales = [...sales].sort((a, b) => {
+      const numA = parseInt(a.saleId?.replace(/\D/g, '') || 0);
+      const numB = parseInt(b.saleId?.replace(/\D/g, '') || 0);
+      return numB - numA;
+    });
+
+    if (!searchTerm) return sortedSales;
+
     const term = searchTerm.toLowerCase();
-    return sales.filter(
+    return sortedSales.filter(
       (s) =>
         s.vehicle?.manufacturer?.toLowerCase().includes(term) ||
         s.vehicle?.model?.toLowerCase().includes(term) ||

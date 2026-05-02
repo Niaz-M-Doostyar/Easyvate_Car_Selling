@@ -34,11 +34,11 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
   const trafficDate = sale.trafficTransferDate ? toPashtoDate(sale.trafficTransferDate) : null;
   const paymentCurrency = safeText(sale.paymentCurrency || 'AFN');
 
-  // Document metadata seen on traditional bill forms (دفتر / جلد / صفحه / سریال)
+  // Document metadata
+  const serialNumber = safeText(sale.serialNumber || sale.saleSerial || sale.systemGeneratedNo);
   const officeNumber = safeText(sale.officeNumber || sale.officeNo || sale.registerNumber);
   const bookVolume = safeText(sale.bookVolume || sale.volume || sale.jild);
   const pageNumber = safeText(sale.pageNumber || sale.page || sale.safha);
-  const serialNumber = safeText(sale.serialNumber || sale.saleSerial || sale.systemGeneratedNo);
 
   // Buyer and seller full details
   const buyer = {
@@ -75,6 +75,12 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
   const accentBg = types[typeKey] ? types[typeKey].accent : '#f5f5f5';
   const accentColor = types[typeKey] ? types[typeKey].color : '#1565c0';
 
+  // Calculate exchange car price (selling price - price difference)
+  let exchangeCarPrice = null;
+  if (typeKey === 'Exchange Car' && sale.sellingPrice && sale.priceDifference) {
+    exchangeCarPrice = Number(sale.sellingPrice) - Number(sale.priceDifference);
+  }
+
   const buildTermsSection = ({ title, summary, intro, items }) => `
     <div class="terms-card">
       <div class="section-title">شرطونه او تعهدات</div>
@@ -88,7 +94,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
     </div>
   `;
 
-  // Custom Pashto terms/clauses per bill type (user-provided text)
+  // Custom Pashto terms/clauses per bill type
   const customTermsHtml = (() => {
     if (typeKey === 'Exchange Car') {
       return buildTermsSection({
@@ -161,6 +167,8 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       html,body{height:100%; margin:0; padding:0;}
       body{ font-family:'BahijNazaninLocal', 'Noto Naskh Arabic', serif; direction:rtl; unicode-bidi:embed; background:#fff; color:var(--primary); }
       .page{ width:210mm; height:297mm; max-width:210mm; margin:0 auto; padding:8mm 9mm 7mm; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
+      /* For Exchange Car, slightly reduce padding to fit all content */
+      ${typeKey === 'Exchange Car' ? `.page { padding: 0mm 1mm 0mm; gap: 1px; }` : ''}
       .header{ background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color:#fff; padding:10px 14px; position:relative; border-radius:14px; box-shadow:var(--shadow); }
       .company{ font-size:17px; font-weight:800; text-align:center; letter-spacing:.2px; }
       .subtitle{ font-size:10px; color:#dbe4f1; text-align:center; margin-top:2px; }
@@ -184,7 +192,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       .specs td{ border-bottom:1px solid var(--border); padding:5px 6px; font-size:9.3px; text-align:right; }
       .specs tr:last-child td{ border-bottom:none; }
       .specs td:nth-child(odd){ color:var(--grayText); font-weight:700; background:rgba(248,250,252,0.9); }
-      .price-badge{ margin-top:2px; background:linear-gradient(135deg, var(--lightGold) 0%, #fffaf0 100%); border:1px solid rgba(200,150,62,0.45); padding:9px 10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
+      .price-badge{ margin-top:4px; background:linear-gradient(135deg, var(--lightGold) 0%, #fffaf0 100%); border:1px solid rgba(200,150,62,0.45); padding:7px 8px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
       .price-badge .label{ font-size:10.5px; color:var(--grayText); }
       .price-badge .amount{ font-size:15px; font-weight:800; color:var(--primary); }
       .financial-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
@@ -194,9 +202,9 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       .terms-summary, .terms-intro{ font-size:8.7px; color:var(--grayText); margin:0 0 4px 0; }
       .terms-list{ padding-right:16px; margin:0; font-size:8.7px; line-height:1.3; }
       .terms-list li{ margin-bottom:2px; }
-      .terms-note{ margin-top:6px; min-height:24px; border:1px dashed #cfd8e3; border-radius:8px; padding:5px 8px; font-size:8.7px; color:var(--grayText); }
-      .signs{ display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
-      .sig{ flex:1 1 calc(20% - 6px); border:1px dashed #cbd5e1; height:42px; display:flex; align-items:flex-end; justify-content:center; font-size:8.7px; color:var(--grayText); padding:0 4px 6px; border-radius:10px; background:#fff; text-align:center; }
+      .terms-note{ margin-top:6px; min-height:34px; border:1px dashed #cfd8e3; border-radius:8px; padding:5px 8px; font-size:8.7px; color:var(--grayText); }
+      .signs{ display:flex; gap:4px; margin-top:2px; flex-wrap:wrap; }
+      .sig{ flex:1 1 calc(20% - 6px); border:1px dashed #cbd5e1; height:20px; display:flex; align-items:flex-end; justify-content:center; font-size:8.7px; color:var(--grayText); padding:0 4px 6px; border-radius:10px; background:#fff; text-align:center; }
       .footer{ margin-top:2px; color:var(--grayText); padding-top:5px; text-align:center; font-size:8.5px; border-top:1px solid var(--border); }
       .person-table { display:grid; grid-template-columns: 88px 1fr; gap:4px 8px; align-items:start; margin-top:4px; direction:rtl; }
       .pt-label { font-size:8.8px; color:var(--grayText); text-align:right; padding-right:6px; font-weight:700; }
@@ -289,7 +297,14 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
         ${trafficDate ? `<div class="financial-chip">د ټرافیک د لیږد نیټه: ${trafficDate}</div>` : ''}
       </div>
 
-       ${customTermsHtml}
+      ${typeKey === 'Exchange Car' && exchangeCarPrice !== null ? `
+        <div class="price-badge" style="margin-top:4px; background:#f0f9ff; border-color:#0284c7;">
+          <div class="label" style="color:#0284c7;">د تبادلې موټر قیمت: </div>
+          <div class="amount" style="color:#0284c7;">${toPashtoNumber(exchangeCarPrice)} افغانۍ</div>
+        </div>
+      ` : ''}
+
+      ${customTermsHtml}
 
       <div class="signs" style="flex-wrap:wrap;">
         <div class="sig"><span class="small">د پلورونکی لاسلیک  (${safeText(sale.sellerName)})</span></div>
