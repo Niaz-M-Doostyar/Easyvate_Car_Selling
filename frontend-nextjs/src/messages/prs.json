@@ -255,7 +255,12 @@
     "customerBalanceInsufficient": "موجودی مشتری ({balance}) برای سرمایه‌گذاری مورد نیاز {required} کافی نیست",
     "totalLabel": "{count} مجموع",
     "noVehiclesMatchFilters": "هیچ موتری با فیلترهای شما مطابقت ندارد.",
-    "noVehicles": "هیچ موتری موجود نیست."
+    "noVehicles": "هیچ موتری موجود نیست.",
+    "vehiclesAvailable": "موترهای موجود",
+    "vehiclesReserved": "موترهای رزرو شده",
+    "vehiclesSold": "موترهای فروخته شده",
+    "vehiclesComing": "موترهای در حال رسیدن",
+    "vehiclesUnderRepair": "موترهای در حال تعمیر"
   },
   "Sales": {
     "pageTitle": "مدیریت فروش",

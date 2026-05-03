@@ -256,8 +256,11 @@
     "totalLabel": "{count} total",
     "noVehiclesMatchFilters": "No vehicles match your filters.",
     "noVehicles": "No vehicles available.",
-    "showingCount": "Total",
-    "vehicles": "vehicles"
+    "vehiclesAvailable": "vehicles available",
+    "vehiclesReserved": "vehicles reserved",
+    "vehiclesSold": "vehicles sold",
+    "vehiclesComing": "vehicles coming",
+    "vehiclesUnderRepair": "vehicles under repair"
   },
   "Sales": {
     "pageTitle": "Sales Management",

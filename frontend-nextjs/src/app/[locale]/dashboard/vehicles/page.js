@@ -599,7 +599,7 @@ export default function VehiclesPage() {
                   error={!!errors.model} helperText={errors.model} required />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <TextField fullWidth label={t('labelYear')} type="Text" value={formData.year}
+                <TextField fullWidth label={t('labelYear')} size="small" type="number" placeholder="2024" value={formData.year}
                   onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                   error={!!errors.year} helperText={errors.year} required
                   InputProps={{ startAdornment: <InputAdornment position="start"><CalendarToday fontSize="small" color="action" /></InputAdornment> }} />
@@ -1083,6 +1083,22 @@ export default function VehiclesPage() {
         loading={loading}
         emptyMessage={searchTerm || statusFilter ? t('noVehiclesMatchFilters') : t('noVehicles')}
       />
+            {/* Vehicle count summary */}
+      <Box sx={{ position: 'relative',}}>
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 15,
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'black !important', whiteSpace: 'nowrap', gap: 2 }}>
+            {filteredVehicles.filter(v => v.status === 'Available').length} {t('vehiclesAvailable')}, {filteredVehicles.filter(v => v.status === 'Reserved').length} {t('vehiclesReserved')}, {filteredVehicles.filter(v => v.status === 'Sold').length} {t('vehiclesSold')}, {filteredVehicles.filter(v => v.status === 'Coming').length} {t('vehiclesComing')}, {filteredVehicles.filter(v => v.status === 'Under Repair').length} {t('vehiclesUnderRepair')}
+          </Typography>
+        </Box>
+      </Box>
+
       {/* Add / Edit Dialog */}
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="md" fullWidth>
         <DialogTitle sx={{ pb: 1 }}>

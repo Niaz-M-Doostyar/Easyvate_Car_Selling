@@ -255,7 +255,12 @@
     "customerBalanceInsufficient": "د پیرودونکي بیلانس ({balance}) د اړینې پانګونې {required} لپاره کافي نه دی",
     "totalLabel": "{count} ټول",
     "noVehiclesMatchFilters": "ستاسو د فلټرونو سره هیڅ موټر نه موندل کیږي.",
-    "noVehicles": "هیڅ موټر شتون نلري."
+    "noVehicles": "هیڅ موټر شتون نلري.",
+    "vehiclesAvailable": "موټرونه شتون لري",
+    "vehiclesReserved": "موټرونه ریزرف سوي",
+    "vehiclesSold": "موټرونه پلورل سوي",
+    "vehiclesComing": "موټرونه راتلونکی دي",
+    "vehiclesUnderRepair": "موټرونه د ترمیم لاندې دي"
   },
   "Sales": {
     "pageTitle": "د پلور مدیریت",
