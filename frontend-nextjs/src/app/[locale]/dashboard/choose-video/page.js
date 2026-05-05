@@ -170,11 +170,9 @@ export default function ChooseVideoPage() {
                   <TableCell>
                     {video.videoPath ? (
                       <video
-                        src={
-                          editingId && typeof videoPreview === 'string' && !videoPreview.startsWith('blob:')
-                            ? getVideoUrl(videoPreview)
-                            : videoPreview
-                        }
+                        src={editingId && typeof videoPreview === 'string' && !videoPreview.startsWith('blob:')
+                          ? getVideoUrl(videoPreview)
+                          : videoPreview}
                         controls
                         style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
                       >

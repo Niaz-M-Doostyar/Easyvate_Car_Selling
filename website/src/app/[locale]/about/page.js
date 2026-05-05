@@ -72,7 +72,7 @@ export default async function AboutUs({ params }) {
                   <strong>{data.title}</strong><br />
                   {data.subtitle}
                 </p>
-                <p style={{ textAlign: 'left' }}>{data.description}</p>
+                <p style={{ textAlign: 'center' }}>{data.description}</p>
               </div>
             </div>
           </div>
@@ -131,19 +131,19 @@ export default async function AboutUs({ params }) {
           <div className="row">
             <div className="col-lg-4 col-md-6 col-sm-6">
               <div className="counter__item">
-                <h2 className="counter-num">500</h2><strong>+</strong>
+                <h2 className="counter-num">300</h2><strong>+</strong>
                 <p>{messages.vehicles_available || 'Vehicles Available'}</p>
               </div>
             </div>
             <div className="col-lg-4 col-md-6 col-sm-6">
               <div className="counter__item">
-                <h2 className="counter-num">1200</h2><strong>+</strong>
+                <h2 className="counter-num">1000</h2><strong>+</strong>
                 <p>{messages.cars_sold || 'Cars Sold'}</p>
               </div>
             </div>
             <div className="col-lg-4 col-md-6 col-sm-6">
               <div className="counter__item">
-                <h2 className="counter-num">2000</h2><strong>+</strong>
+                <h2 className="counter-num">900</h2><strong>+</strong>
                 <p>{messages.happy_clients || 'Happy Clients'}</p>
               </div>
             </div>

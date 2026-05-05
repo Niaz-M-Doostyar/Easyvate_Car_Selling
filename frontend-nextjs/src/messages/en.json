@@ -553,7 +553,7 @@
     "columnType": "Type",
     "columnPerson": "Person",
     "columnAmount": "Amount",
-    "columnAmountPKR": "Amount (PKR)",
+    "columnAmountPKR": "Amount (AFN)",
     "columnDescription": "Description",
     "columnDate": "Date",
     "tableTitle": "Showroom Ledger Entries",

@@ -192,29 +192,28 @@ export default function AboutPage() {
       return;
     }
 
-    const submitData = new FormData();
-    Object.keys(formData).forEach(key => {
-      if (formData[key]) {
-        submitData.append(key, formData[key]);
-      }
-    });
-
     setLogoUploading(true);
     try {
       let aboutId;
+      const textData = { ...formData };
+      // Convert empty strings to null (optional)
+      Object.keys(textData).forEach(key => {
+        if (textData[key] === '') textData[key] = null;
+      });
+
       if (aboutData[currentLang]) {
-        // Update text
-        await apiClient.put(`/about/${currentLang}`, submitData);
+        // Update text using JSON
+        await apiClient.put(`/about/${currentLang}`, textData);
         aboutId = aboutData[currentLang].id;
         enqueueSnackbar('Updated successfully', { variant: 'success' });
       } else {
-        // Create
-        const response = await apiClient.post(`/about/${currentLang}`, submitData);
+        // Create text using JSON
+        const response = await apiClient.post(`/about/${currentLang}`, textData);
         aboutId = response.data.data.id;
         enqueueSnackbar('Created successfully', { variant: 'success' });
       }
 
-      // Upload new logos if any
+      // Upload new logos if any (they will be associated with the about entry)
       if (selectedLogos.length > 0) {
         const logoFormData = new FormData();
         selectedLogos.forEach(file => logoFormData.append('logos', file));

@@ -690,8 +690,8 @@ export default function SalesPage() {
                     <InputLabel>{t('exchSteeringLabel')}</InputLabel>
                     <Select value={formData.exchVehicleSteering} label={t('exchSteeringLabel')}
                       onChange={(e) => !isEdit && setFormData({ ...formData, exchVehicleSteering: e.target.value })}>
-                      <MenuItem value="Left">Left Hand</MenuItem>
-                      <MenuItem value="Right">Right Hand</MenuItem>
+                      <MenuItem value="Left">Left Hand Drive</MenuItem>
+                      <MenuItem value="Right">Right Hand Drive</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -719,7 +719,8 @@ export default function SalesPage() {
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <TextField fullWidth label={t('exchangeVehicleCostLabel')} type="number"
-                    value={formData.exchangeVehicleCost || ''}
+                    value={formData.exchangeVehicleCost || ''} required 
+                    error={!!errors.exchVehicleChassis}
                     onChange={(e) => !isEdit && setFormData({ ...formData, exchangeVehicleCost: e.target.value })}
                     helperText={t('exchangeVehicleCostHelper')}
                     InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}

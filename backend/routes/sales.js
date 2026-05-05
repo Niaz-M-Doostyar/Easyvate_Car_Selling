@@ -406,7 +406,7 @@ router.post('/', async (req, res) => {
       // 3) Exchange adjustment (if any)
       if (saleType === 'Exchange Car' && showroomAdjustment !== 0) {
         await ShowroomLedger.create({
-          type: showroomAdjustment > 0 ? 'Expense' : 'Income',
+          type: showroomAdjustment > 0 ? 'Showroom Balance' : 'Showroom Balance',
           amount: Math.abs(showroomAdjustment),
           currency: 'AFN',
           amountInPKR: Math.abs(showroomAdjustment),

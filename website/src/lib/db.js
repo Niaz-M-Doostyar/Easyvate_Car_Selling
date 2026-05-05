@@ -92,12 +92,12 @@ export async function getHomeCars() {
 
   // Container cars (vehicleLicense = 'No')
   const [container] = await pool.query(
-    "SELECT * FROM vehicles WHERE status = 'Available' AND steering = 'Right' ORDER BY createdAt DESC LIMIT 8"
+    "SELECT * FROM vehicles WHERE status = 'Available' AND ( vehicleLicense IS NULL OR TRIM(vehicleLicense) = '' OR TRIM(vehicleLicense) = '0' );"
   );
 
   // Licensed cars (vehicleLicense = 'Yes')
   const [licensed] = await pool.query(
-    "SELECT * FROM vehicles WHERE status = 'Available' AND steering = 'Left' ORDER BY createdAt DESC LIMIT 8"
+    "SELECT * FROM vehicles WHERE status = 'Available' AND vehicleLicense IS NOT NULL AND TRIM(vehicleLicense) <> '' AND TRIM(vehicleLicense) <> '0';"
   );
 
   // Collect all vehicle IDs to fetch images in one go
