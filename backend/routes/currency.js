@@ -33,60 +33,58 @@ router.post('/exchange', async (req, res) => {
       addedBy: req.user.id
     });
 
-    // Create ledger transaction for outgoing currency (debit)
+    // 1) Outgoing currency – negative amount (deduct from that wallet)
     const transactionIdOut = `TR${Date.now()}_EX_OUT`;
-    await LedgerTransaction.create({
-      transactionId: transactionIdOut,
-      transactionType: 'Currency Exchange',
-      amount: parseFloat(fromAmount),
+    await ShowroomLedger.create({
+      type: 'Currency Exchange',
+      amount: -parseFloat(fromAmount),          // negative to deduct from source wallet
       currency: fromCurrency,
-      amountPKR: await toAFN(parseFloat(fromAmount), fromCurrency),
-      relatedEntityType: 'CurrencyExchange',
-      relatedEntityId: exchange.id,
-      description: `Exchange out: ${fromAmount} ${fromCurrency}`,
-      transactionDate: new Date(),
-      createdBy: req.user.id
+      amountInPKR: -await toAFN(parseFloat(fromAmount), fromCurrency), // negative AFN value
+      description: `Exchange out: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
+      date: new Date(),
+      referenceId: exchange.id,
+      referenceType: 'CurrencyExchange',
+      addedBy: req.user.id
     });
 
-    // Create ledger transaction for incoming currency (credit)
+    // 2) Incoming currency – positive amount (add to that wallet)
     const transactionIdIn = `TR${Date.now()}_EX_IN`;
-    await LedgerTransaction.create({
-      transactionId: transactionIdIn,
-      transactionType: 'Currency Exchange',
-      amount: toAmount,
+    await ShowroomLedger.create({
+      type: 'Currency Exchange',
+      amount: toAmount,                         // positive to add to destination wallet
       currency: toCurrency,
-      amountPKR: await toAFN(toAmount, toCurrency),
-      relatedEntityType: 'CurrencyExchange',
-      relatedEntityId: exchange.id,
-      description: `Exchange in: ${toAmount} ${toCurrency}`,
-      transactionDate: new Date(),
-      createdBy: req.user.id
+      amountInPKR: await toAFN(toAmount, toCurrency),
+      description: `Exchange in: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
+      date: new Date(),
+      referenceId: exchange.id,
+      referenceType: 'CurrencyExchange',
+      addedBy: req.user.id
     });
 
     // Create showroom ledger entries (debit from currency, credit to currency)
-    await ShowroomLedger.create({
-      type: 'Currency Exchange',
-      amount: parseFloat(fromAmount),
-      currency: fromCurrency,
-      amountInPKR: -(await toAFN(parseFloat(fromAmount), fromCurrency)), // Negative for outgoing
-      description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
-      date: new Date(),
-      referenceId: exchange.id,
-      referenceType: 'CurrencyExchange',
-      addedBy: req.user.id
-    });
+    // await ShowroomLedger.create({
+    //   type: 'Currency Exchange',
+    //   amount: parseFloat(fromAmount),
+    //   currency: fromCurrency,
+    //   amountInPKR: -(await toAFN(parseFloat(fromAmount), fromCurrency)), // Negative for outgoing
+    //   description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
+    //   date: new Date(),
+    //   referenceId: exchange.id,
+    //   referenceType: 'CurrencyExchange',
+    //   addedBy: req.user.id
+    // });
 
-    await ShowroomLedger.create({
-      type: 'Currency Exchange',
-      amount: toAmount,
-      currency: toCurrency,
-      amountInPKR: await toAFN(toAmount, toCurrency), // Positive for incoming
-      description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
-      date: new Date(),
-      referenceId: exchange.id,
-      referenceType: 'CurrencyExchange',
-      addedBy: req.user.id
-    });
+    // await ShowroomLedger.create({
+    //   type: 'Currency Exchange',
+    //   amount: toAmount,
+    //   currency: toCurrency,
+    //   amountInPKR: await toAFN(toAmount, toCurrency), // Positive for incoming
+    //   description: `Exchange: ${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}`,
+    //   date: new Date(),
+    //   referenceId: exchange.id,
+    //   referenceType: 'CurrencyExchange',
+    //   addedBy: req.user.id
+    // });
 
     res.json({ success: true, data: exchange, message: 'Currency exchange completed successfully' });
   } catch (error) {

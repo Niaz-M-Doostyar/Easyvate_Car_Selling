@@ -223,8 +223,10 @@ router.post('/', async (req, res) => {
     }
 
     const pCurrency = paymentCurrency || 'AFN';
-    const sellingPriceAFN = Math.round(await toAFN(Number(sellingPrice), pCurrency));
-    const downPaymentAFN = Math.round(await toAFN(Number(downPayment) || 0, pCurrency));
+    const sellingPriceNum = parseFloat(sellingPrice) || 0;
+    const downPaymentNum = parseFloat(downPayment) || 0;
+    const sellingPriceOriginal = sellingPriceNum;
+
 
     const lastSale = await Sale.findOne({ order: [['id', 'DESC']], attributes: ['saleId'] });
     let nextSaleNum = 1;
@@ -234,17 +236,28 @@ router.post('/', async (req, res) => {
     }
     const saleId = `S${String(nextSaleNum).padStart(6, '0')}`;
     
-    const vehicleTotalCost = Number(vehicle.totalCostPKR || 0);
+    const vehicleTotalCostOriginal = Number(vehicle.totalCostOriginal || 0);
     let sharedProfit = 0;
     let showroomAdjustment = 0;
     let exchCostAFN = 0;
+    let exchCostOriginal = 0;      // ← declared outside
 
     if (saleType === 'Exchange Car') {
-      exchCostAFN = await toAFN(Number(exchangeVehicleCost) || Number(priceDifference) || 0, 'AFN');
-      sharedProfit = sellingPriceAFN - vehicleTotalCost;
-      showroomAdjustment = vehicleTotalCost - exchCostAFN;
+      let calculatedExchangeCost = 0;
+      const diff = parseFloat(priceDifference) || 0;
+      if (priceDifferencePaidBy === 'Buyer') {
+        calculatedExchangeCost = sellingPriceNum - diff;
+      } else { // Seller
+        calculatedExchangeCost = sellingPriceNum + diff;
+      }
+      calculatedExchangeCost = Math.max(calculatedExchangeCost, 0);
+      
+      exchCostOriginal = calculatedExchangeCost;
+      exchCostAFN = await toAFN(exchCostOriginal, pCurrency);
+      sharedProfit = sellingPriceNum - vehicleTotalCostOriginal;
+      showroomAdjustment = vehicleTotalCostOriginal - exchCostOriginal;
     } else {
-      sharedProfit = sellingPriceAFN - vehicleTotalCost;
+      sharedProfit = sellingPriceNum - vehicleTotalCostOriginal;
     }
     
     const distResult = buildProfitDistribution(
@@ -256,8 +269,6 @@ router.post('/', async (req, res) => {
     const ownerShare = distResult.ownerShare;
     const partnerDistributions = distResult.partnerDistributions;
     
-    const sellingPriceNum = sellingPriceAFN;
-    const downPaymentNum = downPaymentAFN;
     const remainingAmountNum = Math.max(sellingPriceNum - downPaymentNum, 0);
     const paymentStatus = remainingAmountNum <= 0 ? 'Paid' : (downPaymentNum > 0 ? 'Partial' : 'Pending');
 
@@ -302,7 +313,7 @@ router.post('/', async (req, res) => {
       priceDifferencePaidBy: priceDifferencePaidBy || 'Buyer',
       trafficTransferDate: trafficTransferDate || null,
       sellingPrice: sellingPriceNum,
-      totalCost: vehicleTotalCost,
+      totalCost: vehicleTotalCostOriginal,
       profit: sharedProfit,
       commission,
       ownerShare,
@@ -333,31 +344,44 @@ router.post('/', async (req, res) => {
       const exchVehicleIdStr = `V${String(nextVehNum).padStart(6, '0')}`;
 
       const exchangeVehicle = await Vehicle.create({
-        vehicleId: exchVehicleIdStr,
-        category: exchVehicleCategory || 'Unknown',
-        manufacturer: exchVehicleManufacturer || exchVehicleCategory || 'Unknown',
-        model: exchVehicleModel || 'Unknown',
-        year: exchVehicleYear ? Number(exchVehicleYear) : new Date().getFullYear(),
-        color: exchVehicleColor || null,
-        chassisNumber: exchVehicleChassis || `EXCH-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        engineNumber: exchVehicleEngine || null,
-        engineType: exchVehicleEngineType || null,
-        fuelType: exchVehicleFuelType || null,
-        transmission: exchVehicleTransmission || null,
-        mileage: exchVehicleMileage ? Number(exchVehicleMileage) : null,
-        plateNo: exchVehiclePlateNo || null,
-        vehicleLicense: exchVehicleLicense || null,
-        steering: exchVehicleSteering || 'Left',
-        monolithicCut: exchVehicleMonolithicCut === 'Cut' ? 'Cut' : 'Monolithic',
-        status: 'Available',
-        basePurchasePrice: exchCostAFN,
-        baseCurrency: 'AFN',
-        totalCostPKR: exchCostAFN,
-        sellingPrice: null,
-        isLocked: false
-      });
+      vehicleId: exchVehicleIdStr,
+      category: exchVehicleCategory || 'Unknown',
+      manufacturer: exchVehicleManufacturer || exchVehicleCategory || 'Unknown',
+      model: exchVehicleModel || 'Unknown',
+      year: exchVehicleYear ? Number(exchVehicleYear) : new Date().getFullYear(),
+      color: exchVehicleColor || null,
+      chassisNumber: exchVehicleChassis || `EXCH-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      engineNumber: exchVehicleEngine || null,
+      engineType: exchVehicleEngineType || null,
+      fuelType: exchVehicleFuelType || null,
+      transmission: exchVehicleTransmission || null,
+      mileage: exchVehicleMileage ? Number(exchVehicleMileage) : null,
+      plateNo: exchVehiclePlateNo || null,
+      vehicleLicense: exchVehicleLicense || null,
+      steering: exchVehicleSteering || 'Left',
+      monolithicCut: exchVehicleMonolithicCut === 'Cut' ? 'Cut' : 'Monolithic',
+      status: 'Available',
+      basePurchasePrice: exchCostOriginal,           // use the original calculated cost
+      baseCurrency: pCurrency,                      // use sale's payment currency
+      totalCostOriginal: exchCostOriginal,          // store in original currency
+      totalCostPKR: exchCostAFN,                    // converted for ledger
+      sellingPrice: null,
+      isLocked: false
+    });
 
       await sale.update({ exchangeVehicleId: exchangeVehicle.id });
+      // Record the exchange vehicle as a purchase in showroom ledger
+      await ShowroomLedger.create({
+        type: 'Vehicle Purchase',
+        amount: exchCostOriginal,
+        currency: pCurrency,
+        amountInPKR: exchCostAFN,
+        description: `Exchange vehicle acquisition: ${exchVehicleManufacturer} ${exchVehicleModel} (${exchVehicleYear})`,
+        date: saleDate,
+        referenceId: exchangeVehicle.id,
+        referenceType: 'Vehicle',
+        addedBy: req.user.id
+      });
     }
     
     await LedgerTransaction.create({
@@ -375,47 +399,50 @@ router.post('/', async (req, res) => {
 
     // ─── Showroom ledger entries (only if no reference person) ───
     if (!hasReferencePerson) {
+      const sellingPriceAFN = await toAFN(sellingPriceNum, pCurrency);
+      const downPaymentAFN = await toAFN(downPaymentNum, pCurrency);
       // 1) Record the full selling price as Total Income (Showroom Balance)
-      await ShowroomLedger.create({
-        type: 'Showroom Balance',
-        amount: sellingPriceNum,
-        currency: 'AFN',
-        amountInPKR: sellingPriceNum,
-        description: `Sale of ${vehicle.vehicleId} to ${buyerName || 'Customer'} – full price`,
-        date: saleDate,
-        referenceId: sale.id,
-        referenceType: 'Sale',
-        addedBy: req.user.id
-      });
-
-      // 2) Record the actual cash received (down payment) as Vehicle Sale (cash)
-      if (downPaymentNum > 0) {
-        await ShowroomLedger.create({
-          type: 'Vehicle Sale',
-          amount: downPaymentNum,
-          currency: 'AFN',
-          amountInPKR: downPaymentNum,
-          description: `Down payment for ${vehicle.vehicleId} — ${paymentStatus === 'Paid' ? 'Paid in full' : `${downPaymentNum.toLocaleString()} of ${sellingPriceNum.toLocaleString()} AFN`}`,
-          date: saleDate,
-          referenceId: sale.id,
-          referenceType: 'Sale',
-          addedBy: req.user.id
-        });
-      }
+      // await ShowroomLedger.create({
+      //   type: 'Showroom Balance',
+      //   amount: sellingPriceOriginal,
+      //   currency: pCurrency,
+      //   amountInPKR: sellingPriceNum,
+      //   description: `Sale of ${vehicle.vehicleId} to ${buyerName || 'Customer'} – full price`,
+      //   date: saleDate,
+      //   referenceId: sale.id,
+      //   referenceType: 'Sale',
+      //   addedBy: req.user.id
+      // });
 
       // 3) Exchange adjustment (if any)
       if (saleType === 'Exchange Car' && showroomAdjustment !== 0) {
+        const adjustmentAFN = await toAFN(Math.abs(showroomAdjustment), pCurrency);
         await ShowroomLedger.create({
           type: showroomAdjustment > 0 ? 'Showroom Balance' : 'Showroom Balance',
           amount: Math.abs(showroomAdjustment),
           currency: 'AFN',
-          amountInPKR: Math.abs(showroomAdjustment),
-          description: `Exchange adjustment: cost difference between sold vehicle (${vehicleTotalCost}) and received vehicle (${exchCostAFN})`,
+          amountInPKR: adjustmentAFN,
+          description: `Exchange adjustment: cost difference between sold vehicle (${vehicleTotalCostOriginal}) and received vehicle (${exchCostAFN})`,
           date: saleDate,
           referenceId: sale.id,
           referenceType: 'Sale',
           addedBy: req.user.id
         });
+      }else{
+        // 2) Record the actual cash received (down payment) as Vehicle Sale (cash)
+        if (downPaymentNum > 0) {
+          await ShowroomLedger.create({
+            type: 'Vehicle Sale',
+            amount: downPaymentNum,
+            currency: pCurrency,
+            amountInPKR: downPaymentAFN,
+            description: `Down payment for ${vehicle.vehicleId} — ${paymentStatus === 'Paid' ? 'Paid in full' : `${downPaymentNum.toLocaleString()} of ${sellingPriceNum.toLocaleString()} AFN`}`,
+            date: saleDate,
+            referenceId: sale.id,
+            referenceType: 'Sale',
+            addedBy: req.user.id
+          });
+        }
       }
 
       // 4) Partner profit shares – record as ShowroomLedger expense/income
@@ -425,13 +452,17 @@ router.post('/', async (req, res) => {
           const personName = matchedCustomer?.fullName || person.personName;
 
           if (person.amount === 0) continue;
-          
+
+          // person.amount is already in the sale's currency (pCurrency)
+          const amountInSaleCurrency = Math.abs(person.amount);
+          const amountAFN = await toAFN(amountInSaleCurrency, pCurrency);
+
           await LedgerTransaction.create({
             transactionId: `TR${Date.now()}_${person.id}`,
             transactionType: 'Commission',
-            amount: Math.abs(person.amount),
-            currency: 'AFN',
-            amountPKR: await toAFN(Math.abs(person.amount), 'AFN'),
+            amount: amountInSaleCurrency,
+            currency: pCurrency,
+            amountPKR: amountAFN,
             relatedEntityType: 'SaleCommission',
             relatedEntityId: sale.id,
             description: `Partner profit share for ${personName} from sale ${sale.saleId} - ${person.sharePercentage}% (${person.amount >= 0 ? 'profit' : 'loss'})`,
@@ -446,19 +477,19 @@ router.post('/', async (req, res) => {
             personName,
             investmentAmount: person.investmentAmount,
             sharePercentage: person.sharePercentage,
-            amount: Math.abs(person.amount),
+            amount: amountInSaleCurrency,
             paidDate: saleDate,
             calculationMethod: person.calculationMethod,
             status: 'Paid'
           });
 
-          // Record partner share as ShowroomLedger entry
+          // Record partner share in ShowroomLedger (using original sale currency)
           if (person.amount > 0) {
             await ShowroomLedger.create({
-              type: 'Expense',
-              amount: Math.abs(person.amount),
-              currency: 'AFN',
-              amountInPKR: Math.abs(person.amount),
+              type: 'Partner Profit',
+              amount: amountInSaleCurrency,
+              currency: pCurrency,
+              amountInPKR: amountAFN,
               description: `Partner profit share for ${personName} from sale ${sale.saleId} (${person.sharePercentage}%)`,
               date: saleDate,
               referenceId: sale.id,
@@ -469,9 +500,9 @@ router.post('/', async (req, res) => {
           } else if (person.amount < 0) {
             await ShowroomLedger.create({
               type: 'Income',
-              amount: Math.abs(person.amount),
-              currency: 'AFN',
-              amountInPKR: Math.abs(person.amount),
+              amount: amountInSaleCurrency,
+              currency: pCurrency,
+              amountInPKR: amountAFN,
               description: `Loss recovery from partner ${personName} for sale ${sale.saleId} (${person.sharePercentage}%)`,
               date: saleDate,
               referenceId: sale.id,
@@ -482,18 +513,31 @@ router.post('/', async (req, res) => {
           }
 
           if (matchedCustomer) {
+            // Update partner's per‑currency balance
+            let balanceField;
+            switch (pCurrency) {
+              case 'USD': balanceField = 'balanceUSD'; break;
+              case 'PKR': balanceField = 'balancePKR'; break;
+              case 'AED': balanceField = 'balanceAED'; break;
+              default: balanceField = 'balanceAFN';
+            }
+            const currentCurrencyBalance = parseFloat(matchedCustomer[balanceField] || 0);
+            const newCurrencyBalance = currentCurrencyBalance + (person.amount > 0 ? amountInSaleCurrency : -amountInSaleCurrency);
+            await matchedCustomer.update({ [balanceField]: newCurrencyBalance });
+
+            // Update legacy AFN balance (balance field)
             const lastEntry = await CustomerLedger.findOne({
               where: { customerId: matchedCustomer.id },
               order: [['id', 'DESC']],
             });
             const prevBal = lastEntry ? Number(lastEntry.balance || 0) : 0;
-            const newBal = prevBal + person.amount;
+            const newBal = prevBal + (person.amount > 0 ? amountAFN : -amountAFN);
             await CustomerLedger.create({
               customerId: matchedCustomer.id,
               type: PARTNER_PROFIT_LEDGER_TYPE,
-              amount: Math.abs(person.amount),
-              currency: 'AFN',
-              amountInPKR: Math.abs(person.amount),
+              amount: amountInSaleCurrency,
+              currency: pCurrency,
+              amountInPKR: amountAFN,
               purpose: `Partner ${person.amount >= 0 ? 'profit' : 'loss'} from sale ${sale.saleId} (${person.sharePercentage}%)`,
               date: saleDate,
               balance: newBal,
@@ -501,6 +545,57 @@ router.post('/', async (req, res) => {
               addedBy: req.user.id
             });
             await Customer.update({ balance: newBal }, { where: { id: matchedCustomer.id } });
+          }
+        }
+        for (const sharing of vehicle.sharingPersons) {
+          if (
+            sharing.customerId &&
+            Number(sharing.investmentAmount) > 0 &&
+            sharing.investmentCurrency
+          ) {
+            const partner = await Customer.findByPk(sharing.customerId);
+            if (!partner) continue;
+
+            const investCurrency = sharing.investmentCurrency;
+            const investAmount = Number(sharing.investmentAmount);
+            const amountAFN = await toAFN(investAmount, investCurrency);
+
+            // Update the multi‑currency balance
+            const balanceField = {
+              USD: 'balanceUSD',
+              PKR: 'balancePKR',
+              AED: 'balanceAED',
+            }[investCurrency] || 'balanceAFN';
+
+            const currentBalance = parseFloat(partner[balanceField] || 0);
+            const newBalance = currentBalance + investAmount;
+            await partner.update({ [balanceField]: newBalance });
+
+            // Update legacy AFN balance
+            const lastEntry = await CustomerLedger.findOne({
+              where: { customerId: partner.id },
+              order: [['id', 'DESC']],
+            });
+            const prevLegacyBal = lastEntry ? Number(lastEntry.balance || 0) : 0;
+            const newLegacyBal = prevLegacyBal + amountAFN;
+
+            await CustomerLedger.create({
+              customerId: partner.id,
+              type: 'Investment Return',      // or 'Capital Return'
+              amount: investAmount,
+              currency: investCurrency,
+              amountInPKR: amountAFN,
+              purpose: `Return of investment in vehicle ${vehicle.vehicleId} (${sharing.percentage}%)`,
+              date: saleDate,
+              balance: newLegacyBal,
+              saleId: sale.id,
+              addedBy: req.user.id,
+            });
+
+            await Customer.update(
+              { balance: newLegacyBal },
+              { where: { id: partner.id } }
+            );
           }
         }
       }
@@ -678,6 +773,7 @@ router.get('/:id/payments', async (req, res) => {
 });
 
 // Record an installment payment for a sale
+// Record an installment payment for a sale (multi‑currency)
 router.post('/:id/payments', async (req, res) => {
   try {
     const { amount, currency, date, note } = req.body;
@@ -698,41 +794,61 @@ router.post('/:id/payments', async (req, res) => {
       return res.status(400).json({ error: 'This sale is already fully paid' });
     }
 
-    const paymentAmount = Number(amount);
-    const paymentCurrency = currency || 'AFN';
-    const remaining = Number(sale.remainingAmount);
-    const paymentAmountAFN = await toAFN(paymentAmount, paymentCurrency);
+    const paymentAmount = parseFloat(amount);
+    const paymentCurrency = currency || sale.paymentCurrency || 'AFN';
+    const saleCurrency = sale.paymentCurrency || 'AFN';
 
-    if (paymentAmountAFN > remaining) {
-      return res.status(400).json({ error: `Payment amount exceeds the remaining balance after currency conversion` });
+    // Convert payment amount to the sale's currency for validation and updating
+    let paymentInSaleCurrency = paymentAmount;
+    if (paymentCurrency !== saleCurrency) {
+      // Convert via AFN: payment -> AFN, then AFN -> saleCurrency
+      const paymentAFN = await toAFN(paymentAmount, paymentCurrency);
+      // Reverse: from AFN to saleCurrency (using the same rate, but inverted)
+      const saleRate = await toAFN(1, saleCurrency); // AFN per 1 unit of saleCurrency
+      if (saleRate && saleRate !== 0) {
+        paymentInSaleCurrency = paymentAFN / saleRate;
+      } else {
+        // fallback: assume 1:1 if rate missing (should not happen)
+        paymentInSaleCurrency = paymentAmount;
+      }
     }
 
-    const newPaid = Number(sale.paidAmount) + paymentAmountAFN;
-    const newRemaining = Math.max(remaining - paymentAmountAFN, 0);
+    const remaining = Number(sale.remainingAmount); // already in sale's currency
+    if (paymentInSaleCurrency > remaining) {
+      return res.status(400).json({
+        error: `Payment amount exceeds remaining balance (${remaining.toLocaleString()} ${saleCurrency})`
+      });
+    }
+
+    // Update sale in sale's currency
+    const newPaid = Number(sale.paidAmount) + paymentInSaleCurrency;
+    const newRemaining = Math.max(remaining - paymentInSaleCurrency, 0);
     const newStatus = newRemaining <= 0 ? 'Paid' : 'Partial';
     const paymentDate = date || new Date();
 
-    // 1) Update the sale record
     await sale.update({
       paidAmount: newPaid,
       remainingAmount: newRemaining,
       paymentStatus: newStatus,
     });
 
-    // 2) Create customer ledger entry
+    // AFN equivalent for ledger
+    const paymentAFN = await toAFN(paymentAmount, paymentCurrency);
+
+    // Customer ledger entry
     const lastEntry = await CustomerLedger.findOne({
       where: { customerId: sale.customerId },
       order: [['id', 'DESC']],
     });
     const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
-    const newBalance = prevBalance + paymentAmountAFN;
+    const newBalance = prevBalance + paymentAFN;
 
     const ledgerEntry = await CustomerLedger.create({
       customerId: sale.customerId,
       type: 'Installment',
       amount: paymentAmount,
       currency: paymentCurrency,
-      amountInPKR: paymentAmountAFN,
+      amountInPKR: paymentAFN,
       purpose: note || `Installment payment for sale ${sale.saleId} — ${sale.vehicle?.vehicleId || ''}`,
       date: paymentDate,
       balance: newBalance,
@@ -740,22 +856,21 @@ router.post('/:id/payments', async (req, res) => {
       addedBy: req.user?.id,
     });
 
-    // 3) Update customer overall balance
+    // Update customer overall AFN balance
     await Customer.update({ balance: newBalance }, { where: { id: sale.customerId } });
 
-    // 4) Check reference person
+    // Showroom ledger (only if no reference person)
     const vehicle = await Vehicle.findByPk(sale.vehicleId);
     const referencePerson = await ReferencePerson.findOne({ where: { vehicleId: vehicle?.id } });
     const hasReferencePerson = !!referencePerson;
 
     if (!hasReferencePerson) {
-      // Record cash received (Vehicle Sale) – never create Showroom Balance here
       await ShowroomLedger.create({
         type: 'Vehicle Sale',
         amount: paymentAmount,
         currency: paymentCurrency,
-        amountInPKR: paymentAmountAFN,
-        description: `Installment from ${sale.buyerName || sale.customer?.fullName || 'Customer'} for ${sale.vehicle?.vehicleId || sale.saleId}${newStatus === 'Paid' ? ' (FULLY PAID)' : ` (${newRemaining.toLocaleString()} AFN remaining)`}`,
+        amountInPKR: paymentAFN,
+        description: `Installment from ${sale.buyerName || sale.customer?.fullName || 'Customer'} for ${sale.vehicle?.vehicleId || sale.saleId}${newStatus === 'Paid' ? ' (FULLY PAID)' : ` (${newRemaining.toLocaleString()} ${saleCurrency} remaining)`}`,
         date: paymentDate,
         referenceId: sale.id,
         referenceType: 'Sale',
@@ -764,13 +879,13 @@ router.post('/:id/payments', async (req, res) => {
       });
     }
 
-    // 5) Record in general ledger
+    // Ledger transaction
     await LedgerTransaction.create({
       transactionId: `TR${Date.now()}`,
       transactionType: 'Credit',
       amount: paymentAmount,
       currency: paymentCurrency,
-      amountPKR: paymentAmountAFN,
+      amountPKR: paymentAFN,
       relatedEntityType: 'Installment',
       relatedEntityId: sale.id,
       description: `Installment payment — ${sale.saleId}`,
@@ -789,7 +904,7 @@ router.post('/:id/payments', async (req, res) => {
       success: true,
       message: newStatus === 'Paid'
         ? `Payment of ${paymentAmount.toLocaleString()} ${paymentCurrency} recorded — sale is now FULLY PAID!`
-        : `Payment of ${paymentAmount.toLocaleString()} ${paymentCurrency} recorded — ${newRemaining.toLocaleString()} AFN remaining`,
+        : `Payment of ${paymentAmount.toLocaleString()} ${paymentCurrency} recorded — ${newRemaining.toLocaleString()} ${saleCurrency} remaining`,
       data: { payment: ledgerEntry, sale: updatedSale },
     });
   } catch (error) {

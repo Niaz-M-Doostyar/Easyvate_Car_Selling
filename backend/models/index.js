@@ -26,6 +26,7 @@ const { ContactEnglish, ContactPashto, ContactDari } = require('./Contact');
 const Carousel = require('./Carousel');
 const { TestimonialEnglish, TestimonialPashto, TestimonialDari } = require('./Testimonial');
 const Video = require('./ChooseVideo');
+const PunchLog = require('./PunchLog')
 
 Vehicle.hasMany(VehicleImage, { as: 'images', foreignKey: 'vehicleId' });
 VehicleImage.belongsTo(Vehicle, { foreignKey: 'vehicleId' });
@@ -60,6 +61,9 @@ SharingPerson.hasMany(CommissionDistribution, { foreignKey: 'sharingPersonId', a
 CommissionDistribution.belongsTo(SharingPerson, { foreignKey: 'sharingPersonId', as: 'sharingPerson' });
 Customer.hasMany(CommissionDistribution, { foreignKey: 'customerId', as: 'profitDistributions' });
 CommissionDistribution.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+
+PunchLog.belongsTo(Employee, { foreignKey: 'employeeId' });
+Employee.hasMany(PunchLog, { foreignKey: 'employeeId' });
 
 module.exports = {
   sequelize,

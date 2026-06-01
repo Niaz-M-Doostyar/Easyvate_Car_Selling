@@ -25,14 +25,14 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
   const toPashtoDate = (d) => { try { return d ? new Date(d).toLocaleDateString('fa-AF') : '—'; } catch (e) { return d || '—'; } };
 
   // Basic fields
-  const price = sale.sellingPrice ? toPashtoNumber(sale.sellingPrice) + ' افغانۍ' : '—';
-  const downPayment = sale.downPayment ? toPashtoNumber(sale.downPayment) + ' افغانۍ' : null;
-  const remaining = sale.remainingAmount ? toPashtoNumber(sale.remainingAmount) + ' افغانۍ' : null;
-  const priceDiff = sale.priceDifference ? toPashtoNumber(sale.priceDifference) + ' افغانۍ' : null;
+  const paymentCurrency = safeText(sale.paymentCurrency || 'AFN');
+  const price = sale.sellingPrice ? paymentCurrency + ' ' + toPashtoNumber(sale.sellingPrice) : '—';
+  const downPayment = sale.downPayment ? paymentCurrency + ' ' + toPashtoNumber(sale.downPayment) : null;
+  const remaining = sale.remainingAmount ? paymentCurrency + ' ' + toPashtoNumber(sale.remainingAmount) : null;
+  const priceDiff = sale.priceDifference ? paymentCurrency + ' ' + toPashtoNumber(sale.priceDifference) : null;
   const priceDiffBy = sale.priceDifferencePaidBy ? safeText(sale.priceDifferencePaidBy) : null;
   const date = toPashtoDate(sale.saleDate);
   const trafficDate = sale.trafficTransferDate ? toPashtoDate(sale.trafficTransferDate) : null;
-  const paymentCurrency = safeText(sale.paymentCurrency || 'AFN');
 
   // Document metadata
   const serialNumber = safeText(sale.serialNumber || sale.saleSerial || sale.systemGeneratedNo);
@@ -231,7 +231,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       <div class="section cols">
         <div class="col">
           <div class="row-card">
-            <div class="person-header">پېرودونکی</div>
+            <div class="person-header">پيرودونکی</div>
             <div class="person-table">
               <div class="pt-label">بشپړ نوم</div><div class="pt-value">${buyer.name}</div>
               <div class="pt-label">د پلار نوم</div><div class="pt-value">${buyer.father}</div>
@@ -269,7 +269,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
           <tr><td>رنګ</td><td>${veh.color}</td><td>چاسيس</td><td>${veh.chassis}</td></tr>
           <tr><td>انجن شمیره</td><td>${veh.engine}</td><td>د تیلو ډول</td><td>${veh.fuelType}</td></tr>
           <tr><td>ګیربکس</td><td>${veh.transmission}</td><td>سټیرینګ</td><td>${veh.steering}</td></tr>
-          <tr><td>پلیت</td><td>${veh.plate}</td><td>موټر نمبر / جواز</td><td>${veh.vehicleId} / ${veh.license}</td></tr>
+          <tr><td>پلیت</td><td>${veh.plate}</td><td>موټر نمبر / جواز</td><td>${veh.license}</td></tr>
           <tr><td>موجوده مسافه</td><td>${veh.mileage}</td><td>قطعه / برشي</td><td>${veh.monolithic}</td></tr>
         </table>
       </div>
@@ -300,7 +300,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
       ${typeKey === 'Exchange Car' && exchangeCarPrice !== null ? `
         <div class="price-badge" style="margin-top:4px; background:#f0f9ff; border-color:#0284c7;">
           <div class="label" style="color:#0284c7;">د تبادلې موټر قیمت: </div>
-          <div class="amount" style="color:#0284c7;">${toPashtoNumber(exchangeCarPrice)} افغانۍ</div>
+          <div class="amount" style="color:#0284c7;">${toPashtoNumber(exchangeCarPrice)} ${paymentCurrency}</div>
         </div>
       ` : ''}
 
@@ -431,199 +431,353 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
 // 2. Financial report PDF – NEW Puppeteer version (Pashto)
 // ----------------------------------------------------------------------
 function buildFinancialReportHtml(reportData, fontB64) {
-  const totalRevenue = toPashtoNumber(reportData.revenue);
-  const totalExpenses = toPashtoNumber(reportData.expenses);
-  const netProfit = toPashtoNumber(reportData.profit);
-  const vehiclesSold = toPashtoNumber(reportData.vehiclesSold);
-  const totalCommission = toPashtoNumber(reportData.commission);
-  const showroomBalance = toPashtoNumber(reportData.showroomBalance);
-  const ownerBalance = toPashtoNumber(reportData.ownerBalance);
-  const sharedTotal = toPashtoNumber(reportData.sharedTotal);
-  const sharedPersons = reportData.sharedPersons || [];
-  const dateStr = toPashtoDate(new Date());
+  const { lang, summary, partnerBalances, ownerBalance, showroomBalance } = reportData;
 
-  const renderCard = (label, value, icon) => `
+  // ======= 1. Translations ========
+  const t = {
+    en: {
+      company: 'Niazai Khpalwak Car Dealership',
+      title: 'Financial Report',
+      address: 'Kandahar, Spin Boldak General Road, Opposite Customs | Tel: 0700008983',
+      income: 'Total Income',
+      expenses: 'Total Expenses',
+      netProfit: 'Net Profit',
+      grossProfit: 'Gross Profit',
+      commission: 'Commission',
+      soldVehicles: 'Sold Vehicles',
+      availableVehicles: 'Available Vehicles',
+      showroomBalance: 'Showroom Balance',
+      ownerBalance: 'Owner Balance',
+      partnerShares: 'Partner Shares',
+      currencies: ['AFN', 'USD', 'PKR', 'AED'],
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      direction: 'ltr',
+    },
+    ps: {
+      company: 'نیازي خپلواک موټر پلورنځي',
+      title: 'مالي راپور',
+      address: 'کندهار، سپین بولدک عمومی سړک، ګمرک ته مخامخ | تلیفون: ۰۷۰۰۰۰۸۹۸۳',
+      income: 'ټول عواید',
+      expenses: 'ټول لګښتونه',
+      netProfit: 'خالص ګټه',
+      grossProfit: 'ناخالص ګټه',
+      commission: 'کمیشن',
+      soldVehicles: 'پلورل شوي موټرې',
+      availableVehicles: 'موجود موټرې',
+      showroomBalance: 'شوروم موجوده پیسه',
+      ownerBalance: 'د خاوند ونډه',
+      partnerShares: 'شریکانو برخه',
+      currencies: ['افغانۍ', 'ډالر', 'پاکستانۍ کلدارې', 'درهم'],
+      date: toPashtoDate(new Date()),
+      direction: 'rtl',
+    },
+    dr: {
+      company: 'موتر فروشی نیازی خپلواک',
+      title: 'گزارش مالی',
+      address: 'کندهار، جاده عمومی اسپین بولدک، مقابل گمرک | تلیفون: ۰۷۰۰۰۰۸۹۸۳',
+      income: 'مجموع عواید',
+      expenses: 'مجموع مصارف',
+      netProfit: 'سود خالص',
+      grossProfit: 'سود ناخالص',
+      commission: 'کمیسیون',
+      soldVehicles: 'موترهای فروخته شده',
+      availableVehicles: 'موترهای موجود',
+      showroomBalance: 'موجودی شوروم',
+      ownerBalance: 'حصه مالک',
+      partnerShares: 'حصه شرکا',
+      currencies: ['افغانی', 'دالر', 'روپیه پاکستانی', 'درهم'],
+      date: toPashtoDate(new Date()),
+      direction: 'rtl',
+    },
+  }[lang] || {
+    // Fallback English
+    company: 'Niazai Khpalwak Car Dealership',
+    title: 'Financial Report',
+    address: 'Kandahar, Spin Boldak General Road, Opposite Customs | Tel: 0700008983',
+    income: 'Total Income',
+    expenses: 'Total Expenses',
+    netProfit: 'Net Profit',
+    grossProfit: 'Gross Profit',
+    commission: 'Commission',
+    soldVehicles: 'Sold Vehicles',
+    availableVehicles: 'Available Vehicles',
+    showroomBalance: 'Showroom Balance',
+    ownerBalance: 'Owner Balance',
+    partnerShares: 'Partner Shares',
+    currencies: ['AFN', 'USD', 'PKR', 'AED'],
+    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    direction: 'ltr',
+  };
+
+  // ======= 2. Number formatting per language ========
+  const fmtNumber = (value, currency = false) => {
+    if (value === null || value === undefined) return '—';
+    const num = Number(value);
+    if (lang === 'en') {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    } else {
+      // Pashto/Dari (use 'fa-AF' for Persian/Arabic digits)
+      return toPashtoNumber(num);
+    }
+  };
+
+  // ======= 3. Render one summary card with 4 currencies ========
+  const renderCard = (label, values, icon, showCurrencies = true) => {
+    if (!showCurrencies) {
+      // For count-only boxes (sold, available)
+      return `
+      <div class="summary-card">
+        <div class="summary-icon">${icon}</div>
+        <div class="summary-label">${label}</div>
+        <div class="summary-value">${fmtNumber(values.AFN)}</div>
+      </div>`;
+    }
+    return `
     <div class="summary-card">
       <div class="summary-icon">${icon}</div>
       <div class="summary-label">${label}</div>
-      <div class="summary-value">${value} <span class="currency">افغانۍ</span></div>
-    </div>
-  `;
+      <div class="summary-value">${fmtNumber(values.AFN)} <span class="currency">${t.currencies[0]}</span></div>
+      <div class="sub-values">
+        <span>${t.currencies[1]}: ${fmtNumber(values.USD)}</span> &nbsp;
+        <span>${t.currencies[2]}: ${fmtNumber(values.PKR)}</span> &nbsp;
+        <span>${t.currencies[3]}: ${fmtNumber(values.AED)}</span>
+      </div>
+    </div>`;
+  };
 
+  // ======= 4. Build all summary cards ========
+  const cardData = [
+    { key: 'totalIncome', label: t.income, icon: '💰' },
+    { key: 'expenses', label: t.expenses, icon: '📉' },
+    { key: 'grossProfit', label: t.grossProfit, icon: '📊' },
+    { key: 'netProfit', label: t.netProfit, icon: '📈' },
+    { key: 'commission', label: t.commission, icon: '🏷️' },
+    { key: 'vehiclesSold', label: t.soldVehicles, icon: '🚗', noCurrency: true },
+    { key: 'availableVehicles', label: t.availableVehicles, icon: '🚘', noCurrency: true },
+  ];
+
+  const summaryCards = cardData.map(card => {
+    const values = {
+      AFN: summary.AFN[card.key],
+      USD: summary.USD[card.key],
+      PKR: summary.PKR[card.key],
+      AED: summary.AED[card.key],
+    };
+    return renderCard(card.label, values, card.icon, !card.noCurrency);
+  }).join('');
+
+  // ======= 5. Partner list (real balances) ========
+  const partnerItems = partnerBalances.map(p => `
+    <li>
+      <span class="shared-name">${safeText(p.personName)}</span>
+      <div class="shared-amounts">
+        <span class="shared-amount">${t.currencies[0]}: ${fmtNumber(p.totalAFN)}</span>
+        <span class="shared-amount">${t.currencies[1]}: ${fmtNumber(p.totalUSD)}</span>
+        <span class="shared-amount">${t.currencies[2]}: ${fmtNumber(p.totalPKR)}</span>
+        <span class="shared-amount">${t.currencies[3]}: ${fmtNumber(p.totalAED)}</span>
+      </div>
+    </li>`).join('');
+
+  // ======= 6. Balance tables ========
+  const showroomValues = showroomBalance;
+  const ownerValues = ownerBalance;
+
+  // ======= 7. Final HTML ========
   return `<!doctype html>
-  <html lang="ps">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>مالي راپور</title>
-    <style>
-      :root {
-        --primary: #0f172a;
-        --gold: #c8963e;
-        --gray-text: #5b6474;
-        --border: #e2e8f0;
-        --panel: #f8fafc;
-        --shadow: 0 10px 30px rgba(15,23,42,0.08);
-        --warning: #f59e0b;
-      }
-      @page { size: A4; margin: 0mm; }
-      @font-face {
-        font-family: 'BahijNazaninLocal';
-        src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype');
-        font-weight: normal;
-        font-style: normal;
-      }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { height: 100%; background: #f1f5f9; }
-      body {
-        font-family: 'BahijNazaninLocal', 'Noto Naskh Arabic', serif;
-        direction: rtl;
-        unicode-bidi: embed;
-        padding: 8mm;
-        background: #f1f5f9;
-      }
-      .page {
-        max-width: 210mm;
-        margin: 0 auto;
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--shadow);
-        overflow: hidden;
-        padding: 8mm 9mm;
-      }
-      .header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        color: white;
-        padding: 16px 20px;
-        border-radius: 14px;
-        margin-bottom: 20px;
-        text-align: center;
-        position: relative;
-      }
-      .company { font-size: 22px; font-weight: 800; }
-      .report-title { font-size: 14px; color: #f6dba9; margin-top: 6px; }
-      .address { font-size: 9px; color: #94a3b8; margin-top: 8px; }
-      .date-badge {
-        position: absolute;
-        left: 20px;
-        bottom: 12px;
-        background: rgba(255,255,255,0.15);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 9px;
-      }
-      .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 14px;
-        margin-bottom: 24px;
-      }
-      .summary-card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 12px;
-        text-align: center;
-      }
-      .summary-icon { font-size: 28px; margin-bottom: 6px; }
-      .summary-label { font-size: 11px; color: var(--gray-text); text-transform: uppercase; margin-bottom: 6px; }
-      .summary-value { font-size: 18px; font-weight: 800; color: var(--primary); }
-      .currency { font-size: 11px; font-weight: normal; color: var(--gray-text); }
-      .section-title {
-        font-size: 14px;
-        font-weight: 800;
-        color: var(--primary);
-        margin: 20px 0 12px 0;
-        padding-right: 12px;
-        border-right: 4px solid var(--gold);
-      }
-      .balance-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-      }
-      .balance-table th, .balance-table td {
-        border: 1px solid var(--border);
-        padding: 10px 12px;
-        text-align: right;
-        font-size: 11px;
-      }
-      .balance-table th {
-        background: #f1f5f9;
-        font-weight: 800;
-      }
-      .shared-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .shared-list li {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 11px;
-      }
-      .shared-name { font-weight: 700; }
-      .shared-amount { font-weight: 800; color: var(--warning); }
-      .footer {
-        margin-top: 24px;
-        text-align: center;
-        font-size: 8px;
-        color: var(--gray-text);
-        border-top: 1px solid var(--border);
-        padding-top: 12px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page">
-      <div class="header">
-        <div class="company">نیازي خپلواک موټر پلورنځي</div>
-        <div class="report-title">مالي راپور</div>
-        <div class="address">کندهار، سپین بولدک عمومی سړک، ګمرک ته مخامخ | تلیفون: ۰۷۰۰۰۰۸۹۸۳</div>
-        <div class="date-badge">نیټه: ${dateStr}</div>
-      </div>
-
-      <div class="summary-grid">
-        ${renderCard('ټول عواید', totalRevenue, '💰')}
-        ${renderCard('ټول لګښتونه', totalExpenses, '📉')}
-        ${renderCard('خالص ګټه', netProfit, '📈')}
-        ${renderCard('پلورل شوي موټرې', vehiclesSold, '🚗')}
-        ${renderCard('ټول کمیشن', totalCommission, '🏷️')}
-      </div>
-
-      <div class="section-title">باقي مانده (توازن)</div>
-      <table class="balance-table">
-        <thead>
-          <tr><th>توضیح</th><th>قیمت (افغانۍ)</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>شوروم موجوده پیسه</td><td>${showroomBalance}</td></tr>
-          <tr><td>د خاوند ونډه</td><td>${ownerBalance}</td></tr>
-          <tr><td>شریکانو ټوله برخه</td><td>${sharedTotal}</td></tr>
-        </tbody>
-      </table>
-
-      ${sharedPersons.length > 0 ? `
-        <div class="section-title">د شریکانو جلا جلا برخه</div>
-        <ul class="shared-list">
-          ${sharedPersons.map(p => `<li><span class="shared-name">${safeText(p.personName)}</span><span class="shared-amount">${toPashtoNumber(p.total)} افغانۍ</span></li>`).join('')}
-        </ul>
-      ` : '<div style="margin: 12px 0; color: var(--gray-text);">هیڅ شریک نشته</div>'}
-
-      <div class="footer">
-        دا راپور د شوروم د مالیاتو د ثبت اتوماتیک سیسټم لخوا چاپ شوی دی.
-      </div>
+<html lang="${lang}" dir="${t.direction}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${t.title}</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --gold: #c8963e;
+      --gray-text: #5b6474;
+      --border: #e2e8f0;
+      --panel: #f8fafc;
+      --shadow: 0 10px 30px rgba(15,23,42,0.08);
+      --warning: #f59e0b;
+    }
+    @page { size: A4; margin: 0mm; }
+    @font-face {
+      font-family: 'BahijNazaninLocal';
+      src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #f1f5f9; }
+    body {
+      font-family: 'BahijNazaninLocal', 'Noto Naskh Arabic', serif;
+      direction: ${t.direction};
+      unicode-bidi: embed;
+      padding: 8mm;
+      background: #f1f5f9;
+    }
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 8mm 9mm;
+    }
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+      position: relative;
+    }
+    .company { font-size: 22px; font-weight: 800; }
+    .report-title { font-size: 14px; color: #f6dba9; margin-top: 6px; }
+    .address { font-size: 9px; color: #94a3b8; margin-top: 8px; }
+    .date-badge {
+      position: absolute;
+      ${t.direction === 'rtl' ? 'left: 20px;' : 'right: 20px;'}
+      bottom: 12px;
+      background: rgba(255,255,255,0.15);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 9px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      text-align: center;
+    }
+    .summary-icon { font-size: 28px; margin-bottom: 6px; }
+    .summary-label { font-size: 11px; color: var(--gray-text); text-transform: uppercase; margin-bottom: 6px; }
+    .summary-value { font-size: 18px; font-weight: 800; color: var(--primary); }
+    .currency { font-size: 11px; font-weight: normal; color: var(--gray-text); }
+    .sub-values {
+      font-size: 10px;
+      color: var(--gray-text);
+      margin-top: 4px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 20px 0 12px 0;
+      padding-${t.direction === 'rtl' ? 'right' : 'left'}: 12px;
+      border-${t.direction === 'rtl' ? 'right' : 'left'}: 4px solid var(--gold);
+    }
+    .balance-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .balance-table th, .balance-table td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: ${t.direction === 'rtl' ? 'right' : 'left'};
+      font-size: 11px;
+    }
+    .balance-table th {
+      background: #f1f5f9;
+      font-weight: 800;
+    }
+    .shared-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .shared-list li {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .shared-name { font-weight: 700; }
+    .shared-amounts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .shared-amount { font-weight: 800; color: var(--warning); }
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 8px;
+      color: var(--gray-text);
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="company">${t.company}</div>
+      <div class="report-title">${t.title}</div>
+      <div class="address">${t.address}</div>
+      <div class="date-badge">${t.date}</div>
     </div>
-  </body>
-  </html>`;
+
+    <div class="summary-grid">
+      ${summaryCards}
+    </div>
+
+    <div class="section-title">${t.showroomBalance}</div>
+    <table class="balance-table">
+      <thead>
+        <tr><th>توضیح</th><th>${t.currencies[0]}</th><th>${t.currencies[1]}</th><th>${t.currencies[2]}</th><th>${t.currencies[3]}</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>${t.showroomBalance}</td>
+          <td>${fmtNumber(showroomValues.AFN)}</td>
+          <td>${fmtNumber(showroomValues.USD)}</td>
+          <td>${fmtNumber(showroomValues.PKR)}</td>
+          <td>${fmtNumber(showroomValues.AED)}</td>
+        </tr>
+        <tr>
+          <td>${t.ownerBalance}</td>
+          <td>${fmtNumber(ownerValues.AFN)}</td>
+          <td>${fmtNumber(ownerValues.USD)}</td>
+          <td>${fmtNumber(ownerValues.PKR)}</td>
+          <td>${fmtNumber(ownerValues.AED)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${partnerBalances.length > 0 ? `
+      <div class="section-title">${t.partnerShares}</div>
+      <ul class="shared-list">
+        ${partnerItems}
+      </ul>
+    ` : `<div style="margin: 12px 0; color: var(--gray-text);">${lang === 'en' ? 'No partners found' : 'هیڅ شریک نشته'}</div>`}
+
+    <div class="footer">
+      ${lang === 'en' ? 'This report is automatically generated by the showroom financial system.' : 'دا راپور د شوروم د مالیاتو د ثبت اتوماتیک سیسټم لخوا چاپ شوی دی.'}
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 async function generateFinancialReportPdf(reportData, outputDir) {

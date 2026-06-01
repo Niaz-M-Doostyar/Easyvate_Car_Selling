@@ -71,87 +71,93 @@ router.get('/:id/ledger', async (req, res) => {
   }
 });
 
-// POST /customers/:id/ledger - Add ledger entry and update showroom balance
+// POST /customers/:id/ledger - Add ledger entry (multi‑currency balance)
 router.post('/:id/ledger', async (req, res) => {
   try {
     const { type, amount, currency, purpose, date, saleId } = req.body;
+    const customer = await Customer.findByPk(req.params.id);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
 
-    const lastEntry = await CustomerLedger.findOne({
-      where: { customerId: req.params.id },
-      order: [['id', 'DESC']]
-    });
+    const amountNum = parseFloat(amount);
+    const amountAFN = await toAFN(amountNum, currency || 'AFN');
+    const isCredit = CREDIT_LEDGER_TYPES.includes(type);
+    const signedAmount = isCredit ? amountNum : -amountNum;
 
-    const prevBalance = lastEntry ? Number(lastEntry.balance || 0) : 0;
-    const amountAFN = await toAFN(amount, currency || 'AFN');
-    const signedAmount = CREDIT_LEDGER_TYPES.includes(type) ? Number(amountAFN) : -Number(amountAFN);
-    const newBalance = prevBalance + signedAmount;
+    // Determine which balance field to update
+    let balanceField;
+    switch (currency) {
+      case 'USD': balanceField = 'balanceUSD'; break;
+      case 'PKR': balanceField = 'balancePKR'; break;
+      case 'AED': balanceField = 'balanceAED'; break;
+      default: balanceField = 'balanceAFN';
+    }
 
+    // Update the specific currency balance
+    const currentBalance = parseFloat(customer[balanceField]) || 0;
+    const newBalance = currentBalance + signedAmount;
+    await customer.update({ [balanceField]: newBalance });
+
+    // Update overall PKR balance (for legacy reporting)
+    const currentPKRBalance = parseFloat(customer.balance) || 0;
+    const newPKRBalance = currentPKRBalance + (isCredit ? amountAFN : -amountAFN);
+    await customer.update({ balance: newPKRBalance });
+
+    // Create ledger entry
     const entry = await CustomerLedger.create({
       customerId: req.params.id,
       type,
-      amount,
+      amount: amountNum,
       currency: currency || 'AFN',
       amountInPKR: amountAFN,
       purpose,
       date: date || new Date(),
-      balance: newBalance,
+      balance: newPKRBalance,
       saleId: saleId || null,
       addedBy: req.user.id
     });
 
-    await Customer.update({ balance: newBalance }, { where: { id: req.params.id } });
-
-    // ─────────────────────────────────────────────────────────────
-    // Update sale payment status and showroom balance for Installment/Received linked to a sale
-    // ─────────────────────────────────────────────────────────────
-    let updatedSale = null;
+    // ─── Handle sale payment status & showroom ledger (unchanged) ───
     if (saleId && (type === 'Installment' || type === 'Received')) {
       const sale = await Sale.findByPk(saleId);
       if (sale && sale.paymentStatus !== 'Paid') {
-        const payAmt = Number(amountAFN);
+        const payAmt = amountAFN;
         const newPaid = Number(sale.paidAmount || 0) + payAmt;
         const newRemaining = Math.max(Number(sale.remainingAmount || 0) - payAmt, 0);
         const newStatus = newRemaining <= 0 ? 'Paid' : 'Partial';
         await sale.update({
           paidAmount: newPaid,
           remainingAmount: newRemaining,
-          paymentStatus: newStatus,
+          paymentStatus: newStatus
         });
-        updatedSale = sale;
-
-        // Also record the cash received in showroom ledger (only if vehicle has no reference person)
         const vehicle = await Vehicle.findByPk(sale.vehicleId);
         const referencePerson = await require('../models/ReferencePerson').findOne({ where: { vehicleId: vehicle?.id } });
         const hasReferencePerson = !!referencePerson;
         if (!hasReferencePerson) {
           await ShowroomLedger.create({
             type: 'Vehicle Sale',
-            amount: amount,
+            amount: amountNum,
             currency: currency || 'AFN',
             amountInPKR: amountAFN,
             description: `Installment payment from customer for sale ${sale.saleId || sale.id}`,
             date: date || new Date(),
             referenceId: sale.id,
             referenceType: 'Sale',
-            personName: (await Customer.findByPk(req.params.id)).fullName,
+            personName: customer.fullName,
             addedBy: req.user.id
           });
         }
       }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Update showroom balance for other transaction types
-    // ─────────────────────────────────────────────────────────────
-    const customer = await Customer.findByPk(req.params.id);
-    const customerName = customer ? customer.fullName : 'Customer';
-
+    // ─── Showroom ledger for other transaction types (unchanged) ───
+    const customerName = customer.fullName;
     switch (type) {
       case 'Loan':
-        // Money given to customer (loan) – outflow from showroom
         await ShowroomLedger.create({
           type: 'Expense',
-          amount: amount,
+          amount: amountNum,
           currency: currency || 'AFN',
           amountInPKR: amountAFN,
           description: `Loan given to ${customerName} – ${purpose || ''}`,
@@ -160,12 +166,10 @@ router.post('/:id/ledger', async (req, res) => {
           addedBy: req.user.id
         });
         break;
-
       case 'Loan Payment':
-        // Customer repays loan – inflow to showroom
         await ShowroomLedger.create({
-          type: 'Vehicle Sale', // using Vehicle Sale to represent cash inflow
-          amount: amount,
+          type: 'Vehicle Sale',
+          amount: amountNum,
           currency: currency || 'AFN',
           amountInPKR: amountAFN,
           description: `Loan repayment from ${customerName} – ${purpose || ''}`,
@@ -174,12 +178,10 @@ router.post('/:id/ledger', async (req, res) => {
           addedBy: req.user.id
         });
         break;
-
       case 'Investment':
-        // Customer invests money – inflow to showroom
         await ShowroomLedger.create({
           type: 'Vehicle Sale',
-          amount: amount,
+          amount: amountNum,
           currency: currency || 'AFN',
           amountInPKR: amountAFN,
           description: `Investment received from ${customerName} – ${purpose || ''}`,
@@ -188,12 +190,10 @@ router.post('/:id/ledger', async (req, res) => {
           addedBy: req.user.id
         });
         break;
-
       case 'Profit Share':
-        // Profit paid to customer – outflow from showroom
         await ShowroomLedger.create({
           type: 'Expense',
-          amount: amount,
+          amount: amountNum,
           currency: currency || 'AFN',
           amountInPKR: amountAFN,
           description: `Profit share paid to ${customerName} – ${purpose || ''}`,
@@ -202,13 +202,11 @@ router.post('/:id/ledger', async (req, res) => {
           addedBy: req.user.id
         });
         break;
-
       case 'Received':
-        // General cash received (not linked to sale) – inflow
         if (!saleId) {
           await ShowroomLedger.create({
-            type: 'Vehicle Sale',
-            amount: amount,
+            type: 'Showroom Balance',
+            amount: amountNum,
             currency: currency || 'AFN',
             amountInPKR: amountAFN,
             description: `Payment received from ${customerName} – ${purpose || ''}`,
@@ -218,25 +216,19 @@ router.post('/:id/ledger', async (req, res) => {
           });
         }
         break;
-
       case 'Paid':
-        // Cash paid to customer (general) – outflow
         await ShowroomLedger.create({
-          type: 'Expense',
-          amount: amount,
+          type: 'Showroom Balance',
+          amount: -amountNum,
           currency: currency || 'AFN',
-          amountInPKR: amountAFN,
+          amountInPKR: -amountAFN,
           description: `Payment made to ${customerName} – ${purpose || ''}`,
           date: date || new Date(),
           personName: customerName,
           addedBy: req.user.id
         });
         break;
-
-      // For 'Sale' type, the showroom entry is already created by the sales route.
-      // For 'Installment' and 'Received' with saleId, handled above.
-      default:
-        break;
+      default: break;
     }
 
     res.status(201).json(entry);

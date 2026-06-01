@@ -6,7 +6,7 @@ let lastCacheUpdate = null;
 const CACHE_TTL = 60000; // 1 minute
 
 // Default fallback rates
-const DEFAULT_RATES = { USD: 70, PKR: 0.25, AFN: 1 };
+const DEFAULT_RATES = { USD: 70, PKR: 0.25, AED: 19, AFN: 1 };
 
 // Get current exchange rates (with caching)
 async function getRates() {
@@ -61,7 +61,8 @@ async function initializeRates() {
     if (count === 0) {
       await ExchangeRate.bulkCreate([
         { currency: 'USD', rateToAFN: 70, isActive: true },
-        { currency: 'PKR', rateToAFN: 0.25, isActive: true }
+        { currency: 'PKR', rateToAFN: 0.25, isActive: true },
+        { currency: 'AED', rateToAFN: 19, isActive: true }
       ]);
       console.log('✓ Default exchange rates initialized');
     }

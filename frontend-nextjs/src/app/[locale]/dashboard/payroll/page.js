@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
-  InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment,
+  InputLabel, Select, MenuItem, Chip, useTheme, alpha, InputAdornment, CircularProgress,
 } from '@mui/material';
 import { Add, Payment, AccountBalance, AttachMoney, ReceiptLong, Notes } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
@@ -31,8 +31,34 @@ export default function PayrollPage() {
   const [genForm, setGenForm] = useState({
     employeeId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), commission: '0', deductions: '0', notes: '',
   });
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => { fetchPayrolls(); fetchEmployees(); }, []);
+  useEffect(() => {
+  if (genForm.employeeId && genForm.month && genForm.year) {
+    const timer = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const res = await apiClient.post('/payroll/calculate', {
+          employeeId: genForm.employeeId,
+          month: genForm.month,
+          year: genForm.year,
+          commission: parseFloat(genForm.commission) || 0,
+          deductions: parseFloat(genForm.deductions) || 0
+        });
+        setPreview(res.data.data);
+      } catch (err) {
+        setPreview(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  } else {
+    setPreview(null);
+  }
+}, [genForm.employeeId, genForm.month, genForm.year, genForm.commission, genForm.deductions]);
 
   const fetchPayrolls = async () => {
     setLoading(true);
@@ -117,8 +143,8 @@ export default function PayrollPage() {
 
   const openPayDialog = (row) => {
     setSelectedPayroll(row);
-    const remaining = Number(row.totalAmount || 0) - Number(row.paidAmount || 0);
-    setPayAmount(String(remaining > 0 ? remaining : 0));
+    // Pre‑fill with total amount – admin can edit down
+    setPayAmount(String(row.totalAmount || 0));
     setPayOpen(true);
   };
 
@@ -245,7 +271,7 @@ export default function PayrollPage() {
       <EnhancedDataTable
         columns={columns}
         data={filteredPayrolls}
-        onDelete={handleDelete}
+        // onDelete={handleDelete}
         loading={loading}
         title={t('tableTitle')}
         emptyMessage={t('noRecords')}
@@ -322,6 +348,42 @@ export default function PayrollPage() {
                 InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment>, endAdornment: <InputAdornment position="end">{getCurrencySymbol('AFN')}</InputAdornment> }}
               />
             </Grid>
+            {previewLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={30} />
+              </Box>
+            )}
+            {preview && !previewLoading && (
+              <Card variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'action.hover' }}>
+                <Typography variant="subtitle2" fontWeight="bold">Salary Breakdown</Typography>
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                  <Grid item xs={6}><Typography variant="caption">Monthly Salary:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{formatCurrency(preview.monthlySalary)}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Daily Working Hours:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.dailyWorkingHours} hrs</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Hourly Rate:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{formatCurrency(preview.hourlyRate)}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Worked Hours:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.actualWorkedHours?.toFixed(2)} hrs</Typography></Grid>
+                  {/* <Grid item xs={6}><Typography variant="caption">Present Days:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.presentDays}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Absent Days:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.absentDays}</Typography></Grid> */}
+                  <Grid item xs={6}><Typography variant="caption">Leave Days:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.leaveDays} ({preview.leaveHours?.toFixed(2)} hrs)</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Total Earned Hours:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{preview.totalEarnedHours?.toFixed(2)} hrs</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Base Salary:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">{formatCurrency(preview.baseSalary)}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Commission:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">+ {formatCurrency(preview.commission)}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption">Deductions:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="body2" align="right">- {formatCurrency(preview.deductions)}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="subtitle2" fontWeight="bold">Total Amount:</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="subtitle2" fontWeight="bold" align="right">{formatCurrency(preview.totalAmount)}</Typography></Grid>
+                </Grid>
+              </Card>
+            )}
             <Grid item xs={12}>
               <TextField
                 fullWidth

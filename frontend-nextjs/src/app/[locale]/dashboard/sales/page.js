@@ -48,6 +48,7 @@ const defaultForm = {
   trafficTransferDate: '',
   witnessName1: '', witnessName2: '',
   exchangeVehicleCost: '',
+  exchangeVehicleCostCurrency: 'AFN',
 };
 
 export default function SalesPage() {
@@ -167,7 +168,7 @@ export default function SalesPage() {
     setEditingId(null);
   };
 
-  const handleEdit = (sale) => {
+  const handleEdit = async(sale) => {
     setFormData({
       saleType: sale.saleType || 'Container One Key',
       vehicleId: sale.vehicleId || sale.vehicle?.id || '',
@@ -207,6 +208,18 @@ export default function SalesPage() {
       witnessName2: sale.witnessName2 || '',
       exchangeVehicleCost: sale.exchangeVehicleCost?.toString() || '',
     });
+    if (sale.saleType === 'Exchange Car' && sale.exchangeVehicleId) {
+  try {
+    const exchRes = await apiClient.get(`/vehicles/${sale.exchangeVehicleId}`);
+    const exchVehicle = exchRes.data;
+    setFormData(prev => ({
+      ...prev,
+      exchangeVehicleCost: exchVehicle.basePurchasePrice,
+    }));
+  } catch (err) {
+    console.error('Failed to fetch exchange vehicle', err);
+  }
+}
     setEditingId(sale.id);
     setOpen(true);
   };
@@ -379,12 +392,12 @@ export default function SalesPage() {
           },
           { id: 'customer', label: t('columnCustomer'), format: (val, row) => row.customer?.fullName || row.buyerName || '-' },
           { id: 'saleDate', label: t('columnDate'), format: (date) => date ? new Date(date).toLocaleDateString() : '-' },
-          { id: 'sellingPrice', label: t('columnPrice'), align: 'right', bold: true, format: (val) => formatCurrency(val) },
+          { id: 'sellingPrice', label: t('columnPrice'), align: 'right', bold: true, format: (val, row) => formatCurrency(val, row.paymentCurrency || 'AFN') },
           { id: 'remainingAmount', label: t('columnStatus'), align: 'center', format: (val, row) => {
             const num = parseFloat(val) || 0;
             const status = row.paymentStatus;
             if (status === 'Paid' || num <= 0) return <Chip label={t('paid')} size="small" color="success" />;
-            return <Chip label={formatCurrency(num)} size="small" color={status === 'Partial' ? 'warning' : 'error'} />;
+            return <Chip label={formatCurrency(num, row.paymentCurrency || 'AFN')} size="small" color={status === 'Partial' ? 'warning' : 'error'} />;
           }},
           { id: '_actions', label: t('columnActions'), align: 'center', width: '220px', format: (val, row) => (
             <Box display="flex" gap={0.5} justifyContent="center">
@@ -463,6 +476,7 @@ export default function SalesPage() {
                       ...formData,
                       vehicleId: newValue?.id || '',
                       sellingPrice: newValue?.sellingPrice?.toString() || formData.sellingPrice,
+                      paymentCurrency: newValue?.sellingPriceCurrency || newValue?.baseCurrency || 'AFN',
                     });
                     if (errors.vehicleId) setErrors({ ...errors, vehicleId: '' });
                   }
@@ -493,7 +507,7 @@ export default function SalesPage() {
                   [t('engine'), selectedVehicle.engineNumber],
                   [t('chassis'), selectedVehicle.chassisNumber],
                   [t('plate'), selectedVehicle.plateNo],
-                  [t('cost'), formatCurrency(selectedVehicle.totalCostPKR || 0)],
+                  [t('cost'), formatCurrency(selectedVehicle.totalCostOriginal || 0, selectedVehicle.baseCurrency)],
                 ].map(([k, v]) => (
                   <Grid item xs={4} sm={2} key={k}>
                     <Typography variant="caption" color="text.secondary">{k}</Typography>
@@ -719,13 +733,23 @@ export default function SalesPage() {
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <TextField fullWidth label={t('exchangeVehicleCostLabel')} type="number"
-                    value={formData.exchangeVehicleCost || ''} required 
-                    error={!!errors.exchVehicleChassis}
+                    value={formData.exchangeVehicleCost || ''} required
                     onChange={(e) => !isEdit && setFormData({ ...formData, exchangeVehicleCost: e.target.value })}
-                    helperText={t('exchangeVehicleCostHelper')}
-                    InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
+                    InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.exchangeVehicleCostCurrency)}</InputAdornment> }}
                     disabled={isEdit}
                   />
+                </Grid>
+                <Grid item xs={12} sm={2}>
+                  <FormControl fullWidth size="small" disabled={isEdit}>
+                    <InputLabel>Currency</InputLabel>
+                    <Select value={formData.exchangeVehicleCostCurrency} label="Currency"
+                      onChange={(e) => !isEdit && setFormData({ ...formData, exchangeVehicleCostCurrency: e.target.value })}>
+                      <MenuItem value="AFN">AFN</MenuItem>
+                      <MenuItem value="USD">USD</MenuItem>
+                      <MenuItem value="PKR">PKR</MenuItem>
+                      <MenuItem value="AED">AED</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth disabled={isEdit}>
@@ -768,15 +792,7 @@ export default function SalesPage() {
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={3}>
-              <FormControl fullWidth size="small" disabled={isEdit}>
-                <InputLabel>{t('currencyLabel')}</InputLabel>
-                <Select value={formData.paymentCurrency} label={t('currencyLabel')}
-                  onChange={(e) => !isEdit && setFormData({ ...formData, paymentCurrency: e.target.value })}>
-                  <MenuItem value="AFN">{t('currencyAFN')}</MenuItem>
-                  <MenuItem value="USD">{t('currencyUSD')}</MenuItem>
-                  <MenuItem value="PKR">{t('currencyPKR')}</MenuItem>
-                </Select>
-              </FormControl>
+                <TextField fullWidth label={t('currencyLabel')} value={formData.paymentCurrency} disabled={isEdit} />
             </Grid>
             <Grid item xs={12} sm={3}>
               <TextField fullWidth label={t('sellingPrice')} type="number" value={formData.sellingPrice}
@@ -1159,18 +1175,20 @@ export default function SalesPage() {
               <Grid container spacing={1.5}>
                 <Grid item xs={4}>
                   <Typography variant="caption" color="text.secondary">{t('sellingPriceProgress')}</Typography>
-                  <Typography variant="body1" fontWeight={700}>{formatCurrency(paymentSale.sellingPrice || 0)}</Typography>
+                  <Typography variant="body1" fontWeight={700}>
+                    {formatCurrency(paymentSale.sellingPrice || 0, paymentSale.paymentCurrency || 'AFN')}
+                  </Typography>
                 </Grid>
                 <Grid item xs={4}>
                   <Typography variant="caption" color="text.secondary">{t('paidSoFar')}</Typography>
                   <Typography variant="body1" fontWeight={700} color="success.main">
-                    {formatCurrency(paymentSale.paidAmount || paymentSale.downPayment || 0)}
+                    {formatCurrency(paymentSale.paidAmount || paymentSale.downPayment || 0, paymentSale.paymentCurrency || 'AFN')}
                   </Typography>
                 </Grid>
                 <Grid item xs={4}>
                   <Typography variant="caption" color="text.secondary">{t('remainingProgress')}</Typography>
                   <Typography variant="body1" fontWeight={700} color="error.main">
-                    {formatCurrency(paymentSale.remainingAmount || 0)}
+                    {formatCurrency(paymentSale.remainingAmount || 0, paymentSale.paymentCurrency || 'AFN')}
                   </Typography>
                 </Grid>
                 <Grid item xs={12}>
@@ -1190,14 +1208,29 @@ export default function SalesPage() {
             {t('newPaymentTitle')}
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField fullWidth label={t('paymentAmount')} type="number" value={paymentForm.amount} required
                 onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                placeholder={`Max: ${Number(paymentSale?.remainingAmount || 0).toLocaleString()}`}
-                InputProps={{ endAdornment: <InputAdornment position="end">؋</InputAdornment> }}
+                placeholder={`Max: ${Number(paymentSale?.remainingAmount || 0).toLocaleString()} ${paymentSale?.paymentCurrency || 'AFN'}`}
+                InputProps={{ endAdornment: <InputAdornment position="end">{getCurrencySymbol(paymentForm.currency)}</InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>{t('currency')}</InputLabel>
+                <Select
+                  value={paymentForm.currency}
+                  label={t('currency')}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}
+                >
+                  <MenuItem value="AFN">AFN</MenuItem>
+                  <MenuItem value="USD">USD</MenuItem>
+                  <MenuItem value="PKR">PKR</MenuItem>
+                  <MenuItem value="AED">AED</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={5}>
               <TextField fullWidth label={t('paymentDate')} type="date" value={paymentForm.date}
                 onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
@@ -1217,8 +1250,8 @@ export default function SalesPage() {
                   { label: t('halfRemaining'), value: Math.round(Number(paymentSale.remainingAmount || 0) / 2) },
                   { label: t('thirdRemaining'), value: Math.round(Number(paymentSale.remainingAmount || 0) / 3) },
                 ].filter(b => b.value > 0).map((btn) => (
-                  <Chip key={btn.label} label={`${btn.label} (${btn.value.toLocaleString()})`} variant="outlined" size="small"
-                    onClick={() => setPaymentForm({ ...paymentForm, amount: btn.value.toString() })}
+                  <Chip key={btn.label} label={`${btn.label} (${btn.value.toLocaleString()} ${paymentSale?.paymentCurrency || 'AFN'})`} variant="outlined" size="small"
+                    onClick={() => setPaymentForm({ ...paymentForm, amount: btn.value.toString(), currency: paymentSale?.paymentCurrency || 'AFN' })}
                     sx={{ cursor: 'pointer', '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.1) } }}
                   />
                 ))}

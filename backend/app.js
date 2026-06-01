@@ -25,6 +25,12 @@ const testimonialRoutes = require('./routes/testimonial');
 const videoRoutes = require('./routes/chooseVideo');
 const settingsRoutes = require('./routes/settings');
 const { ensureSchemaCompatibility } = require('./src/services/schema');
+const PunchLog = require('./models/PunchLog');
+const Employee = require('./models/Employee');
+const todayAttendanceRoutes = require('./routes/todayAttendance');
+const monthlySummaryRoutes = require('./routes/monthlySummary');
+const timeSettingRoutes = require('./routes/timeSetting');
+const leaveRoutes = require('./routes/leaves');
 
 const app = express();
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -51,6 +57,72 @@ app.use(compression({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.post('/api/attendance/sync', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== process.env.ZK_SYNC_API_KEY) {
+    return res.status(401).json({ success: false, error: 'Invalid API key' });
+  }
+
+  try {
+    const { empName, ID, date, attendanceCount, checkInTimes } = req.body;
+    console.log(`✅ VMS received: ${empName} (${ID}) - ${checkInTimes.length} punches`);
+
+    // Validation
+    if (!empName || !ID || !date || !Array.isArray(checkInTimes)) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    // Find existing employee by biometricId (device ID)
+    const employee = await Employee.findOne({ where: { biometricId: ID.toString() } });
+    if (!employee) {
+      console.warn(`⚠️ Employee with biometricId ${ID} not found. Skipping.`);
+      return res.status(200).json({ success: false, message: `Employee ${ID} not found` });
+    }
+
+    // Convert incoming ISO strings to Date objects
+    const incomingTimes = checkInTimes.map(ts => new Date(ts));
+
+    // Fetch already stored punch times for this employee on the same date
+    const existingPunches = await PunchLog.findAll({
+      where: {
+        employeeId: employee.id,
+        date: date
+      },
+      attributes: ['punchTime']
+    });
+
+    const existingTimestamps = existingPunches.map(p => p.punchTime.getTime());
+
+    // Filter out punches that already exist (within 1 second tolerance)
+    const newPunches = incomingTimes.filter(ts => {
+      const timeMs = ts.getTime();
+      return !existingTimestamps.some(existingMs => Math.abs(existingMs - timeMs) < 1000);
+    });
+
+    if (newPunches.length === 0) {
+      console.log(`ℹ️ No new punches for ${employee.fullName} (${ID}) on ${date}`);
+      return res.status(200).json({ success: true, message: 'No new punches to store' });
+    }
+
+    // Prepare records for new punches
+    const punchRecords = newPunches.map(punchTime => ({
+      employeeId: employee.id,
+      punchTime: punchTime,
+      date: date,
+      source: 'ZK_SYNC'
+    }));
+
+    await PunchLog.bulkCreate(punchRecords);
+
+    console.log(`✅ Stored ${punchRecords.length} new punches for ${employee.fullName} (${ID}) on ${date}`);
+    return res.status(200).json({ success: true, message: `${punchRecords.length} new punches stored` });
+
+  } catch (error) {
+    console.error('❌ Sync storage error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Serve uploads at both /uploads (direct) and /api/uploads (when Nginx proxies /api/ to backend)
 const uploadsStaticOptions = {
@@ -88,6 +160,15 @@ const ROLE_INVENTORY = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 
 const ROLE_FINANCIAL = ['Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Sales', 'Accountant', 'Viewer'];
 const ROLE_EMPLOYEE = ['Super Admin', 'Owner', 'Manager', 'Financial', 'Accountant'];
 
+
+
+// 2. For all other /api routes, require JWT
+app.use('/api', (req, res, next) => {
+  // Skip if it's the sync endpoint (already handled, but just in case)
+  if (req.originalUrl === '/api/attendance/sync' || req.originalUrl === '/api/auth/login') return next();
+  verifyToken(req, res, next);
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', verifyToken, authorize(ROLE_INVENTORY), vehicleRoutes);
 app.use('/api/customers', verifyToken, authorize([...ROLE_INVENTORY, ...ROLE_FINANCIAL]), customerRoutes);
@@ -104,7 +185,11 @@ app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);
 app.use('/api/carousel', verifyToken, authorize(ROLE_INVENTORY), carouselRoutes);
 app.use('/api/testimonial', verifyToken, authorize(ROLE_INVENTORY), testimonialRoutes);
 app.use('/api/choose-video', verifyToken, authorize(ROLE_INVENTORY), videoRoutes);
+app.use('/api/attendance/today', verifyToken, authorize(ROLE_INVENTORY), todayAttendanceRoutes);
+app.use('/api/attendance/monthly-summary', verifyToken, authorize(ROLE_INVENTORY), monthlySummaryRoutes);
 app.use('/api/settings', verifyToken, authorize(['Super Admin', 'Owner']), settingsRoutes);
+app.use('/api/time-settings', verifyToken, authorize(ROLE_INVENTORY), timeSettingRoutes);
+app.use('/api/leaves', verifyToken, authorize(ROLE_INVENTORY), leaveRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

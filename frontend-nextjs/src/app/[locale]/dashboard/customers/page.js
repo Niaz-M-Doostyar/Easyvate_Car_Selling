@@ -17,7 +17,7 @@ import {
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import { validateEmail, validatePhone, validateRequired, validateNationalId } from '@/utils/validation';
-import { getCurrencySymbol } from '@/utils/currency';
+import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
 const CUSTOMER_TYPES = [
@@ -72,6 +72,57 @@ export default function CustomersPage() {
   const [ledgerForm, setLedgerForm] = useState({
     type: 'Received', amount: '', currency: 'AFN', purpose: '', date: new Date().toISOString().split('T')[0],
   });
+
+  const [displayCurrency, setDisplayCurrency] = useState('AFN');
+  const [exchangeRates, setExchangeRates] = useState({});
+  const [ratesLoading, setRatesLoading] = useState(false);
+
+  // Fetch exchange rates
+  useEffect(() => {
+    const fetchRates = async () => {
+      setRatesLoading(true);
+      try {
+        const res = await apiClient.get('/currency/rates');
+        setExchangeRates(res.data.data || {});
+      } catch (err) {
+        console.error('Failed to fetch exchange rates', err);
+      } finally {
+        setRatesLoading(false);
+      }
+    };
+    fetchRates();
+  }, []);
+
+  // Helper to convert AFN to selected currency
+  const convertFromAFN = (amountAFN, targetCurrency) => {
+    if (!amountAFN) return 0;
+    if (targetCurrency === 'AFN') return amountAFN;
+    const rateKey = `${targetCurrency}-AFN`;
+    const rate = exchangeRates[rateKey];
+    if (!rate || rate === 0) return amountAFN;
+    return amountAFN / rate;
+  };
+
+  const totalCombinedAFN = useMemo(() => {
+    if (!detailCustomer || !exchangeRates) return 0;
+    const afn = Number(detailCustomer.balanceAFN) || 0;
+    const usdRate = exchangeRates['USD-AFN'] || 0;
+    const pkrRate = exchangeRates['PKR-AFN'] || 0;
+    const aedRate = exchangeRates['AED-AFN'] || 0;
+    const usd = (Number(detailCustomer.balanceUSD) || 0) * usdRate;
+    const pkr = (Number(detailCustomer.balancePKR) || 0) * pkrRate;
+    const aed = (Number(detailCustomer.balanceAED) || 0) * aedRate;
+    return afn + usd + pkr + aed;
+  }, [detailCustomer, exchangeRates]);
+
+  const getCombinedBalanceAFN = (customer) => {
+    if (!customer || !exchangeRates) return 0;
+    const afn = Number(customer.balanceAFN) || 0;
+    const usd = (Number(customer.balanceUSD) || 0) * (exchangeRates['USD-AFN'] || 0);
+    const pkr = (Number(customer.balancePKR) || 0) * (exchangeRates['PKR-AFN'] || 0);
+    const aed = (Number(customer.balanceAED) || 0) * (exchangeRates['AED-AFN'] || 0);
+    return afn + usd + pkr + aed;
+  };
 
   useEffect(() => { fetchCustomers(); }, []);
 
@@ -261,11 +312,12 @@ export default function CustomersPage() {
           { id: 'nationalIdNumber', label: t('nationalId'), hiddenOnMobile: true },
           { id: 'province', label: t('province'), hiddenOnMobile: true },
           { id: 'district', label: t('district'), hiddenOnMobile: true },
-          { id: 'balance', label: t('balance'), align: 'right', bold: true, format: (val) => {
-            const num = parseFloat(val) || 0;
+          { id: 'balance', label: t('balance'), align: 'right', bold: true, format: (val, row) => {
+            const combinedAFN = getCombinedBalanceAFN(row);  // compute from row
+            const num = displayCurrency === 'AFN' ? combinedAFN : convertFromAFN(combinedAFN, displayCurrency);
             return (
               <Typography variant="body2" fontWeight={700} color={num > 0 ? 'success.main' : num < 0 ? 'error.main' : 'text.primary'}>
-                {num.toLocaleString()} ؋
+                {formatCurrency(num, displayCurrency)}
               </Typography>
             );
           }},
@@ -428,8 +480,13 @@ export default function CustomersPage() {
             </Box>
             <Box display="flex" gap={1} alignItems="center">
               <Chip
-                label={`${t('balance')}: ${(parseFloat(detailCustomer?.balance) || 0).toLocaleString()} ؋`}
-                color={parseFloat(detailCustomer?.balance) >= 0 ? 'success' : 'error'}
+                label={`${t('balance')}: ${formatCurrency(
+                  displayCurrency === 'AFN'
+                    ? getCombinedBalanceAFN(detailCustomer)
+                    : convertFromAFN(getCombinedBalanceAFN(detailCustomer), displayCurrency),
+                  displayCurrency
+                )}`}
+                color={getCombinedBalanceAFN(detailCustomer) >= 0 ? 'success' : 'error'}
                 size="small"
               />
               <IconButton onClick={() => setDetailOpen(false)}><Close /></IconButton>
@@ -473,27 +530,50 @@ export default function CustomersPage() {
           {detailTab === 1 && (
             <>
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={4}>
-                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.error.main, 0.08), border: `1px solid ${alpha(theme.palette.error.main, 0.2)}` }}>
-                    <Typography variant="caption" color="text.secondary">{t('totalOwed')}</Typography>
-                    <Typography variant="h6" fontWeight={700} color="error.main">
-                      {ledgerEntries.filter((e) => ['Sale', 'Loan'].includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInPKR || e.amount) || 0), 0).toLocaleString()} ؋
-                    </Typography>
+                <Grid item xs={6} sm={2.4}>
+                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08) }}>
+                    <Typography variant="caption">{t('afnIncome')}</Typography>
+                    <Typography variant="h6">{(detailCustomer?.balanceAFN || 0).toLocaleString()} ؋</Typography>
                   </Card>
                 </Grid>
-                <Grid item xs={4}>
-                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.08), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
-                    <Typography variant="caption" color="text.secondary">{t('totalCredit')}</Typography>
-                    <Typography variant="h6" fontWeight={700} color="success.main">
-                      {ledgerEntries.filter((e) => CREDIT_LEDGER_TYPES.includes(e.type)).reduce((s, e) => s + (parseFloat(e.amountInPKR || e.amount) || 0), 0).toLocaleString()} ؋
-                    </Typography>
+                <Grid item xs={6} sm={2.4}>
+                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.08) }}>
+                    <Typography variant="caption">{t('usdIncome')}</Typography>
+                    <Typography variant="h6">${(detailCustomer?.balanceUSD || 0).toLocaleString()}</Typography>
                   </Card>
                 </Grid>
-                <Grid item xs={4}>
-                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
-                    <Typography variant="caption" color="text.secondary">{t('currentBalance')}</Typography>
-                    <Typography variant="h6" fontWeight={700} color={(parseFloat(detailCustomer?.balance) || 0) >= 0 ? 'success.main' : 'error.main'}>
-                      {(parseFloat(detailCustomer?.balance) || 0).toLocaleString()} ؋
+                <Grid item xs={6} sm={2.4}>
+                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.warning.main, 0.08) }}>
+                    <Typography variant="caption">{t('pkrIncome')}</Typography>
+                    <Typography variant="h6">₨{(detailCustomer?.balancePKR || 0).toLocaleString()}</Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={6} sm={2.4}>
+                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.08) }}>
+                    <Typography variant="caption">{t('aedIncome')}</Typography>
+                    <Typography variant="h6">{(detailCustomer?.balanceAED || 0).toLocaleString()} د.إ</Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={2.4}>
+                  <Card sx={{ p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.08) }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption">{t('totalIncome')}</Typography>
+                      <FormControl size="small" sx={{ minWidth: 70 }} disabled={ratesLoading}>
+                        <Select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)} variant="standard" disableUnderline>
+                          <MenuItem value="AFN">AFN</MenuItem>
+                          <MenuItem value="USD">USD</MenuItem>
+                          <MenuItem value="PKR">PKR</MenuItem>
+                          <MenuItem value="AED">AED</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                    <Typography variant="h6" fontWeight={700}>
+                      {formatCurrency(
+                        displayCurrency === 'AFN'
+                          ? totalCombinedAFN
+                          : convertFromAFN(totalCombinedAFN, displayCurrency),
+                        displayCurrency
+                      )}
                     </Typography>
                   </Card>
                 </Grid>
@@ -505,51 +585,91 @@ export default function CustomersPage() {
                 </Button>
               </Box>
 
-              <TableContainer component={Paper} variant="outlined" sx={{ overflow: 'auto', maxHeight: '50vh' }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>{t('date')}</strong></TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>{t('type')}</strong></TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}><strong>{t('purpose')}</strong></TableCell>
-                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><strong>{t('debit')}</strong></TableCell>
-                      <TableCell align="right"><strong>{t('credit')}</strong></TableCell>
-                      <TableCell align="right"><strong>{t('balance')}</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {ledgerEntries.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}>{t('noLedgerEntries')}</TableCell></TableRow>
-                    ) : ledgerEntries.map((entry) => {
-                      const isCredit = CREDIT_LEDGER_TYPES.includes(entry.type);
+              <EnhancedDataTable
+                columns={[
+                  {
+                    id: 'date',
+                    label: t('date'),
+                    format: (val) => (val ? new Date(val).toLocaleDateString() : '-'),
+                    exportFormat: (val) => (val ? new Date(val).toLocaleDateString() : ''),
+                  },
+                  {
+                    id: 'type',
+                    label: t('type'),
+                    format: (val) => {
+                      const isCredit = CREDIT_LEDGER_TYPES.includes(val);
                       return (
-                        <TableRow key={entry.id}>
-                          <TableCell>{entry.date ? new Date(entry.date).toLocaleDateString() : '-'}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={entry.type}
-                              size="small"
-                              color={isCredit ? 'success' : 'error'}
-                              variant="outlined"
-                              icon={isCredit ? <TrendingUp /> : <TrendingDown />}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.purpose || '-'}</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 600, color: 'error.main' }}>
-                            {!isCredit ? `${Number(entry.amount).toLocaleString()} ${entry.currency || 'AFN'}` : ''}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 600, color: 'success.main' }}>
-                            {isCredit ? `${Number(entry.amount).toLocaleString()} ${entry.currency || 'AFN'}` : ''}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700, color: (entry.balance != null && Number(entry.balance) < 0) ? 'error.main' : 'success.main' }}>
-                            {entry.balance != null ? `${Number(entry.balance).toLocaleString()} ؋` : '-'}
-                          </TableCell>
-                        </TableRow>
+                        <Chip
+                          label={val}
+                          size="small"
+                          color={isCredit ? 'success' : 'error'}
+                          variant="outlined"
+                          icon={isCredit ? <TrendingUp /> : <TrendingDown />}
+                        />
                       );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    },
+                    exportFormat: (val) => val,
+                  },
+                  {
+                    id: 'purpose',
+                    label: t('purpose'),
+                    format: (val) => (
+                      <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                        {val || '-'}
+                      </Typography>
+                    ),
+                    exportFormat: (val) => val || '',
+                  },
+                  {
+                    id: 'debit',
+                    label: t('debit'),
+                    align: 'right',
+                    format: (val, row) => {
+                      const isCredit = CREDIT_LEDGER_TYPES.includes(row.type);
+                      return !isCredit
+                        ? `${Number(row.amount).toLocaleString()} ${row.currency || 'AFN'}`
+                        : '';
+                    },
+                    exportFormat: (val, row) =>
+                      !CREDIT_LEDGER_TYPES.includes(row.type)
+                        ? `${Number(row.amount) || 0} ${row.currency || 'AFN'}`
+                        : '',
+                  },
+                  {
+                    id: 'credit',
+                    label: t('credit'),
+                    align: 'right',
+                    format: (val, row) => {
+                      const isCredit = CREDIT_LEDGER_TYPES.includes(row.type);
+                      return isCredit
+                        ? `${Number(row.amount).toLocaleString()} ${row.currency || 'AFN'}`
+                        : '';
+                    },
+                    exportFormat: (val, row) =>
+                      CREDIT_LEDGER_TYPES.includes(row.type)
+                        ? `${Number(row.amount) || 0} ${row.currency || 'AFN'}`
+                        : '',
+                  },
+                  {
+                    id: 'balance',
+                    label: t('balance'),
+                    align: 'right',
+                    format: (val) => {
+                      const num = Number(val) || 0;
+                      return (
+                        <Typography variant="body2" fontWeight={700} color={num < 0 ? 'error.main' : 'success.main'}>
+                          {num.toLocaleString()} ؋
+                        </Typography>
+                      );
+                    },
+                    exportFormat: (val) => `${Number(val || 0).toLocaleString()} ؋`,
+                  },
+                ]}
+                data={ledgerEntries}
+                loading={false}
+                title={t('ledgerTitle') || ''}
+                emptyMessage={t('noLedgerEntries')}
+              />
             </>
           )}
 
@@ -643,6 +763,7 @@ export default function CustomersPage() {
                   <MenuItem value="AFN">🇦🇫 ؋ AFN</MenuItem>
                   <MenuItem value="USD">🇺🇸 $ USD</MenuItem>
                   <MenuItem value="PKR">🇵🇰 ₨ PKR</MenuItem>
+                  <MenuItem value="AED">🇦🇪 د.إ AED</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

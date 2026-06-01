@@ -72,7 +72,8 @@ export default function VehiclesPage() {
     mileage: '', plateNo: '', vehicleLicense: '', steering: 'Left', monolithicCut: 'Monolithic',
     basePurchasePrice: '', baseCurrency: 'USD',
     transportCostToDubai: '0', importCostToAfghanistan: '0', repairCost: '0',
-    sellingPrice: '', status: 'Available',
+    sellingPrice: '', sellingPriceCurrency: 'AFN',
+    status: 'Available',
   });
 
   const [refPerson, setRefPerson] = useState({
@@ -120,6 +121,17 @@ export default function VehiclesPage() {
     try {
       const res = await apiClient.get('/customers');
       setCustomers(res.data.data || []);
+      // Build a map: customerId -> { AFN, USD, PKR, AED }
+      const balanceMap = {};
+      res.data.data.forEach(c => {
+        balanceMap[c.id] = {
+          AFN: c.balanceAFN || 0,
+          USD: c.balanceUSD || 0,
+          PKR: c.balancePKR || 0,
+          AED: c.balanceAED || 0
+        };
+      });
+      setCustomerBalanceMap(balanceMap);
     } catch {}
   };
 
@@ -170,13 +182,11 @@ export default function VehiclesPage() {
   // Cost calculations (unchanged)
   const totalCost = useMemo(() => {
     const base = parseFloat(formData.basePurchasePrice) || 0;
-    const baseRate = formData.baseCurrency === 'AFN' ? 1 : (parseFloat(rates[`${formData.baseCurrency}-AFN`]) || 0);
-    const baseAFN = formData.baseCurrency === 'AFN' ? base : base * baseRate;
     const transport = parseFloat(formData.transportCostToDubai) || 0;
     const importCost = parseFloat(formData.importCostToAfghanistan) || 0;
     const repair = parseFloat(formData.repairCost) || 0;
-    return baseAFN + transport + importCost + repair;
-  }, [formData.basePurchasePrice, formData.baseCurrency, formData.transportCostToDubai, formData.importCostToAfghanistan, formData.repairCost, rates]);
+    return base + transport + importCost + repair;
+  }, [formData.basePurchasePrice, formData.transportCostToDubai, formData.importCostToAfghanistan, formData.repairCost]);
 
   const totalCostReady = formData.baseCurrency === 'AFN' || Boolean(rates[`${formData.baseCurrency}-AFN`]);
   const sharingUsesInvestment = useMemo(() => {
@@ -207,22 +217,40 @@ export default function VehiclesPage() {
   }, [formSharingPersons, sharingUsesInvestment, totalCost, totalCostReady]);
 
   const validateSharingBalances = () => {
-    const newErrors = {};
-    if (!totalCostReady || totalCost <= 0) return {};
-    formSharingPersons.forEach((person, idx) => {
-      if (person.customerId && person.percentage && parseFloat(person.percentage) > 0) {
-        const requiredInvestment = (parseFloat(person.percentage) / 100) * totalCost;
-        const customerBalance = customerBalanceMap[person.customerId] || 0;
-        if (requiredInvestment > customerBalance) {
+  const newErrors = {};
+  if (!totalCostReady || totalCost <= 0) return {};
+
+  formSharingPersons.forEach((person, idx) => {
+    if (person.customerId && person.percentage && parseFloat(person.percentage) > 0) {
+      const requiredInvestment = (parseFloat(person.percentage) / 100) * totalCost;
+      let currency = (person.investmentCurrency || 'AFN').toUpperCase().trim();
+      if (currency === 'US') currency = 'USD';
+      if (currency === 'PK') currency = 'PKR';
+      if (currency === 'AE') currency = 'AED';
+
+      // Find the customer from the customers array (already fetched)
+      const customer = customers.find(c => c.id === person.customerId);
+      if (customer) {
+        let balance = 0;
+        if (currency === 'AFN') balance = customer.balanceAFN || 0;
+        else if (currency === 'USD') balance = customer.balanceUSD || 0;
+        else if (currency === 'PKR') balance = customer.balancePKR || 0;
+        else if (currency === 'AED') balance = customer.balanceAED || 0;
+
+        if (requiredInvestment > balance) {
           newErrors[`sharing_${idx}_balance`] = t('customerBalanceInsufficient', {
-            balance: formatCurrency(customerBalance),
-            required: formatCurrency(requiredInvestment),
+            balance: formatCurrency(balance, currency),
+            required: formatCurrency(requiredInvestment, currency),
+            currency: currency
           });
         }
+      } else {
+        newErrors[`sharing_${idx}_balance`] = t('customerNotFound');
       }
-    });
-    return newErrors;
-  };
+    }
+  });
+  return newErrors;
+};
 
   useEffect(() => {
     const balanceErrors = validateSharingBalances();
@@ -293,11 +321,13 @@ export default function VehiclesPage() {
       ...formData,
       year: parseInt(formData.year, 10),
       mileage: parseInt(formData.mileage, 10) || 0,
-      basePurchasePrice: parseFloat(formData.basePurchasePrice),
+      basePurchasePrice: parseFloat(formData.basePurchasePrice) || 0,
+      baseCurrency: formData.baseCurrency,
       transportCostToDubai: parseFloat(formData.transportCostToDubai) || 0,
       importCostToAfghanistan: parseFloat(formData.importCostToAfghanistan) || 0,
       repairCost: parseFloat(formData.repairCost) || 0,
-      sellingPrice: parseFloat(formData.sellingPrice),
+      sellingPrice: parseFloat(formData.sellingPrice) || 0,
+      sellingPriceCurrency: formData.sellingPriceCurrency,
     };
 
     if (refPerson.hasReference && refPerson.fullName) {
@@ -315,6 +345,7 @@ export default function VehiclesPage() {
         personName: p.personName,
         percentage: parseFloat(p.percentage) || 0,
         investmentAmount: parseFloat(p.investmentAmount) || 0,
+        investmentCurrency: p.investmentCurrency || 'AFN',   // <-- add this line
         phoneNumber: p.phoneNumber || '',
         calculationMethod: sharingUsesInvestment ? 'Investment' : 'Percentage',
       }));
@@ -359,7 +390,8 @@ export default function VehiclesPage() {
       mileage: '', plateNo: '', vehicleLicense: '', steering: 'Left', monolithicCut: 'Monolithic',
       basePurchasePrice: '', baseCurrency: 'USD',
       transportCostToDubai: '0', importCostToAfghanistan: '0', repairCost: '0',
-      sellingPrice: '', status: 'Available',
+      sellingPrice: '', sellingPriceCurrency: 'AFN',
+      status: 'Available',
     });
     setRefPerson({ fullName: '', tazkiraNumber: '', phoneNumber: '', address: '', hasReference: false });
     setFormSharingPersons([]);
@@ -394,16 +426,18 @@ export default function VehiclesPage() {
       year: vehicle.year || '', color: vehicle.color || '',
       chassisNumber: vehicle.chassisNumber || '', engineNumber: vehicle.engineNumber || '',
       engineType: vehicle.engineType || '',
+      basePurchasePrice: vehicle.basePurchasePrice || '',
       baseCurrency: vehicle.baseCurrency || 'USD',
       transportCostToDubai: vehicle.transportCostToDubai || '0',
       importCostToAfghanistan: vehicle.importCostToAfghanistan || '0',
       repairCost: vehicle.repairCost || '0',
+      sellingPrice: vehicle.sellingPrice || '',
+      sellingPriceCurrency: vehicle.sellingPriceCurrency || 'AFN',
       fuelType: vehicle.fuelType || '', transmission: vehicle.transmission || '',
       mileage: vehicle.mileage || '', plateNo: vehicle.plateNo || '',
       vehicleLicense: vehicle.vehicleLicense || '',
       steering: vehicle.steering || 'Left', monolithicCut: vehicle.monolithicCut || 'Monolithic',
-      basePurchasePrice: vehicle.basePurchasePrice || '',
-      sellingPrice: vehicle.sellingPrice || '', status: vehicle.status || 'Available',
+      status: vehicle.status || 'Available',
     });
     if (vehicle.referencePerson) {
       setRefPerson({
@@ -420,6 +454,7 @@ export default function VehiclesPage() {
         personName: p.personName,
         percentage: p.percentage,
         investmentAmount: p.investmentAmount || '',
+        investmentCurrency: p.investmentCurrency || 'AFN',
         phoneNumber: p.phoneNumber || '',
         calculationMethod: p.calculationMethod || 'Percentage',
       })));
@@ -476,7 +511,11 @@ export default function VehiclesPage() {
 
   // Sharing helpers
   const addSharingPerson = () => {
-    setFormSharingPersons([...formSharingPersons, { customerId: '', personName: '', percentage: '', investmentAmount: '', phoneNumber: '', calculationMethod: 'Percentage' }]);
+    setFormSharingPersons([...formSharingPersons, { 
+      customerId: '', personName: '', percentage: '', investmentAmount: '', 
+      investmentCurrency: formData.baseCurrency || 'AFN', 
+      phoneNumber: '', calculationMethod: 'Percentage' 
+    }]);
   };
   const removeSharingPerson = (index) => {
     setFormSharingPersons(formSharingPersons.filter((_, i) => i !== index));
@@ -564,6 +603,13 @@ export default function VehiclesPage() {
           v.referencePerson.phoneNumber?.toLowerCase().includes(term)
         ) return true;
       }
+
+      // Check sharing persons fields
+      if (v.sharingPersons?.some(sp => 
+        sp.personName?.toLowerCase().includes(term) || 
+        sp.phoneNumber?.toLowerCase().includes(term)
+      )) return true;
+
       return false;
     });
   }
@@ -721,41 +767,55 @@ export default function VehiclesPage() {
                   InputProps={{ startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" color="action" /></InputAdornment> }} />
               </Grid>
               <Grid item xs={6} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('labelBaseCurrency')}</InputLabel>
-                  <Select value={formData.baseCurrency} label={t('labelBaseCurrency')} onChange={(e) => setFormData({ ...formData, baseCurrency: e.target.value })}>
-                    <MenuItem value="USD">{t('currencyUsd')}</MenuItem>
-                    <MenuItem value="AFN">{t('currencyAfn')}</MenuItem>
-                    <MenuItem value="PKR">{t('currencyPkr')}</MenuItem>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('currencyHeader')}</InputLabel>
+                  <Select value={formData.baseCurrency} label={t('currencyHeader')}
+                    onChange={(e) => setFormData({ ...formData, baseCurrency: e.target.value })}>
+                    <MenuItem value="AFN">AFN</MenuItem>
+                    <MenuItem value="USD">USD</MenuItem>
+                    <MenuItem value="PKR">PKR</MenuItem>
+                    <MenuItem value="AED">AED</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label={t('labelTransportDubai')} type="number" value={formData.transportCostToDubai}
                   onChange={(e) => setFormData({ ...formData, transportCostToDubai: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }} />
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label={t('labelImportAfghanistan')} type="number" value={formData.importCostToAfghanistan}
                   onChange={(e) => setFormData({ ...formData, importCostToAfghanistan: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }} />
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label={t('labelRepairCost')} type="number" value={formData.repairCost}
                   onChange={(e) => setFormData({ ...formData, repairCost: e.target.value })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }} />
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }} />
               </Grid>
               <Grid item xs={6} sm={4}>
                 <TextField fullWidth label={t('labelTotalCostAfn')} type="number" value={totalCost.toFixed(2)} disabled
-                  helperText={totalCostReady ? t('totalCostHelper') : t('totalCostHelperNoRate', { currency: formData.baseCurrency })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol('AFN')}</InputAdornment> }}
+                  helperText={`Total in ${formData.baseCurrency}`}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }}
                   sx={{ '& .MuiInputBase-root': { bgcolor: 'action.hover' } }} />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField fullWidth label={t('labelSellingPrice')} type="number" value={formData.sellingPrice}
                   onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
                   error={!!errors.sellingPrice} helperText={errors.sellingPrice} required
-                  InputProps={{ startAdornment: <InputAdornment position="start"><Sell fontSize="small" color="action" /></InputAdornment>, endAdornment: <InputAdornment position="end">{getCurrencySymbol(formData.baseCurrency)}</InputAdornment> }} />
+                  InputProps={{ startAdornment: <InputAdornment position="start"><Sell fontSize="small" color="action" /></InputAdornment> }} />
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('currencyHeader')}</InputLabel>
+                  <Select value={formData.sellingPriceCurrency} label={t('currencyHeader')}
+                    onChange={(e) => setFormData({ ...formData, sellingPriceCurrency: e.target.value })}>
+                    <MenuItem value="AFN">AFN</MenuItem>
+                    <MenuItem value="USD">USD</MenuItem>
+                    <MenuItem value="PKR">PKR</MenuItem>
+                    <MenuItem value="AED">AED</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
           </>
@@ -834,6 +894,15 @@ export default function VehiclesPage() {
                       freeSolo
                       options={customers}
                       getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt.fullName || '')}
+                      filterOptions={(options, state) => {
+                        const inputValue = state.inputValue.toLowerCase().trim();
+                        if (!inputValue) return options;
+                        return options.filter(opt => 
+                          opt.fullName?.toLowerCase().includes(inputValue) ||
+                          opt.phoneNumber?.toLowerCase().includes(inputValue) ||
+                          opt.nationalIdNumber?.toLowerCase().includes(inputValue)
+                        );
+                      }}
                       value={person.customerId ? (customers.find((customer) => customer.id === person.customerId) || person.personName || '') : (person.personName || '')}
                       onChange={(_, val) => {
                         if (typeof val === 'string') {
@@ -841,6 +910,7 @@ export default function VehiclesPage() {
                             ...entry,
                             customerId: '',
                             personName: val,
+                            investmentCurrency: formData.baseCurrency || 'AFN',
                           } : entry));
                           return;
                         }
@@ -857,6 +927,7 @@ export default function VehiclesPage() {
                           customerId: val.id,
                           personName: val.fullName || '',
                           phoneNumber: val.phoneNumber || entry.phoneNumber || '',
+                          investmentCurrency: formData.baseCurrency || 'AFN',
                         } : entry));
                       }}
                       onInputChange={(_, val, reason) => {
@@ -875,7 +946,10 @@ export default function VehiclesPage() {
                       )}
                     />
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid item xs={12} sm={3}>
+                        <TextField fullWidth label='Investment Currency' size="small" value={person.investmentCurrency} />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
                     <TextField fullWidth label={t('labelSharePercentage')} type="number" size="small"
                       value={sharingUsesInvestment ? (Number(partnershipPreview.partners[index]?.sharePercentage || 0).toFixed(2)) : person.percentage}
                       onChange={(e) => updateSharingPerson(index, 'percentage', e.target.value)}
@@ -1067,8 +1141,10 @@ export default function VehiclesPage() {
             const colors = { Available: 'success', Reserved: 'warning', Sold: 'error', Coming: 'info', 'Under Repair': 'secondary' };
             return <Chip label={val || '-'} size="small" color={colors[val] || 'default'} />;
           }},
-          { id: 'totalCostPKR', label: t('columnTotalCost'), align: 'right', hiddenOnMobile: true, format: (val) => val ? formatCurrency(val) : '-' },
-          { id: 'sellingPrice', label: t('columnSellingPrice'), align: 'right', bold: true, format: (val) => val ? formatCurrency(val) : '0' },
+          { id: 'totalCostOriginal', label: t('columnTotalCost'), align: 'right', hiddenOnMobile: true, 
+            format: (val, row) => val ? formatCurrency(val, row.baseCurrency) : '-' },
+          { id: 'sellingPrice', label: t('columnSellingPrice'), align: 'right', bold: true, 
+            format: (val, row) => formatCurrency(val, row.sellingPriceCurrency || row.baseCurrency) },
           { id: '_actions', label: t('columnActions'), align: 'center', format: (val, row) => (
             <Box display="flex" gap={0.5}>
               <Tooltip title={t('viewDetails')}><IconButton size="small" onClick={() => handleViewDetails(row)}><Visibility fontSize="small" /></IconButton></Tooltip>
@@ -1256,7 +1332,7 @@ export default function VehiclesPage() {
                 [t('labelMonolithicCut'), detailVehicle.monolithicCut === 'Monolithic' ? t('monolithic') : t('cut')],
                 [t('labelStatus'), detailVehicle.status],
                 [t('labelSellingPrice'), detailVehicle.sellingPrice ? formatCurrency(detailVehicle.sellingPrice, detailVehicle.baseCurrency) : '-'],
-                [t('labelTotalCost'), detailVehicle.totalCostPKR ? formatCurrency(detailVehicle.totalCostPKR, detailVehicle.baseCurrency) : '-'],
+                [t('labelTotalCost'), detailVehicle.totalCostOriginal ? formatCurrency(detailVehicle.totalCostOriginal, detailVehicle.baseCurrency) : '-'],
                 [t('lockedLabel'), detailVehicle.isLocked ? t('yes') : t('no')],
               ].map(([label, value]) => (
                 <Grid item xs={6} sm={4} key={label}>

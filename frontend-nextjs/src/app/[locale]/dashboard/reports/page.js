@@ -1,16 +1,15 @@
-// src/app/[locale]/dashboard/reports/page.js
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Box, Grid, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem,
   Chip, useTheme, alpha, TextField, Button, Divider, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Tooltip,
+  TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import {
   Assessment, TrendingUp, TrendingDown, AccountBalance, DirectionsCar, People,
   PictureAsPdf, CalendarMonth, BarChart, PieChart, ShowChart, MonetizationOn,
-  AttachMoney, Receipt, Refresh, Timeline, Groups, DateRange,
+  AttachMoney, Receipt, Refresh, Timeline, Groups, DateRange, CurrencyExchange,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
@@ -43,59 +42,47 @@ function getDateRange(period) {
   const y = now.getFullYear();
   const m = now.getMonth();
   const d = now.getDate();
-
   switch (period) {
     case 'today':
-      return {
-        startDate: new Date(y, m, d).toLocaleDateString('en-CA'),
-        endDate: new Date(y, m, d).toLocaleDateString('en-CA')
-      };
+      return { startDate: new Date(y, m, d).toLocaleDateString('en-CA'), endDate: new Date(y, m, d).toLocaleDateString('en-CA') };
     case 'week': {
       const dayOfWeek = now.getDay();
       const startOfWeek = new Date(y, m, d - dayOfWeek);
       const endOfWeek = new Date(y, m, d + (6 - dayOfWeek));
-      return {
-        startDate: startOfWeek.toLocaleDateString('en-CA'),
-        endDate: endOfWeek.toLocaleDateString('en-CA')
-      };
+      return { startDate: startOfWeek.toLocaleDateString('en-CA'), endDate: endOfWeek.toLocaleDateString('en-CA') };
     }
     case 'month':
-      return {
-        startDate: new Date(y, m, 1).toLocaleDateString('en-CA'),
-        endDate: new Date(y, m + 1, 0).toLocaleDateString('en-CA')
-      };
+      return { startDate: new Date(y, m, 1).toLocaleDateString('en-CA'), endDate: new Date(y, m + 1, 0).toLocaleDateString('en-CA') };
     case 'quarter': {
       const quarterStart = Math.floor(m / 3) * 3;
-      return {
-        startDate: new Date(y, quarterStart, 1).toLocaleDateString('en-CA'),
-        endDate: new Date(y, quarterStart + 3, 0).toLocaleDateString('en-CA')
-      };
+      return { startDate: new Date(y, quarterStart, 1).toLocaleDateString('en-CA'), endDate: new Date(y, quarterStart + 3, 0).toLocaleDateString('en-CA') };
     }
     case 'year':
-      return {
-        startDate: new Date(y, 0, 1).toLocaleDateString('en-CA'),
-        endDate: new Date(y, 11, 31).toLocaleDateString('en-CA')
-      };
+      return { startDate: new Date(y, 0, 1).toLocaleDateString('en-CA'), endDate: new Date(y, 11, 31).toLocaleDateString('en-CA') };
     case 'all':
-      return {
-        startDate: '2020-01-01',
-        endDate: new Date(y + 1, 11, 31).toLocaleDateString('en-CA')
-      };
+      return { startDate: '2020-01-01', endDate: new Date(y + 1, 11, 31).toLocaleDateString('en-CA') };
     default:
       return { startDate: '', endDate: '' };
   }
 }
 
-function SummaryCard({ label, value, color, icon, theme }) {
+function SummaryCard({ label, value, color, icon, theme, displayCurrency, convert }) {
+  const displayValue = convert ? convert(value, displayCurrency) : value;
   return (
     <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
       <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Box>
-            <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Typography>
-            <Typography variant="h6" fontWeight={700} sx={{ color, mt: 0.5 }}>{value}</Typography>
+            <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {label}
+            </Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ color, mt: 0.5 }}>
+              {typeof displayValue === 'number' ? formatCurrency(displayValue, displayCurrency) : displayValue}
+            </Typography>
           </Box>
-          <Box sx={{ p: 1.2, borderRadius: 2, bgcolor: alpha(color, 0.1), color, display: 'flex' }}>{icon}</Box>
+          <Box sx={{ p: 1.2, borderRadius: 2, bgcolor: alpha(color, 0.1), color, display: 'flex' }}>
+            {icon}
+          </Box>
         </Box>
       </CardContent>
     </Card>
@@ -108,9 +95,9 @@ export default function ReportsPage() {
   const t = useTranslations('Reports');
 
   const [reportType, setReportType] = useState('sales');
-  const [period, setPeriod] = useState('month');
-  const [dateFrom, setDateFrom] = useState(() => getDateRange('month').startDate);
-  const [dateTo, setDateTo] = useState(() => getDateRange('month').endDate);
+  const [period, setPeriod] = useState('today');
+  const [dateFrom, setDateFrom] = useState(() => getDateRange('today').startDate);
+  const [dateTo, setDateTo] = useState(() => getDateRange('today').endDate);
   const [reportData, setReportData] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -118,8 +105,31 @@ export default function ReportsPage() {
   const [yearlyStartYear, setYearlyStartYear] = useState(new Date().getFullYear() - 5);
   const [yearlyEndYear, setYearlyEndYear] = useState(new Date().getFullYear());
   const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
+  const [langDialogOpen, setLangDialogOpen] = useState(false);
+  // Multi-currency state
+  const [displayCurrency, setDisplayCurrency] = useState('AFN');
+  const [exchangeRates, setExchangeRates] = useState({});
 
-  // Sync dateFrom/dateTo with selected period (except custom)
+  // Fetch exchange rates on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient.get('/currency/rates');
+        setExchangeRates(res.data.data || {});
+      } catch (err) {
+        console.error('Failed to fetch exchange rates', err);
+      }
+    })();
+  }, []);
+
+  const convertFromAFN = useCallback((amountAFN, targetCurrency) => {
+    if (!amountAFN) return 0;
+    if (targetCurrency === 'AFN') return amountAFN;
+    const rate = exchangeRates[`${targetCurrency}-AFN`];
+    if (!rate || rate === 0) return amountAFN;
+    return amountAFN / rate;   // AFN → target
+  }, [exchangeRates]);
+
   useEffect(() => {
     if (period !== 'custom') {
       const { startDate, endDate } = getDateRange(period);
@@ -128,7 +138,7 @@ export default function ReportsPage() {
     }
   }, [period]);
 
-  useEffect(() => { fetchReport(); }, [reportType]);
+  useEffect(() => { fetchReport(); }, [reportType, displayCurrency]); // re-fetch when currency changes (optional)
 
   const fetchReport = async () => {
     setLoading(true);
@@ -159,9 +169,17 @@ export default function ReportsPage() {
     }
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
+    setLangDialogOpen(true);
+  };
+
+  const confirmExport = async (lang) => {
+    setLangDialogOpen(false);
     try {
-      const res = await apiClient.get('/reports/export-pdf', { responseType: 'blob' });
+      const res = await apiClient.get('/reports/export-pdf', {
+        params: { lang },
+        responseType: 'blob',
+      });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -175,28 +193,43 @@ export default function ReportsPage() {
     }
   };
 
-  // Sales Report
+  // ────────────── Sales Report ──────────────
   const renderSalesReport = () => {
     if (!summary || !reportData) return null;
     const cards = [
       { label: t('summaryTotalSales'), value: summary.totalSales, color: theme.palette.primary.main, icon: <Receipt /> },
-      { label: t('summaryRevenue'), value: formatCurrency(summary.totalRevenue), color: theme.palette.success.main, icon: <TrendingUp /> },
-      { label: t('summaryTotalProfit'), value: formatCurrency(summary.totalProfit), color: theme.palette.info.main, icon: <ShowChart /> },
-      { label: t('summaryPartnerProfitShared'), value: formatCurrency(summary.totalCommission), color: theme.palette.warning.main, icon: <MonetizationOn /> },
+      { label: t('summaryRevenue'), value: summary.totalIncome, color: theme.palette.success.main, icon: <TrendingUp /> },
+      { label: t('summaryTotalProfit'), value: summary.totalProfit, color: theme.palette.info.main, icon: <ShowChart /> },
+      { label: t('summaryPartnerProfitShared'), value: summary.totalCommission, color: theme.palette.warning.main, icon: <MonetizationOn /> },
     ];
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {cards.map((c) => <Grid item xs={6} md={3} key={c.label}><SummaryCard {...c} theme={theme} /></Grid>)}
+          {cards.map(c => (
+            <Grid item xs={6} md={3} key={c.label}>
+              <SummaryCard {...c} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+            </Grid>
+          ))}
         </Grid>
         <EnhancedDataTable
           title={t('salesDetailsTitle')} data={Array.isArray(reportData) ? reportData : []} loading={false}
           columns={[
             { id: 'vehicle', label: t('columnVehicle'), format: (_, row) => row.vehicle ? `${row.vehicle.manufacturer} ${row.vehicle.model}` : '-' },
             { id: 'customer', label: t('columnCustomer'), format: (_, row) => row.customer?.fullName || row.customer?.name || '-' },
-            { id: 'sellingPrice', label: t('columnSellingPrice'), format: (v) => formatCurrency(v), bold: true },
-            { id: 'profit', label: t('columnProfit'), format: (v) => <Typography variant="body2" color={Number(v) >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>{formatCurrency(v)}</Typography> },
-            { id: 'commission', label: t('columnPartnerProfit'), format: (v) => formatCurrency(v) },
+            { id: 'sellingPrice', label: t('columnSellingPrice'), 
+              format: (v, row) => formatCurrency(v, row.paymentCurrency), 
+              bold: true },
+            { id: 'profit', label: t('columnProfit'), 
+              format: (v, row) => {
+                const original = v || 0;
+                return (
+                  <Typography variant="body2" color={original >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>
+                    {formatCurrency(original, row.paymentCurrency)}
+                  </Typography>
+                );
+              }},
+            { id: 'commission', label: t('columnPartnerProfit'), 
+              format: (v, row) => formatCurrency(v, row.paymentCurrency) },
             { id: 'saleDate', label: t('columnDate'), format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
           emptyMessage={t('noSalesInPeriod')}
@@ -205,27 +238,38 @@ export default function ReportsPage() {
     );
   };
 
-  // Financial Report
+  // ────────────── Financial Report ──────────────
   const renderFinancialReport = () => {
-    if (!summary || !reportData) return null;
-    const cards = [
-      { label: t('summaryTotalIncome'), value: formatCurrency(summary.totalIncome), color: theme.palette.success.main, icon: <TrendingUp /> },
-      { label: t('summaryTotalExpenses'), value: formatCurrency(summary.totalExpenses), color: theme.palette.error.main, icon: <TrendingDown /> },
-      { label: t('summaryNetProfit'), value: formatCurrency(summary.netProfit), color: summary.netProfit >= 0 ? theme.palette.success.main : theme.palette.error.main, icon: <AccountBalance /> },
-      { label: t('summaryTransactionCount'), value: summary.transactionCount, color: theme.palette.warning.main, icon: <Receipt /> },
-    ];
+  if (!summary || !reportData) return null;
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {cards.map((c) => <Grid item xs={6} md={3} key={c.label}><SummaryCard {...c} theme={theme} /></Grid>)}
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryTotalIncome')} value={summary.totalIncome} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryTotalExpenses')} value={summary.totalExpenses} color={theme.palette.error.main} icon={<TrendingDown />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryGrossProfit')} value={summary.totalGrossProfit} color={summary.totalGrossProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryNetProfit')} value={summary.totalNetProfit} color={summary.totalNetProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<AccountBalance />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryTransactionCount')} value={summary.transactionCount} color={theme.palette.warning.main} icon={<Receipt />} theme={theme} />
+          </Grid>
         </Grid>
+
         <EnhancedDataTable
-          title={t('financialTransactionsTitle')} data={Array.isArray(reportData) ? reportData : []} loading={false}
+          title={t('financialTransactionsTitle')}
+          data={Array.isArray(reportData) ? reportData : []}
+          loading={false}
           columns={[
             { id: 'type', label: t('columnType'), format: (v) => <Chip label={v} size="small" color={['Income', 'Vehicle Sale'].includes(v) ? 'success' : 'error'} variant="outlined" />, exportFormat: (v) => v },
             { id: 'personName', label: t('columnPerson'), format: (v) => v || '-' },
             { id: 'amount', label: t('columnAmount'), format: (v, row) => `${Number(v || 0).toLocaleString()} ${row.currency || 'AFN'}`, bold: true },
-            { id: 'amountInPKR', label: t('columnAmountAFN'), format: (v) => formatCurrency(v) },
+            { id: 'amountInPKR', label: t('columnAmountAFN'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) },
             { id: 'description', label: t('columnDescription'), format: (v) => v || '-' },
             { id: 'date', label: t('columnDate'), format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
           ]}
@@ -235,7 +279,7 @@ export default function ReportsPage() {
     );
   };
 
-  // Vehicle Inventory Report
+  // ────────────── Vehicle Inventory ──────────────
   const renderVehicleReport = () => {
     if (!summary || !reportData) return null;
     const statusColors = { Available: 'success', Sold: 'default', Reserved: 'warning', Coming: 'info', 'Under Repair': 'error' };
@@ -248,7 +292,11 @@ export default function ReportsPage() {
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {cards.map((c) => <Grid item xs={6} md={3} key={c.label}><SummaryCard {...c} theme={theme} /></Grid>)}
+          {cards.map(c => (
+            <Grid item xs={6} md={3} key={c.label}>
+              <SummaryCard {...c} theme={theme} displayCurrency={displayCurrency} convert={undefined} />
+            </Grid>
+          ))}
         </Grid>
         <EnhancedDataTable
           title={t('vehicleInventoryTitle')} data={Array.isArray(reportData) ? reportData : []} loading={false}
@@ -257,7 +305,7 @@ export default function ReportsPage() {
             { id: 'model', label: t('columnModel') },
             { id: 'year', label: t('columnYear') },
             { id: 'color', label: t('columnColor'), hiddenOnMobile: true },
-            { id: 'purchasePrice', label: t('columnPurchasePrice'), format: (v) => formatCurrency(v), bold: true },
+            { id: 'totalCostOriginal', label: t('columnPurchasePrice'), format: (v, row) => formatCurrency(v, row.baseCurrency), bold: true },
             { id: 'status', label: t('columnStatus'), format: (v) => <Chip label={v} size="small" color={statusColors[v] || 'default'} variant="outlined" />, exportFormat: (v) => v },
           ]}
           emptyMessage={t('noVehiclesFound')}
@@ -266,53 +314,85 @@ export default function ReportsPage() {
     );
   };
 
-  // Profit & Loss
+  // ────────────── Profit & Loss ──────────────
   const renderProfitLoss = () => {
     if (!summary) return null;
     const d = summary;
-    const rows = [
+    const rowsData = [
       { label: t('plTotalRevenue'), amount: d.totalRevenue, type: 'income' },
       { label: t('plTotalVehicleCosts'), amount: -d.totalCost, type: 'expense' },
       { label: t('plGrossProfit'), amount: d.grossProfit, type: d.grossProfit >= 0 ? 'profit' : 'loss', bold: true },
       { label: t('plOperatingExpenses'), amount: -d.totalExpenses, type: 'expense' },
       { label: t('plNetProfit'), amount: d.netProfit, type: d.netProfit >= 0 ? 'profit' : 'loss', bold: true },
     ];
-    const colorMap = { income: theme.palette.success.main, expense: theme.palette.error.main, profit: theme.palette.success.main, loss: theme.palette.error.main };
+
+    const colorMap = {
+      income: theme.palette.success.main,
+      expense: theme.palette.error.main,
+      profit: theme.palette.success.main,
+      loss: theme.palette.error.main,
+    };
+
     return (
       <>
+        {/* Summary cards (unchanged) */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryRevenue')} value={formatCurrency(d.totalRevenue)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryCosts')} value={formatCurrency(d.totalCost)} color={theme.palette.error.main} icon={<TrendingDown />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryNetProfit')} value={formatCurrency(d.netProfit)} color={d.netProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryProfitMargin')} value={`${d.profitMargin}%`} color={theme.palette.info.main} icon={<PieChart />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryRevenue')} value={d.totalRevenue} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryCosts')} value={d.totalCost} color={theme.palette.error.main} icon={<TrendingDown />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryNetProfit')} value={d.netProfit} color={d.netProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <SummaryCard label={t('summaryProfitMargin')} value={`${d.profitMargin}%`} color={theme.palette.info.main} icon={<PieChart />} theme={theme} />
+          </Grid>
         </Grid>
-        <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700} gutterBottom>{t('plBreakdownTitle')}</Typography>
-            <TableContainer sx={{ overflow: 'auto', maxHeight: '50vh' }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow><TableCell><b>{t('columnItem')}</b></TableCell><TableCell align="right"><b>{t('columnAmountAFN')}</b></TableCell></TableRow>
-                </TableHead>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.label} sx={r.bold ? { bgcolor: alpha(colorMap[r.type], 0.05) } : {}}>
-                      <TableCell sx={r.bold ? { fontWeight: 700, fontSize: '0.95rem' } : {}}>{r.label}</TableCell>
-                      <TableCell align="right" sx={{ color: colorMap[r.type], fontWeight: r.bold ? 700 : 500, fontSize: r.bold ? '0.95rem' : undefined }}>
-                        {formatCurrency(r.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+
+        {/* Breakdown table with export */}
+        <EnhancedDataTable
+          title={t('plBreakdownTitle')}
+          data={rowsData}
+          loading={false}
+          columns={[
+            {
+              id: 'label',
+              label: t('columnItem'),
+              format: (val, row) => (
+                <Typography variant="body2" fontWeight={row.bold ? 700 : 500} sx={{ fontSize: row.bold ? '0.95rem' : undefined }}>
+                  {val}
+                </Typography>
+              ),
+              exportFormat: (val) => val,
+            },
+            {
+              id: 'amount',
+              label: t('columnAmountAFN'),
+              align: 'right',
+              format: (val, row) => {
+                const converted = convertFromAFN(Math.abs(val), displayCurrency);
+                return (
+                  <Typography
+                    variant="body2"
+                    fontWeight={row.bold ? 700 : 500}
+                    sx={{ color: colorMap[row.type], fontSize: row.bold ? '0.95rem' : undefined }}
+                  >
+                    {val < 0 ? '- ' : ''}{formatCurrency(converted, displayCurrency)}
+                  </Typography>
+                );
+              },
+              exportFormat: (val) => `${Number(val || 0).toLocaleString()} AFN`,
+            },
+          ]}
+          emptyMessage={t('noData')}
+        />
       </>
     );
   };
 
-  // Partnership Report
+  // ────────────── Partnership Report ──────────────
   const renderPartnershipReport = () => {
     if (!summary || !reportData) return null;
     const vehicles = Array.isArray(reportData.vehicles) ? reportData.vehicles : [];
@@ -324,16 +404,24 @@ export default function ReportsPage() {
           <Grid item xs={6} md={4}><SummaryCard label={t('summaryPartneredVehicles')} value={summary.totalVehicles || 0} color={theme.palette.primary.main} icon={<DirectionsCar />} theme={theme} /></Grid>
           <Grid item xs={6} md={4}><SummaryCard label={t('summaryOpenVehicles')} value={summary.activeVehicles || 0} color={theme.palette.info.main} icon={<Groups />} theme={theme} /></Grid>
           <Grid item xs={6} md={4}><SummaryCard label={t('summarySoldVehicles')} value={summary.soldVehicles || 0} color={theme.palette.success.main} icon={<Receipt />} theme={theme} /></Grid>
-          <Grid item xs={6} md={6}><SummaryCard label={t('summaryPartnerCapital')} value={formatCurrency(summary.totalPartnerInvestment || 0)} color={theme.palette.warning.main} icon={<AttachMoney />} theme={theme} /></Grid>
-          <Grid item xs={6} md={6}><SummaryCard label={t('summaryRealizedPartnerProfit')} value={formatCurrency(summary.totalRealizedPartnerProfit || 0)} color={theme.palette.secondary.main} icon={<MonetizationOn />} theme={theme} /></Grid>
+          <Grid item xs={6} md={6}>
+            <SummaryCard
+              label={t('summaryPartnerCapital')}
+              value={summary.totalPartnerCapital || 0}
+              color={theme.palette.primary.main}
+              icon={<AccountBalance />}
+              theme={theme}
+              displayCurrency={displayCurrency}
+              convert={convertFromAFN}
+            />
+          </Grid>
+          <Grid item xs={6} md={6}><SummaryCard label={t('summaryRealizedPartnerProfit')} value={summary.totalRealizedPartnerProfit || 0} color={theme.palette.secondary.main} icon={<MonetizationOn />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} /></Grid>
         </Grid>
 
         <Card sx={{ mb: 3, border: `1px solid ${theme.palette.divider}`, boxShadow: 'none' }}>
           <CardContent>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>{t('partnershipCalculationTitle')}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {summary.calculationNote || t('partnershipCalculationDefault')}
-            </Typography>
+            <Typography variant="body2" color="text.secondary">{summary.calculationNote || t('partnershipCalculationDefault')}</Typography>
           </CardContent>
         </Card>
 
@@ -345,9 +433,9 @@ export default function ReportsPage() {
             { id: 'personName', label: t('columnPartner'), bold: true },
             { id: 'activeVehicles', label: t('columnOpenVehicles'), format: (v) => v || 0 },
             { id: 'soldVehicles', label: t('columnSoldVehicles'), format: (v) => v || 0 },
-            { id: 'totalInvestment', label: t('columnCapital'), format: (v) => formatCurrency(v) },
+            { id: 'totalCapital', label: t('columnCapital'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) },
             { id: 'averageSharePercentage', label: t('columnAvgSharePercentage'), format: (v) => `${Number(v || 0).toFixed(2)}%` },
-            { id: 'totalRealizedProfit', label: t('columnRealizedProfit'), format: (v) => formatCurrency(v), bold: true },
+            { id: 'totalRealizedProfit', label: t('columnRealizedProfit'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency), bold: true },
           ]}
           emptyMessage={t('noPartnershipData')}
         />
@@ -360,13 +448,13 @@ export default function ReportsPage() {
             columns={[
               { id: 'vehicleLabel', label: t('columnVehicle'), bold: true },
               { id: 'status', label: t('columnStatus'), format: (v) => <Chip label={v} size="small" color={v === 'Sold' ? 'success' : 'info'} variant="outlined" />, exportFormat: (v) => v },
-              { id: 'partnerInvestmentTotal', label: t('columnPartnerCapital'), format: (v) => formatCurrency(v) },
-              { id: 'ownerInvestment', label: t('columnOwnerCapital'), format: (v) => formatCurrency(v) },
+              { id: 'partnerInvestmentTotal', label: t('columnPartnerCapital'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) },
+              { id: 'ownerInvestment', label: t('columnOwnerCapital'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) },
               { id: 'partnerPercentageTotal', label: t('columnPartnerPercentage'), format: (v) => `${Number(v || 0).toFixed(2)}%` },
               { id: 'ownerPercentage', label: t('columnOwnerPercentage'), format: (v) => `${Number(v || 0).toFixed(2)}%` },
-              { id: 'totalProfit', label: t('columnSaleProfit'), format: (v) => v ? formatCurrency(v) : '-' },
-              { id: 'realizedPartnerProfit', label: t('columnPartnerProfit'), format: (v) => v ? formatCurrency(v) : '-' },
-              { id: 'partners', label: t('columnPartners'), format: (v) => (Array.isArray(v) && v.length > 0 ? v.map((partner) => `${partner.personName} ${Number(partner.sharePercentage || 0).toFixed(2)}%`).join(', ') : '-') },
+              { id: 'totalProfit', label: t('columnSaleProfit'), format: (v) => v ? formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) : '-' },
+              { id: 'realizedPartnerProfit', label: t('columnPartnerProfit'), format: (v) => v ? formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency) : '-' },
+              { id: 'partners', label: t('columnPartners'), format: (v) => (Array.isArray(v) && v.length > 0 ? v.map(p => `${p.personName} ${Number(p.sharePercentage || 0).toFixed(2)}%`).join(', ') : '-') },
             ]}
             emptyMessage={t('noVehiclePartnerships')}
           />
@@ -375,19 +463,23 @@ export default function ReportsPage() {
     );
   };
 
-  // Daily Summary
+  // ────────────── Daily Summary ──────────────
   const renderDailySummary = () => {
     if (!summary) return null;
     const d = summary;
     const cards = [
       { label: t('summarySalesToday'), value: d.sales || 0, color: theme.palette.primary.main, icon: <Receipt /> },
-      { label: t('summaryRevenue'), value: formatCurrency(d.revenue || 0), color: theme.palette.success.main, icon: <TrendingUp /> },
-      { label: t('summaryCashIn'), value: formatCurrency(d.cashIn || 0), color: theme.palette.info.main, icon: <AttachMoney /> },
-      { label: t('summaryCashOut'), value: formatCurrency(d.cashOut || 0), color: theme.palette.error.main, icon: <TrendingDown /> },
+      { label: t('summaryRevenue'), value: d.revenue || 0, color: theme.palette.success.main, icon: <TrendingUp /> },
+      { label: t('summaryCashIn'), value: d.cashIn || 0, color: theme.palette.info.main, icon: <AttachMoney /> },
+      { label: t('summaryCashOut'), value: d.cashOut || 0, color: theme.palette.error.main, icon: <TrendingDown /> },
     ];
     return (
       <Grid container spacing={2}>
-        {cards.map((c) => <Grid item xs={6} md={3} key={c.label}><SummaryCard {...c} theme={theme} /></Grid>)}
+        {cards.map(c => (
+          <Grid item xs={6} md={3} key={c.label}>
+            <SummaryCard {...c} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} />
+          </Grid>
+        ))}
         <Grid item xs={12}>
           <Card sx={{ border: `1px solid ${theme.palette.divider}`, boxShadow: 'none', mt: 1 }}>
             <CardContent>
@@ -398,7 +490,7 @@ export default function ReportsPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">{t('summaryNetCashFlow')}</Typography>
                   <Typography variant="h5" fontWeight={700} sx={{ color: (d.cashIn - d.cashOut) >= 0 ? theme.palette.success.main : theme.palette.error.main }}>
-                    {formatCurrency((d.cashIn || 0) - (d.cashOut || 0))}
+                    {formatCurrency(convertFromAFN((d.cashIn || 0) - (d.cashOut || 0), displayCurrency), displayCurrency)}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -413,19 +505,19 @@ export default function ReportsPage() {
     );
   };
 
-  // Monthly Trends
+  // ────────────── Monthly Trends ──────────────
   const renderMonthlyReport = () => {
     if (!reportData) return null;
     const data = Array.isArray(reportData) ? reportData : [];
-    const totalRevenue = data.reduce((s, m) => s + (m.revenue || 0), 0);
+    const income = data.reduce((s, m) => s + (m.income || 0), 0);
     const totalProfit = data.reduce((s, m) => s + (m.netProfit || 0), 0);
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} md={3}><SummaryCard label={t('summaryYear')} value={monthlyYear} color={theme.palette.primary.main} icon={<CalendarMonth />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label={t('summaryTotalSales')} value={data.reduce((s, m) => s + m.salesCount, 0)} color={theme.palette.info.main} icon={<Receipt />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryRevenue')} value={formatCurrency(totalRevenue)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryNetProfit')} value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label={t('columnIncome')} value={income} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label={t('summaryNetProfit')} value={totalProfit} color={totalProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} /></Grid>
         </Grid>
         <EnhancedDataTable
           title={t('monthlyPerformance', { year: monthlyYear })}
@@ -433,11 +525,18 @@ export default function ReportsPage() {
           columns={[
             { id: 'monthName', label: t('columnMonth') },
             { id: 'salesCount', label: t('columnSalesCount'), format: (v) => v || 0 },
-            { id: 'revenue', label: t('columnRevenue'), format: (v) => formatCurrency(v), bold: true },
-            { id: 'profit', label: t('columnProfit'), format: (v) => <Typography variant="body2" fontWeight={600} color={v >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
-            { id: 'income', label: t('columnIncome'), format: (v) => formatCurrency(v), hiddenOnMobile: true },
-            { id: 'expenses', label: t('columnExpenses'), format: (v) => formatCurrency(v), hiddenOnMobile: true },
-            { id: 'netProfit', label: t('columnNet'), format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
+            { id: 'profit', label: t('columnProfit'), format: (v) => {
+                const conv = convertFromAFN(v, displayCurrency);
+                return <Typography variant="body2" fontWeight={600} color={conv >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(conv, displayCurrency)}</Typography>;
+              }
+            },
+            { id: 'income', label: t('columnIncome'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency), hiddenOnMobile: true },
+            { id: 'expenses', label: t('columnExpenses'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency), hiddenOnMobile: true },
+            { id: 'netProfit', label: t('columnNet'), format: (v) => {
+                const conv = convertFromAFN(v, displayCurrency);
+                return <Typography variant="body2" fontWeight={600} color={conv >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(conv, displayCurrency)}</Typography>;
+              }
+            },
           ]}
           emptyMessage={t('noDataForYear')}
         />
@@ -445,19 +544,19 @@ export default function ReportsPage() {
     );
   };
 
-  // Yearly Trends
+  // ────────────── Yearly Trends ──────────────
   const renderYearlyReport = () => {
     if (!reportData) return null;
     const data = Array.isArray(reportData) ? reportData : [];
-    const totalRevenue = data.reduce((s, y) => s + (y.revenue || 0), 0);
+    const income = data.reduce((s, y) => s + (y.income || 0), 0);
     const totalProfit = data.reduce((s, y) => s + (y.netProfit || 0), 0);
     return (
       <>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} md={3}><SummaryCard label={t('summaryYears')} value={`${yearlyStartYear}–${yearlyEndYear}`} color={theme.palette.primary.main} icon={<DateRange />} theme={theme} /></Grid>
           <Grid item xs={6} md={3}><SummaryCard label={t('summaryTotalSales')} value={data.reduce((s, y) => s + y.salesCount, 0)} color={theme.palette.info.main} icon={<Receipt />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryTotalRevenue')} value={formatCurrency(totalRevenue)} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} /></Grid>
-          <Grid item xs={6} md={3}><SummaryCard label={t('summaryTotalNetProfit')} value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label={t('columnIncome')} value={income} color={theme.palette.success.main} icon={<TrendingUp />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} /></Grid>
+          <Grid item xs={6} md={3}><SummaryCard label={t('summaryTotalNetProfit')} value={totalProfit} color={totalProfit >= 0 ? theme.palette.success.main : theme.palette.error.main} icon={<ShowChart />} theme={theme} displayCurrency={displayCurrency} convert={convertFromAFN} /></Grid>
         </Grid>
         <EnhancedDataTable
           title={t('yearlyPerformance', { startYear: yearlyStartYear, endYear: yearlyEndYear })}
@@ -465,11 +564,18 @@ export default function ReportsPage() {
           columns={[
             { id: 'year', label: t('columnYear') },
             { id: 'salesCount', label: t('columnSalesCount'), format: (v) => v || 0 },
-            { id: 'revenue', label: t('columnRevenue'), format: (v) => formatCurrency(v), bold: true },
-            { id: 'profit', label: t('columnProfit'), format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
-            { id: 'income', label: t('columnIncome'), format: (v) => formatCurrency(v), hiddenOnMobile: true },
-            { id: 'expenses', label: t('columnExpenses'), format: (v) => formatCurrency(v), hiddenOnMobile: true },
-            { id: 'netProfit', label: t('columnNet'), format: (v) => <Typography variant="body2" fontWeight={600} color={Number(v) >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(v)}</Typography> },
+            { id: 'profit', label: t('columnProfit'), format: (v) => {
+                const conv = convertFromAFN(v, displayCurrency);
+                return <Typography variant="body2" fontWeight={600} color={conv >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(conv, displayCurrency)}</Typography>;
+              }
+            },
+            { id: 'income', label: t('columnIncome'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency), hiddenOnMobile: true },
+            { id: 'expenses', label: t('columnExpenses'), format: (v) => formatCurrency(convertFromAFN(v, displayCurrency), displayCurrency), hiddenOnMobile: true },
+            { id: 'netProfit', label: t('columnNet'), format: (v) => {
+                const conv = convertFromAFN(v, displayCurrency);
+                return <Typography variant="body2" fontWeight={600} color={conv >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(conv, displayCurrency)}</Typography>;
+              }
+            },
           ]}
           emptyMessage={t('noDataForYearRange')}
         />
@@ -511,6 +617,22 @@ export default function ReportsPage() {
         </Box>
         <Button variant="outlined" startIcon={<PictureAsPdf />} onClick={handleExportPdf}>{t('exportPdf')}</Button>
       </Box>
+
+      {/* Currency Selector */}
+      <Card sx={{ mb: 3, p: 2, border: `1px solid ${theme.palette.divider}` }}>
+        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+          <CurrencyExchange color="primary" />
+          <Typography variant="subtitle2" fontWeight={600}>{t('displayCurrency')}</Typography>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <Select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)}>
+              <MenuItem value="AFN">🇦🇫 AFN</MenuItem>
+              <MenuItem value="USD">🇺🇸 USD</MenuItem>
+              <MenuItem value="PKR">🇵🇰 PKR</MenuItem>
+              <MenuItem value="AED">🇦🇪 AED</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Card>
 
       {/* Report Type Selection */}
       <Grid container spacing={1.5} sx={{ mb: 3 }}>
@@ -573,7 +695,7 @@ export default function ReportsPage() {
                   <FormControl fullWidth size="small">
                     <InputLabel>{t('labelPeriod')}</InputLabel>
                     <Select value={period} label={t('labelPeriod')} onChange={(e) => setPeriod(e.target.value)}>
-                      {PERIOD_OPTIONS.map((p) => <MenuItem key={p.value} value={p.value}>{t(p.labelKey)}</MenuItem>)}
+                      {PERIOD_OPTIONS.map(p => <MenuItem key={p.value} value={p.value}>{t(p.labelKey)}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -602,6 +724,16 @@ export default function ReportsPage() {
 
       {/* Report Content */}
       {renderReport()}
+      <Dialog open={langDialogOpen} onClose={() => setLangDialogOpen(false)} maxWidth="xs">
+        <DialogTitle>{t('selectLanguage')}</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={1}>
+            <Button variant="outlined" onClick={() => confirmExport('en')}>English</Button>
+            <Button variant="outlined" onClick={() => confirmExport('ps')}>پښتو</Button>
+            <Button variant="outlined" onClick={() => confirmExport('dr')}>دری</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

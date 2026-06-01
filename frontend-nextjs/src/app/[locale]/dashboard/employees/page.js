@@ -27,6 +27,7 @@ import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import { validateEmail, validatePhone, validateRequired, validatePrice } from '@/utils/validation';
 import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
+import { Label } from 'recharts';
 
 export default function EmployeesPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -38,6 +39,7 @@ export default function EmployeesPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
+    id: '',
     fullName: '',
     phoneNumber: '',
     email: '',
@@ -135,6 +137,7 @@ export default function EmployeesPage() {
 
   const handleEdit = (employee) => {
     setFormData({
+      id: employee.id,
       fullName: employee.fullName,
       phoneNumber: employee.phoneNumber,
       email: employee.email || '',
@@ -152,6 +155,7 @@ export default function EmployeesPage() {
 
   const resetForm = () => {
     setFormData({
+      id: '',
       fullName: '',
       phoneNumber: '',
       email: '',
@@ -230,6 +234,7 @@ export default function EmployeesPage() {
 
       <EnhancedDataTable
         columns={[
+          { id: 'id', label: 'EMP ID'},
           { id: 'fullName', label: t('columnFullName'), bold: true },
           { id: 'role', label: t('columnRole') },
           { id: 'phoneNumber', label: t('columnPhone') },

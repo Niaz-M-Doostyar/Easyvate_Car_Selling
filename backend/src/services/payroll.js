@@ -2,6 +2,7 @@ const Employee = require('../../models/Employee');
 const Attendance = require('../../models/Attendance');
 const Payroll = require('../../models/Payroll');
 const { Op } = require('sequelize');
+const { getDailyWorkingHours, getWorkedHours, getLeaveDays } = require('./attendance');
 
 /**
  * Calculate salary based on monthly attendance report
@@ -10,53 +11,50 @@ const { Op } = require('sequelize');
  * @param {number} year - Year
  * @returns {Object} - Calculated payroll data
  */
-const calculatePayroll = async (employeeId, month, year) => {
-  // Get employee
+const calculatePayroll = async function calculatePayroll(employeeId, month, year, commission = 0, deductions = 0) {
   const employee = await Employee.findByPk(employeeId);
-  if (!employee) {
-    throw new Error('Employee not found');
-  }
+  if (!employee) throw new Error('Employee not found');
 
-  if (employee.status !== 'Active') {
-    throw new Error('Cannot calculate payroll for inactive employee');
-  }
+  const monthlySalary = parseFloat(employee.monthlySalary) || 0;
+  const totalDays = new Date(year, month, 0).getDate();
+  const dailyWorkingHours = await getDailyWorkingHours();
 
-  // Get monthly attendance report
-  const attendanceReport = await Attendance.findOne({
-    where: { employeeId, month, year }
-  });
+  const totalHoursInMonth = totalDays * dailyWorkingHours;
+  const hourlyRate = monthlySalary / totalHoursInMonth;
 
-  // Get total days in the month
-  const totalDaysInMonth = new Date(year, month, 0).getDate();
+  const actualWorkedHours = await getWorkedHours(employeeId, month, year);
+  const leaveDays = await getLeaveDays(employeeId, month, year);
+  const leaveHours = leaveDays * dailyWorkingHours;
 
-  let presentDays = 0;
-  let absentDays = 0;
+  const totalEarnedHours = actualWorkedHours + leaveHours;
+  const baseSalary = hourlyRate * totalEarnedHours;
 
-  if (attendanceReport) {
-    presentDays = Number(attendanceReport.presentDays) || 0;
-    absentDays = Number(attendanceReport.absentDays) || 0;
-  }
+  const presentDays = Math.floor(totalEarnedHours / dailyWorkingHours); // approximation
+  const absentDays = totalDays - presentDays;
 
-  // Calculate per-day salary based on total days in month
-  const baseSalary = parseFloat(employee.monthlySalary);
-  const perDaySalary = baseSalary / totalDaysInMonth;
-  
-  // Calculate salary based on present days
-  const calculatedSalary = perDaySalary * presentDays;
+  const totalAmount = baseSalary + parseFloat(commission) - parseFloat(deductions);
 
   return {
     employeeId,
-    employeeName: employee.fullName,
     month,
     year,
+    monthlySalary,
+    hourlyRate,
+    dailyWorkingHours,
+    totalHoursInMonth,
+    actualWorkedHours,
+    leaveDays,
+    leaveHours,
+    totalEarnedHours,
     baseSalary,
-    totalDaysInMonth,
+    calculatedSalary: baseSalary,
     presentDays,
     absentDays,
-    perDaySalary: parseFloat(perDaySalary.toFixed(2)),
-    calculatedSalary: parseFloat(calculatedSalary.toFixed(2)),
+    commission: parseFloat(commission),
+    deductions: parseFloat(deductions),
+    totalAmount
   };
-};
+}
 
 /**
  * Generate payroll for a specific employee and month
@@ -82,18 +80,14 @@ const generatePayroll = async (employeeId, month, year, commission = 0, deductio
   const existing = await Payroll.findOne({
     where: { employeeId, month, year }
   });
-
   if (existing) {
     throw new Error(`Payroll for ${month}/${year} already exists for this employee`);
   }
 
-  // Calculate attendance-based salary
-  const calculation = await calculatePayroll(employeeId, month, year);
+  // Calculate attendance-based salary (pass commission/deductions so preview matches)
+  const calculation = await calculatePayroll(employeeId, month, year, commission, deductions);
 
-  // Calculate total amount
-  const totalAmount = calculation.calculatedSalary + parseFloat(commission) - parseFloat(deductions);
-
-  // Create payroll record
+  // Create payroll record using calculation.totalAmount
   const payroll = await Payroll.create({
     employeeId,
     month,
@@ -102,9 +96,9 @@ const generatePayroll = async (employeeId, month, year, commission = 0, deductio
     presentDays: calculation.presentDays,
     absentDays: calculation.absentDays,
     calculatedSalary: calculation.calculatedSalary,
-    commission: parseFloat(commission),
-    deductions: parseFloat(deductions),
-    totalAmount,
+    commission: calculation.commission,   // from calculation
+    deductions: calculation.deductions,   // from calculation
+    totalAmount: calculation.totalAmount,
     paidAmount: 0,
     status: 'Pending',
     notes,

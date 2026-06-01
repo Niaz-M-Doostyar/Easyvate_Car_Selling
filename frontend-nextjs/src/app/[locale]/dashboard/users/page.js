@@ -1,5 +1,7 @@
+// src/app/[locale]/dashboard/users/page.js
 'use client';
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Box,
   Button,
@@ -28,6 +30,8 @@ import { validateEmail, validatePassword, validateRequired } from '@/utils/valid
 
 export default function UsersPage() {
   const { enqueueSnackbar } = useSnackbar();
+  const t = useTranslations('Users');
+
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -52,7 +56,7 @@ export default function UsersPage() {
       const response = await apiClient.get('/auth/users');
       setUsers(response.data.data || []);
     } catch {
-      enqueueSnackbar('Failed to fetch users', { variant: 'error' });
+      enqueueSnackbar(t('fetchUsersError'), { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -89,18 +93,18 @@ export default function UsersPage() {
   const handleSubmit = async () => {
     const newErrors = {};
 
-    if (!validateRequired(formData.fullName)) newErrors.fullName = 'Full name is required';
+    if (!validateRequired(formData.fullName)) newErrors.fullName = t('validationFullNameRequired');
     if (!validateRequired(formData.email) || !validateEmail(formData.email)) {
-      newErrors.email = 'Valid email is required';
+      newErrors.email = t('validationEmailRequired');
     }
     if (!editingId && (!validateRequired(formData.password) || !validatePassword(formData.password))) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = t('validationPasswordRequired');
     }
-    if (!validateRequired(formData.role)) newErrors.role = 'Role is required';
+    if (!validateRequired(formData.role)) newErrors.role = t('validationRoleRequired');
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      enqueueSnackbar('Please fix validation errors', { variant: 'error' });
+      enqueueSnackbar(t('fixValidationErrors'), { variant: 'error' });
       return;
     }
 
@@ -111,27 +115,27 @@ export default function UsersPage() {
           delete updateData.password;
         }
         await apiClient.put(`/auth/users/${editingId}`, updateData);
-        enqueueSnackbar('User updated successfully', { variant: 'success' });
+        enqueueSnackbar(t('userUpdated'), { variant: 'success' });
       } else {
         await apiClient.post('/auth/register', formData);
-        enqueueSnackbar('User created successfully', { variant: 'success' });
+        enqueueSnackbar(t('userCreated'), { variant: 'success' });
       }
       setOpen(false);
       resetForm();
       fetchUsers();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.message || 'Failed to save user', { variant: 'error' });
+      enqueueSnackbar(error.response?.data?.message || t('saveError'), { variant: 'error' });
     }
   };
 
   const handleDelete = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm(t('confirmDelete'))) return;
     try {
       await apiClient.delete(`/auth/users/${userId}`);
-      enqueueSnackbar('User deleted successfully', { variant: 'success' });
+      enqueueSnackbar(t('userDeleted'), { variant: 'success' });
       fetchUsers();
     } catch (error) {
-      enqueueSnackbar('Failed to delete user', { variant: 'error' });
+      enqueueSnackbar(t('deleteError'), { variant: 'error' });
     }
   };
 
@@ -169,10 +173,10 @@ export default function UsersPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Box>
           <Typography variant="h4" fontWeight={700}>
-            User Management
+            {t('pageTitle')}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Manage system users and their roles
+            {t('pageSubtitle')}
           </Typography>
         </Box>
         <Button
@@ -181,7 +185,7 @@ export default function UsersPage() {
           onClick={() => setOpen(true)}
           sx={{ borderRadius: 2 }}
         >
-          Add User
+          {t('addUser')}
         </Button>
       </Box>
 
@@ -189,16 +193,16 @@ export default function UsersPage() {
         <CardContent>
           <EnhancedDataTable
             columns={[
-              { id: 'fullName', label: 'Full Name', bold: true },
-              { id: 'email', label: 'Email' },
-              { id: 'phoneNumber', label: 'Phone Number' },
-              { id: 'role', label: 'Role', format: (val) => <Chip label={val} size="small" color={getRoleColor(val)} /> },
+              { id: 'fullName', label: t('columnFullName'), bold: true },
+              { id: 'email', label: t('columnEmail') },
+              { id: 'phoneNumber', label: t('columnPhone') },
+              { id: 'role', label: t('columnRole'), format: (val) => <Chip label={val} size="small" color={getRoleColor(val)} /> },
             ]}
             data={users}
             onEdit={handleEdit}
             onDelete={handleDelete}
             loading={loading}
-            emptyMessage="No users found"
+            emptyMessage={t('noUsers')}
           />
         </CardContent>
       </Card>
@@ -208,21 +212,25 @@ export default function UsersPage() {
           <Box display="flex" alignItems="center" gap={1}>
             <AdminPanelSettings color="primary" />
             <Box>
-              <Typography variant="h6" fontWeight={700}>{editingId ? 'Edit User' : 'Add New User'}</Typography>
-              <Typography variant="caption" color="text.secondary">Configure user account and permissions</Typography>
+              <Typography variant="h6" fontWeight={700}>
+                {editingId ? t('editUser') : t('addNewUser')}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {t('configureAccount')}
+              </Typography>
             </Box>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mt: 1, mb: 1.5, letterSpacing: '0.1em' }}>
-            👤 Account Information
+            {t('accountInfo')}
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Full Name"
-                placeholder="Ahmad Khan"
+                label={t('fullNameLabel')}
+                placeholder={t('fullNamePlaceholder')}
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 error={!!errors.fullName}
@@ -234,8 +242,8 @@ export default function UsersPage() {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Phone Number"
-                placeholder="+93 70 123 4567"
+                label={t('phoneLabel')}
+                placeholder={t('phonePlaceholder')}
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                 InputProps={{ startAdornment: <InputAdornment position="start"><Phone fontSize="small" color="action" /></InputAdornment> }}
@@ -244,9 +252,9 @@ export default function UsersPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Email"
+                label={t('emailLabel')}
                 type="email"
-                placeholder="user@easyvate.com"
+                placeholder={t('emailPlaceholder')}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 error={!!errors.email}
@@ -258,9 +266,9 @@ export default function UsersPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label={editingId ? 'Password (leave empty to keep current)' : 'Password'}
+                label={editingId ? t('passwordEditLabel') : t('passwordLabel')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder={editingId ? '••••••••' : 'Min 8 characters'}
+                placeholder={editingId ? t('passwordEditPlaceholder') : t('passwordPlaceholder')}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 error={!!errors.password}
@@ -285,25 +293,25 @@ export default function UsersPage() {
           </Grid>
 
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mt: 3, mb: 1.5, letterSpacing: '0.1em' }}>
-            🛡️ Role & Permissions
+            {t('rolePermissions')}
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <FormControl fullWidth required error={!!errors.role}>
-                <InputLabel>Role</InputLabel>
+                <InputLabel>{t('roleLabel')}</InputLabel>
                 <Select
                   value={formData.role}
-                  label="Role"
+                  label={t('roleLabel')}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <MenuItem value="Super Admin">🔴 Super Admin</MenuItem>
-                  <MenuItem value="Owner">🟠 Owner</MenuItem>
-                  <MenuItem value="Manager">🟡 Manager</MenuItem>
-                  <MenuItem value="Inventory & Sales">🟢 Inventory & Sales</MenuItem>
-                  <MenuItem value="Sales">🔵 Sales</MenuItem>
-                  <MenuItem value="Accountant">🟣 Accountant</MenuItem>
-                  <MenuItem value="Financial">🟤 Financial</MenuItem>
-                  <MenuItem value="Viewer">⚪ Viewer</MenuItem>
+                  <MenuItem value="Super Admin">🔴 {t('superAdmin')}</MenuItem>
+                  <MenuItem value="Owner">🟠 {t('owner')}</MenuItem>
+                  <MenuItem value="Manager">🟡 {t('manager')}</MenuItem>
+                  <MenuItem value="Inventory & Sales">🟢 {t('inventorySales')}</MenuItem>
+                  {/* <MenuItem value="Sales">🔵 {t('sales')}</MenuItem> */}
+                  <MenuItem value="Accountant">🟣 {t('accountant')}</MenuItem>
+                  {/* <MenuItem value="Financial">🟤 {t('financial')}</MenuItem> */}
+                  <MenuItem value="Viewer">⚪ {t('viewer')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -311,7 +319,9 @@ export default function UsersPage() {
               <Card variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={1}>
                   <Security fontSize="small" color="primary" />
-                  <Typography variant="body2" fontWeight={600}>Role Permissions:</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {t('rolePermissionsLabel')}
+                  </Typography>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
                   {getRolePermissions(formData.role).join(' • ')}
@@ -321,9 +331,9 @@ export default function UsersPage() {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button onClick={handleDialogClose}>{t('cancel')}</Button>
           <Button variant="contained" onClick={handleSubmit} startIcon={editingId ? null : <Add />}>
-            {editingId ? 'Update User' : 'Add User'}
+            {editingId ? t('updateUser') : t('addUser')}
           </Button>
         </DialogActions>
       </Dialog>

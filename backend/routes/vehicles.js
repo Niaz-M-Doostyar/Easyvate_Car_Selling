@@ -19,6 +19,7 @@ const multer = require('multer');
 const fs = require('fs');
 const VehicleImage = require('../models/VehicleImage');
 const VehicleOption = require('../models/VehicleOption');
+const CustomerLedger = require('../models/CustomerLedger');
 
 // Default options (seeded on first fetch if table is empty)
 const DEFAULT_OPTIONS = {
@@ -27,6 +28,153 @@ const DEFAULT_OPTIONS = {
   engineType: ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'],
   transmission: ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'],
 };
+
+// ---------- Helper to convert any amount to AFN ----------
+async function convertToAFN(amount, currency) {
+  if (!amount || amount === 0) return 0;
+  if (currency === 'AFN') return Number(amount);
+  return await toAFN(amount, currency);
+}
+
+function calculateTotalCostOriginal(basePurchasePrice, transportCostToDubai, importCostToAfghanistan, repairCost) {
+  return (basePurchasePrice || 0) + (transportCostToDubai || 0) + (importCostToAfghanistan || 0) + (repairCost || 0);
+}
+
+async function calculateTotalCostPKR(basePurchasePrice, transportCostToDubai, importCostToAfghanistan, repairCost, baseCurrency) {
+  const totalOriginal = calculateTotalCostOriginal(basePurchasePrice, transportCostToDubai, importCostToAfghanistan, repairCost);
+  if (baseCurrency === 'AFN') return totalOriginal;
+  return await convertToAFN(totalOriginal, baseCurrency);
+}
+
+async function deductCustomerInvestment(customerId, investmentAmount, currency, vehicleId) {
+  if (!customerId || !investmentAmount || investmentAmount <= 0) return;
+
+  const customer = await Customer.findByPk(customerId);
+  if (!customer) throw new Error('Customer not found');
+
+  const balanceField = {
+    USD: 'balanceUSD',
+    PKR: 'balancePKR',
+    AED: 'balanceAED',
+  }[currency] || 'balanceAFN';
+
+  const currentBalance = parseFloat(customer[balanceField]) || 0;
+  if (currentBalance < investmentAmount) {
+    throw new Error(
+      `Insufficient ${currency} balance for ${customer.fullName}. ` +
+      `Available: ${currentBalance}, Required: ${investmentAmount}`
+    );
+  }
+
+  const newBalance = currentBalance - investmentAmount;
+  await customer.update({ [balanceField]: newBalance });
+
+  await CustomerLedger.create({
+    customerId: customer.id,
+    type: 'Investment',
+    amount: investmentAmount,
+    currency,
+    amountInPKR: await toAFN(investmentAmount, currency),
+    purpose: `Investment in vehicle ${vehicleId}`,
+    date: new Date(),
+    balance: newBalance,
+  });
+}
+
+// ---------- Validate partner investment against customer's currency balance ----------
+async function validatePartnerInvestment(customerId, investmentAmount, currency) {
+  const customer = await Customer.findByPk(customerId);
+  if (!customer) throw new Error('Customer not found');
+  let balance;
+  switch (currency) {
+    case 'USD': balance = customer.balanceUSD; break;
+    case 'PKR': balance = customer.balancePKR; break;
+    case 'AED': balance = customer.balanceAED; break;
+    default: balance = customer.balanceAFN;
+  }
+  if (balance < investmentAmount) {
+    throw new Error(`Customer ${customer.fullName} has insufficient ${currency} balance. Available: ${balance}, Required: ${investmentAmount}`);
+  }
+  return true;
+}
+
+// ---------- Helper to create/update sharing persons ----------
+async function persistVehicleSharingPersons(vehicle, rawSharingPersons) {
+  // Remove previous sharing records
+  await SharingPerson.destroy({ where: { vehicleId: vehicle.id } });
+
+  if (!Array.isArray(rawSharingPersons) || rawSharingPersons.length === 0) return [];
+
+  const sharingRows = [];
+
+  for (const raw of rawSharingPersons) {
+    // Use the vehicle's base currency for all partners (consistent with front‑end)
+    const currency = vehicle.baseCurrency || 'AFN';
+    const percentage = parseFloat(raw.percentage) || 0;
+
+    // Calculate investment amount based on the vehicle’s total cost IN ITS BASE CURRENCY
+    const totalCostBase = parseFloat(vehicle.totalCostOriginal) || 0;
+    const investmentAmount = (percentage / 100) * totalCostBase;
+
+    const customerId = raw.customerId || null;
+
+    // Deduct from customer's balance (in the base currency)
+    if (customerId && investmentAmount > 0) {
+      const customer = await Customer.findByPk(customerId);
+      if (!customer) throw new Error(`Customer with id ${customerId} not found`);
+
+      const balanceField = {
+        USD: 'balanceUSD',
+        PKR: 'balancePKR',
+        AED: 'balanceAED',
+      }[currency] || 'balanceAFN';
+
+      const currentBalance = parseFloat(customer[balanceField]) || 0;
+      if (currentBalance < investmentAmount) {
+        throw new Error(
+          `Insufficient ${currency} balance for ${customer.fullName}. ` +
+          `Available: ${currentBalance}, Required: ${investmentAmount}`
+        );
+      }
+
+      // Deduct balance
+      const newBalance = currentBalance - investmentAmount;
+      await customer.update({ [balanceField]: newBalance });
+
+      // Record in customer ledger (amountInPKR = AFN equivalent)
+      const amountAFN = await toAFN(investmentAmount, currency);
+      await CustomerLedger.create({
+        customerId: customer.id,
+        type: 'Investment',
+        amount: investmentAmount,
+        currency,
+        amountInPKR: amountAFN,
+        purpose: `Investment in vehicle ${vehicle.vehicleId}`,
+        date: new Date(),
+        balance: newBalance,
+      });
+    }
+
+    // Look up customer for name and phone fallback
+    let customer = null;
+    if (customerId) customer = await Customer.findByPk(customerId);
+
+    sharingRows.push({
+      vehicleId: vehicle.id,
+      customerId: customerId || null,
+      personName: customer ? customer.fullName : raw.personName,
+      percentage,
+      investmentAmount,
+      investmentCurrency: currency,          // always base currency
+      phoneNumber: raw.phoneNumber || (customer ? customer.phoneNumber : ''),
+      calculationMethod: raw.calculationMethod || 'Percentage',
+      isActive: true,
+    });
+  }
+
+  await SharingPerson.bulkCreate(sharingRows);
+  return sharingRows;
+}
 
 // GET dropdown options (seeds defaults on first call)
 router.get('/dropdown-options', async (req, res) => {
@@ -126,23 +274,10 @@ const calculateVehicleBaseCost = async ({
 
 const resolvePartnerCustomer = async (person) => {
   let customer = null;
-
-  if (person.customerId) {
-    customer = await Customer.findByPk(person.customerId);
-  }
-
-  if (!customer && person.phoneNumber) {
-    customer = await Customer.findOne({ where: { phoneNumber: person.phoneNumber } });
-  }
-
-  if (!customer && person.personName) {
-    customer = await Customer.findOne({ where: { fullName: person.personName } });
-  }
-
-  if (customer || !person.personName) {
-    return customer;
-  }
-
+  if (person.customerId) customer = await Customer.findByPk(person.customerId);
+  if (!customer && person.phoneNumber) customer = await Customer.findOne({ where: { phoneNumber: person.phoneNumber } });
+  if (!customer && person.personName) customer = await Customer.findOne({ where: { fullName: person.personName } });
+  if (customer || !person.personName) return customer;
   return Customer.create({
     fullName: person.personName,
     fatherName: '',
@@ -158,73 +293,24 @@ const resolvePartnerCustomer = async (person) => {
   });
 };
 
-const persistVehicleSharingPersons = async (vehicle, rawSharingPersons) => {
-  const normalized = normalizeSharingPersons(rawSharingPersons, vehicle.totalCostPKR);
-
-  await SharingPerson.destroy({ where: { vehicleId: vehicle.id } });
-
-  if (!normalized.partners.length) {
-    return normalized;
-  }
-
-  const sharingRows = [];
-  for (const partner of normalized.partners) {
-    const customer = await resolvePartnerCustomer(partner);
-    sharingRows.push({
-      vehicleId: vehicle.id,
-      customerId: customer?.id || partner.customerId || null,
-      personName: customer?.fullName || partner.personName,
-      percentage: partner.percentage,
-      investmentAmount: partner.investmentAmount,
-      phoneNumber: customer?.phoneNumber || partner.phoneNumber || '',
-      calculationMethod: partner.calculationMethod,
-      isActive: true,
-    });
-  }
-
-  await SharingPerson.bulkCreate(sharingRows);
-  return normalized;
-};
-
-const refreshVehicleSharingPercentages = async (vehicleId) => {
+async function refreshVehicleSharingPercentages(vehicleId) {
   const vehicle = await Vehicle.findByPk(vehicleId);
-  if (!vehicle) {
-    return;
-  }
+  if (!vehicle) return;
+  const currentSharing = await SharingPerson.findAll({ where: { vehicleId }, order: [['createdAt', 'ASC']] });
+  if (!currentSharing.length) return;
+  await persistVehicleSharingPersons(vehicle, currentSharing.map(p => p.get({ plain: true })));
+}
 
-  const currentSharing = await SharingPerson.findAll({
-    where: { vehicleId },
-    order: [['createdAt', 'ASC']],
-  });
-
-  if (!currentSharing.length) {
-    return;
-  }
-
-  await persistVehicleSharingPersons(
-    vehicle,
-    currentSharing.map((person) => person.get({ plain: true }))
-  );
-};
-
-const refreshVehicleTotalCost = async (vehicleId) => {
+async function refreshVehicleTotalCost(vehicleId) {
   const vehicle = await Vehicle.findByPk(vehicleId);
-  if (!vehicle) {
-    return 0;
-  }
-
-  const costs = await VehicleCost.findAll({
-    where: {
-      vehicleId,
-      stage: { [Op.notIn]: CORE_COST_STAGES },
-    },
-  });
+  if (!vehicle) return 0;
+  const costs = await VehicleCost.findAll({ where: { vehicleId, stage: { [Op.notIn]: ['Base Purchase', 'Transport to Dubai', 'Import to Afghanistan', 'Repair'] } } });
   const extraCosts = costs.reduce((sum, c) => sum + Number(c.amountInPKR || 0), 0);
-  const baseCost = await calculateVehicleBaseCost(vehicle);
+  const baseCost = await calculateTotalCostPKR(vehicle.basePurchasePrice, vehicle.transportCost, vehicle.importCost, vehicle.repairCost, vehicle.baseCurrency);
   const total = baseCost + extraCosts;
   await Vehicle.update({ totalCostPKR: total }, { where: { id: vehicleId } });
   return total;
-};
+}
 
 // Get all vehicles – with reference person search
 router.get('/', async (req, res) => {
@@ -237,10 +323,9 @@ router.get('/', async (req, res) => {
     
     // Build search condition including reference person fields
     if (search) {
-      // Escape single quotes to prevent SQL injection
       const escapedSearch = search.replace(/'/g, "\\'");
       
-      // Vehicle fields to search
+      // Vehicle fields
       const vehicleSearch = {
         [Op.or]: [
           { vehicleId: { [Op.like]: `%${search}%` } },
@@ -250,15 +335,21 @@ router.get('/', async (req, res) => {
         ]
       };
       
-      // Reference person subquery (exists with OR on name, tazkira, phone)
+      // Reference person subquery
       const referenceSearch = Sequelize.where(
         Sequelize.literal(`EXISTS (SELECT 1 FROM reference_persons WHERE reference_persons.vehicleId = Vehicle.id AND (reference_persons.fullName LIKE '%${escapedSearch}%' OR reference_persons.tazkiraNumber LIKE '%${escapedSearch}%' OR reference_persons.phoneNumber LIKE '%${escapedSearch}%'))`),
         '=',
         true
       );
       
-      // Combine both searches with OR
-      where[Op.or] = [vehicleSearch, referenceSearch];
+      // Sharing person subquery (partner)
+      const sharingSearch = Sequelize.where(
+        Sequelize.literal(`EXISTS (SELECT 1 FROM sharing_persons WHERE sharing_persons.vehicleId = Vehicle.id AND (sharing_persons.personName LIKE '%${escapedSearch}%' OR sharing_persons.phoneNumber LIKE '%${escapedSearch}%'))`),
+        '=',
+        true
+      );
+      
+      where[Op.or] = [vehicleSearch, referenceSearch, sharingSearch];
     }
     
     const vehicles = await Vehicle.findAll({
@@ -298,19 +389,19 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create vehicle
+// ======================== CREATE VEHICLE (MULTI-CURRENCY) ========================
 router.post('/', async (req, res) => {
   try {
     const {
       category, manufacturer, model, year, color, chassisNumber,
       engineNumber, engineType, fuelType, transmission, mileage,
       plateNo, vehicleLicense, steering, monolithicCut, status,
-      basePurchasePrice, baseCurrency, transportCostToDubai,
-      importCostToAfghanistan, repairCost, sellingPrice,
+      basePurchasePrice, baseCurrency,
+      transportCostToDubai, importCostToAfghanistan, repairCost,
+      sellingPrice, sellingPriceCurrency,
       referencePerson, sharingPersons
     } = req.body;
-    
-    // Generate unique vehicle ID (use MAX to avoid collision after deletions)
+
     const lastVeh = await Vehicle.findOne({ order: [['id', 'DESC']], attributes: ['vehicleId'] });
     let nextNum = 1;
     if (lastVeh && lastVeh.vehicleId) {
@@ -318,39 +409,138 @@ router.post('/', async (req, res) => {
       if (vMatch) nextNum = parseInt(vMatch[1], 10) + 1;
     }
     const vehicleId = `V${String(nextNum).padStart(6, '0')}`;
-    
-    const basePriceAFN = await toAFN(basePurchasePrice, baseCurrency);
-    const transportAFN = await toAFN(transportCostToDubai, 'AFN');
-    const importAFN = await toAFN(importCostToAfghanistan, 'AFN');
-    const repairAFN = await toAFN(repairCost, 'AFN');
-    const totalCostPKR = basePriceAFN + transportAFN + importAFN + repairAFN;
-    
-    // Create vehicle
+
+    const baseCurr = baseCurrency || 'AFN';
+    const totalCostOriginal = calculateTotalCostOriginal(basePurchasePrice, transportCostToDubai, importCostToAfghanistan, repairCost);
+    const totalCostPKR = await calculateTotalCostPKR(basePurchasePrice, transportCostToDubai, importCostToAfghanistan, repairCost, baseCurr);
+
     const vehicle = await Vehicle.create({
       vehicleId,
       category, manufacturer, model, year, color, chassisNumber,
       engineNumber, engineType, fuelType, transmission, mileage,
       plateNo, vehicleLicense, steering, monolithicCut, status,
-      basePurchasePrice, baseCurrency, transportCostToDubai,
-      importCostToAfghanistan, repairCost, totalCostPKR, sellingPrice
+      basePurchasePrice, baseCurrency: baseCurr,
+      transportCostToDubai, importCostToAfghanistan, repairCost,
+      sellingPrice, sellingPriceCurrency: sellingPriceCurrency || 'AFN',
+      totalCostOriginal, totalCostPKR,
     });
 
+    // Create cost records for showroom ledger (AFN)
     const costsToCreate = [
-      { stage: 'Base Purchase', amount: basePurchasePrice, currency: baseCurrency, amountInPKR: basePriceAFN },
-      { stage: 'Transport to Dubai', amount: transportCostToDubai, currency: 'AFN', amountInPKR: transportAFN },
-      { stage: 'Import to Afghanistan', amount: importCostToAfghanistan, currency: 'AFN', amountInPKR: importAFN },
-      { stage: 'Repair', amount: repairCost, currency: 'AFN', amountInPKR: repairAFN }
-    ].filter(item => Number(item.amount || 0) > 0);
+      { stage: 'Base Purchase', amount: basePurchasePrice, currency: baseCurr, amountInPKR: await convertToAFN(basePurchasePrice, baseCurr) },
+      { stage: 'Transport to Dubai', amount: transportCostToDubai, currency: baseCurr, amountInPKR: await convertToAFN(transportCostToDubai, baseCurr) },
+      { stage: 'Import to Afghanistan', amount: importCostToAfghanistan, currency: baseCurr, amountInPKR: await convertToAFN(importCostToAfghanistan, baseCurr) },
+      { stage: 'Repair', amount: repairCost, currency: baseCurr, amountInPKR: await convertToAFN(repairCost, baseCurr) },
+    ].filter(item => item.amount && Number(item.amount) > 0);
 
-    if (costsToCreate.length) {
-      await Promise.all(costsToCreate.map(async (cost) => {
+    for (const cost of costsToCreate) {
+      const created = await VehicleCost.create({ vehicleId: vehicle.id, ...cost, date: new Date(), addedBy: req.user.id });
+      await ShowroomLedger.create({
+        type: 'Vehicle Purchase', amount: created.amount, currency: created.currency, amountInPKR: created.amountInPKR,
+        description: `${created.stage} for ${vehicle.vehicleId}`, date: created.date, referenceId: vehicle.id, referenceType: 'Vehicle', addedBy: req.user.id
+      });
+    }
+
+    // Reference person and sharing persons (unchanged)
+    if (referencePerson && referencePerson.fullName) {
+      await ReferencePerson.create({ vehicleId: vehicle.id, ...referencePerson });
+    }
+    if (sharingPersons && sharingPersons.length) {
+      await persistVehicleSharingPersons(vehicle, sharingPersons);
+    }
+
+    const completeVehicle = await Vehicle.findByPk(vehicle.id, {
+      include: [{ model: ReferencePerson, as: 'referencePerson' }, getSharingInclude()]
+    });
+    const pdfOutputDir = path.join(__dirname, '..', 'uploads', 'pdf');
+    const pdfInfo = await generateVehiclePdf(completeVehicle, pdfOutputDir);
+    await vehicle.update({ pdfPath: pdfInfo.filePath });
+    res.status(201).json({ ...completeVehicle.toJSON(), pdfPath: pdfInfo.filePath });
+  } catch (error) {
+    console.error('Vehicle create error:', error);
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors.map(e => ({
+          message: e.message,
+          field: e.path,
+          value: e.value
+        }))
+      });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ======================== UPDATE VEHICLE (MULTI-CURRENCY) ========================
+router.put('/:id', async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findByPk(req.params.id);
+    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+    if (vehicle.isLocked) return res.status(403).json({ error: 'Vehicle is locked and cannot be edited' });
+
+    const { reason, referencePerson, sharingPersons, editReason: reqEditReason, ...updates } = req.body;
+    const editReason = reqEditReason || reason || 'Updated from dashboard';
+
+    const costFields = ['basePurchasePrice', 'transportCostToDubai', 'importCostToAfghanistan', 'repairCost', 'baseCurrency', 'sellingPrice', 'sellingPriceCurrency'];
+
+    if (costFields.some(field => updates[field] !== undefined)) {
+      // ─────────────────────────────────────────────────────────────
+      // 1) Delete old core cost ledger entries (reverse previous deductions)
+      // ─────────────────────────────────────────────────────────────
+      await ShowroomLedger.destroy({
+        where: {
+          referenceId: vehicle.id,
+          referenceType: 'Vehicle',
+          type: 'Vehicle Purchase',
+          description: {
+            [Op.or]: [
+              { [Op.like]: '%Base Purchase%' },
+              { [Op.like]: '%Transport to Dubai%' },
+              { [Op.like]: '%Import to Afghanistan%' },
+              { [Op.like]: '%Repair%' }
+            ]
+          }
+        }
+      });
+
+      // Delete old core VehicleCost records
+      await VehicleCost.destroy({
+        where: {
+          vehicleId: vehicle.id,
+          stage: { [Op.in]: ['Base Purchase', 'Transport to Dubai', 'Import to Afghanistan', 'Repair'] }
+        }
+      });
+
+      // ─────────────────────────────────────────────────────────────
+      // 2) Calculate new totals using updated values
+      // ─────────────────────────────────────────────────────────────
+      const baseCurr = updates.baseCurrency ?? vehicle.baseCurrency;
+      const basePrice = updates.basePurchasePrice ?? vehicle.basePurchasePrice;
+      const transport = updates.transportCostToDubai ?? vehicle.transportCostToDubai;
+      const importCost = updates.importCostToAfghanistan ?? vehicle.importCostToAfghanistan;
+      const repair = updates.repairCost ?? vehicle.repairCost;
+      const totalOriginal = (basePrice || 0) + (transport || 0) + (importCost || 0) + (repair || 0);
+      updates.totalCostOriginal = totalOriginal;
+      updates.totalCostPKR = await calculateTotalCostPKR(basePrice, transport, importCost, repair, baseCurr);
+
+      // ─────────────────────────────────────────────────────────────
+      // 3) Recreate core cost records and ledger entries (new deductions)
+      // ─────────────────────────────────────────────────────────────
+      const costsToCreate = [
+        { stage: 'Base Purchase', amount: basePrice, currency: baseCurr, amountInPKR: await convertToAFN(basePrice, baseCurr) },
+        { stage: 'Transport to Dubai', amount: transport, currency: baseCurr, amountInPKR: await convertToAFN(transport, baseCurr) },
+        { stage: 'Import to Afghanistan', amount: importCost, currency: baseCurr, amountInPKR: await convertToAFN(importCost, baseCurr) },
+        { stage: 'Repair', amount: repair, currency: baseCurr, amountInPKR: await convertToAFN(repair, baseCurr) },
+      ].filter(item => item.amount && Number(item.amount) > 0);
+
+      for (const cost of costsToCreate) {
         const created = await VehicleCost.create({
-        vehicleId: vehicle.id,
-        ...cost,
-        date: new Date(),
-        addedBy: req.user.id
+          vehicleId: vehicle.id,
+          ...cost,
+          date: new Date(),
+          addedBy: req.user.id
         });
-
         await ShowroomLedger.create({
           type: 'Vehicle Purchase',
           amount: created.amount,
@@ -362,124 +552,74 @@ router.post('/', async (req, res) => {
           referenceType: 'Vehicle',
           addedBy: req.user.id
         });
-      }));
+      }
     }
-    
-    // Add reference person if provided
-    if (referencePerson) {
-      await ReferencePerson.create({
-        vehicleId: vehicle.id,
-        ...referencePerson
-      });
-    }
-    
-    // Add sharing persons if provided
-    if (sharingPersons && sharingPersons.length > 0) {
-      await persistVehicleSharingPersons(vehicle, sharingPersons);
-    }
-    
-    // Fetch complete vehicle with relations
-    const completeVehicle = await Vehicle.findByPk(vehicle.id, {
-      include: [
-        { model: ReferencePerson, as: 'referencePerson' },
-        getSharingInclude()
-      ]
-    });
 
-    const pdfOutputDir = path.join(__dirname, '..', 'uploads', 'pdf');
-    const pdfInfo = await generateVehiclePdf(completeVehicle, pdfOutputDir);
-    await vehicle.update({ pdfPath: pdfInfo.filePath });
-    
-    res.status(201).json({ ...completeVehicle.toJSON(), pdfPath: pdfInfo.filePath });
-  } catch (error) {
-    console.error('Vehicle create error:', error);
-    res.status(500).json({ error: error.message, message: error.message });
-  }
-});
-
-// Update vehicle
-router.put('/:id', async (req, res) => {
-  try {
-    const vehicle = await Vehicle.findByPk(req.params.id);
-    
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
-    }
-    
-    if (vehicle.isLocked) {
-      return res.status(403).json({ error: 'Vehicle is locked and cannot be edited' });
-    }
-    
-    const { reason, referencePerson, sharingPersons, editReason: reqEditReason, ...updates } = req.body;
-    const editReason = reqEditReason || reason || 'Updated from dashboard';
-    const costFields = ['basePurchasePrice', 'baseCurrency', 'transportCostToDubai', 'importCostToAfghanistan', 'repairCost'];
-    const mergedCostData = {
-      basePurchasePrice: updates.basePurchasePrice ?? vehicle.basePurchasePrice,
-      baseCurrency: updates.baseCurrency ?? vehicle.baseCurrency,
-      transportCostToDubai: updates.transportCostToDubai ?? vehicle.transportCostToDubai,
-      importCostToAfghanistan: updates.importCostToAfghanistan ?? vehicle.importCostToAfghanistan,
-      repairCost: updates.repairCost ?? vehicle.repairCost,
-    };
-
-    if (costFields.some((field) => updates[field] !== undefined)) {
-      const extraCosts = await VehicleCost.findAll({
-        where: {
-          vehicleId: vehicle.id,
-          stage: { [Op.notIn]: CORE_COST_STAGES },
-        },
-      });
-      const extraTotal = extraCosts.reduce((sum, cost) => sum + Number(cost.amountInPKR || 0), 0);
-      updates.totalCostPKR = (await calculateVehicleBaseCost(mergedCostData)) + extraTotal;
-    }
-    
-    // Save edit history for each changed field
+    // ─────────────────────────────────────────────────────────────
+    // 4) Save edit history
+    // ─────────────────────────────────────────────────────────────
     for (const [key, newValue] of Object.entries(updates)) {
-      if (vehicle[key] !== newValue) {
+      if (vehicle[key] != newValue) {
         await EditHistory.create({
-          entityType: 'Vehicle',
-          entityId: vehicle.id,
-          fieldName: key,
-          oldValue: String(vehicle[key]),
-          newValue: String(newValue),
-          reason: editReason,
-          editedBy: req.user.id,
-          editedAt: new Date()
+          entityType: 'Vehicle', entityId: vehicle.id, fieldName: key,
+          oldValue: String(vehicle[key]), newValue: String(newValue), reason: editReason,
+          editedBy: req.user.id, editedAt: new Date()
         });
       }
     }
-    
-    // Update vehicle
+
+    // ─────────────────────────────────────────────────────────────
+    // 5) Update vehicle
+    // ─────────────────────────────────────────────────────────────
     await vehicle.update(updates);
-    
-    // Update reference person
-    if (referencePerson) {
+
+    // ─────────────────────────────────────────────────────────────
+    // 6) Update reference person
+    // ─────────────────────────────────────────────────────────────
+    if (referencePerson !== undefined) {
       await ReferencePerson.destroy({ where: { vehicleId: vehicle.id } });
-      if (referencePerson.fullName) {
-        await ReferencePerson.create({
-          vehicleId: vehicle.id,
-          ...referencePerson
-        });
-      }
+      if (referencePerson && referencePerson.fullName) await ReferencePerson.create({ vehicleId: vehicle.id, ...referencePerson });
     }
-    
-    // Update sharing persons
-    if (sharingPersons) {
+
+    // ─────────────────────────────────────────────────────────────
+    // 7) Update sharing persons
+    // ─────────────────────────────────────────────────────────────
+    // Inside router.put('/:id', ...)
+
+    if (sharingPersons !== undefined) {
+      // --- Step 1: reverse old investments ---
+      const oldSharing = await SharingPerson.findAll({ where: { vehicleId: vehicle.id } });
+      for (const oldPartner of oldSharing) {
+        if (oldPartner.customerId && oldPartner.investmentAmount > 0) {
+          const customer = await Customer.findByPk(oldPartner.customerId);
+          if (customer) {
+            const balanceField = {
+              USD: 'balanceUSD',
+              PKR: 'balancePKR',
+              AED: 'balanceAED',
+            }[oldPartner.investmentCurrency] || 'balanceAFN';
+            const revertedBalance = parseFloat(customer[balanceField]) + parseFloat(oldPartner.investmentAmount);
+            await customer.update({ [balanceField]: revertedBalance });
+            // Optional: create a reversal ledger entry
+          }
+        }
+      }
+
+      // --- Step 2: apply new sharing (deductions happen inside) ---
       await persistVehicleSharingPersons(vehicle, sharingPersons);
-    } else if (costFields.some((field) => updates[field] !== undefined)) {
+
+    } else if (costFields.some(f => updates[f] !== undefined)) {
+      // Only recalculate percentages, no new deduction
       await refreshVehicleSharingPercentages(vehicle.id);
     }
-    
+
     const updatedVehicle = await Vehicle.findByPk(vehicle.id, {
-      include: [
-        { model: ReferencePerson, as: 'referencePerson' },
-        getSharingInclude()
-      ]
+      include: [{ model: ReferencePerson, as: 'referencePerson' }, getSharingInclude()]
     });
-    
     res.json(updatedVehicle);
   } catch (error) {
     console.error('Vehicle update error:', error);
-    res.status(500).json({ error: error.message, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 

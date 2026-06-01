@@ -1,5 +1,7 @@
+// src/app/[locale]/dashboard/currency/page.js
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Card, CardContent, Typography, FormControl,
@@ -10,11 +12,13 @@ import { useSnackbar } from 'notistack';
 import apiClient from '@/utils/api';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
-const CURRENCIES = ['AFN', 'USD', 'PKR'];
+const CURRENCIES = ['AFN', 'USD', 'PKR', 'AED'];
 
 export default function CurrencyPage() {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
+  const t = useTranslations('Currency');
+
   const [exchanges, setExchanges] = useState([]);
   const [rates, setRates] = useState({});
   const [currentRates, setCurrentRates] = useState([]);
@@ -34,7 +38,7 @@ export default function CurrencyPage() {
       const response = await apiClient.get('/currency/exchanges');
       setExchanges(response.data.data || []);
     } catch {
-      enqueueSnackbar('Failed to fetch exchanges', { variant: 'error' });
+      enqueueSnackbar(t('fetchExchangesError'), { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -56,7 +60,7 @@ export default function CurrencyPage() {
 
   const handleUpdateRate = async () => {
     if (!editingRate.currency || !editingRate.rateToAFN || editingRate.rateToAFN <= 0) {
-      enqueueSnackbar('Please enter a valid rate', { variant: 'warning' });
+      enqueueSnackbar(t('validRateRequired'), { variant: 'warning' });
       return;
     }
 
@@ -64,12 +68,12 @@ export default function CurrencyPage() {
       await apiClient.put(`/currency/settings/${editingRate.currency}`, {
         rateToAFN: parseFloat(editingRate.rateToAFN)
       });
-      enqueueSnackbar('Exchange rate updated successfully', { variant: 'success' });
+      enqueueSnackbar(t('rateUpdated'), { variant: 'success' });
       setEditingRate({ currency: '', rateToAFN: '' });
       fetchCurrentRates();
       fetchRates();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.error?.message || 'Failed to update rate', { variant: 'error' });
+      enqueueSnackbar(error.response?.data?.error?.message || t('rateUpdateFailed'), { variant: 'error' });
     }
   };
 
@@ -97,12 +101,12 @@ export default function CurrencyPage() {
 
   const handleSubmit = async () => {
     if (!formData.fromAmount || !formData.exchangeRate) {
-      enqueueSnackbar('Amount and exchange rate are required', { variant: 'warning' });
+      enqueueSnackbar(t('amountRateRequired'), { variant: 'warning' });
       return;
     }
 
     if (formData.fromCurrency === formData.toCurrency) {
-      enqueueSnackbar('Cannot exchange same currency', { variant: 'error' });
+      enqueueSnackbar(t('cannotExchangeSameCurrency'), { variant: 'error' });
       return;
     }
     try {
@@ -111,52 +115,52 @@ export default function CurrencyPage() {
         fromAmount: parseFloat(formData.fromAmount),
         exchangeRate: parseFloat(formData.exchangeRate),
       });
-      enqueueSnackbar('Exchange completed', { variant: 'success' });
+      enqueueSnackbar(t('exchangeCompleted'), { variant: 'success' });
       setOpen(false);
       setFormData({ fromCurrency: 'USD', toCurrency: 'AFN', fromAmount: '', exchangeRate: '', notes: '' });
       fetchExchanges();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.error?.message || 'Exchange failed', { variant: 'error' });
+      enqueueSnackbar(error.response?.data?.error?.message || t('exchangeFailed'), { variant: 'error' });
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this exchange record?')) return;
+    if (!window.confirm(t('confirmDelete'))) return;
     try {
       await apiClient.delete(`/currency/exchanges/${id}`);
-      enqueueSnackbar('Deleted', { variant: 'success' });
+      enqueueSnackbar(t('deleted'), { variant: 'success' });
       fetchExchanges();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.error?.message || 'Delete failed', { variant: 'error' });
+      enqueueSnackbar(error.response?.data?.error?.message || t('deleteFailed'), { variant: 'error' });
     }
   };
 
   const rateCardData = [
     { pair: 'USD → ؋', key: 'USD-AFN', color: theme.palette.success.main },
     { pair: 'PKR → ؋', key: 'PKR-AFN', color: theme.palette.primary.main },
-    { pair: '؋ → USD', key: 'AFN-USD', color: theme.palette.info.main },
+    { pair: 'AED → ؋', key: 'AED-AFN', color: theme.palette.warning.main },
   ];
 
   const columns = [
-    { id: 'fromCurrency', label: 'From', format: (v, row) => <Chip label={`${Number(row.fromAmount).toLocaleString()} ${v}`} size="small" variant="outlined" /> },
-    { id: 'toCurrency', label: 'To', format: (v, row) => <Chip label={`${Number(row.toAmount).toLocaleString()} ${v}`} size="small" color="primary" /> },
-    { id: 'exchangeRate', label: 'Rate', format: (v) => Number(v).toFixed(4) },
-    { id: 'date', label: 'Date', format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
-    { id: 'notes', label: 'Notes', format: (v) => v || '-', hiddenOnMobile: true },
+    { id: 'fromCurrency', label: t('columnFrom'), format: (v, row) => <Chip label={`${Number(row.fromAmount).toLocaleString()} ${v}`} size="small" variant="outlined" /> },
+    { id: 'toCurrency', label: t('columnTo'), format: (v, row) => <Chip label={`${Number(row.toAmount).toLocaleString()} ${v}`} size="small" color="primary" /> },
+    { id: 'exchangeRate', label: t('columnRate'), format: (v) => Number(v).toFixed(4) },
+    { id: 'date', label: t('columnDate'), format: (v) => v ? new Date(v).toLocaleDateString() : '-' },
+    { id: 'notes', label: t('columnNotes'), format: (v) => v || '-', hiddenOnMobile: true },
   ];
 
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
-          <Typography variant="h4" fontWeight={700}>Currency Exchange</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>Manage currency exchanges and track rates</Typography>
+          <Typography variant="h4" fontWeight={700}>{t('pageTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>{t('pageSubtitle')}</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Tooltip title="Manage Exchange Rates">
-            <Button variant="outlined" startIcon={<Settings />} onClick={() => setSettingsOpen(true)}>Settings</Button>
+          <Tooltip title={t('manageRates')}>
+            <Button variant="outlined" startIcon={<Settings />} onClick={() => setSettingsOpen(true)}>{t('settings')}</Button>
           </Tooltip>
-          <Button variant="contained" startIcon={<SwapHoriz />} onClick={() => setOpen(true)}>New Exchange</Button>
+          <Button variant="contained" startIcon={<SwapHoriz />} onClick={() => setOpen(true)}>{t('newExchange')}</Button>
         </Box>
       </Box>
 
@@ -184,8 +188,8 @@ export default function CurrencyPage() {
         data={exchanges}
         onDelete={handleDelete}
         loading={loading}
-        title="Exchange History"
-        emptyMessage="No exchange records found"
+        title={t('exchangeHistory')}
+        emptyMessage={t('noExchangeRecords')}
       />
 
       {/* New Exchange Dialog */}
@@ -194,23 +198,24 @@ export default function CurrencyPage() {
           <Box display="flex" alignItems="center" gap={1}>
             <CurrencyIcon color="primary" />
             <Box>
-              <Typography variant="h6" fontWeight={700}>New Currency Exchange</Typography>
-              <Typography variant="caption" color="text.secondary">Convert between currencies at current rates</Typography>
+              <Typography variant="h6" fontWeight={700}>{t('newExchangeTitle')}</Typography>
+              <Typography variant="caption" color="text.secondary">{t('newExchangeSubtitle')}</Typography>
             </Box>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ display: 'block', mt: 1, mb: 1.5, letterSpacing: '0.1em' }}>
-            💱 Exchange Details
+            {t('exchangeDetails')}
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={5}>
               <FormControl fullWidth>
-                <InputLabel>From Currency</InputLabel>
-                <Select value={formData.fromCurrency} label="From Currency" onChange={(e) => setFormData({ ...formData, fromCurrency: e.target.value })}>
+                <InputLabel>{t('fromCurrency')}</InputLabel>
+                <Select value={formData.fromCurrency} label={t('fromCurrency')} onChange={(e) => setFormData({ ...formData, fromCurrency: e.target.value })}>
                   <MenuItem value="USD">🇺🇸 USD</MenuItem>
                   <MenuItem value="AFN">🇦🇫 ؋</MenuItem>
                   <MenuItem value="PKR">🇵🇰 PKR</MenuItem>
+                  <MenuItem value="AED">🇦🇪 AED</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -220,25 +225,26 @@ export default function CurrencyPage() {
                 size="small"
                 onClick={handleSwapCurrencies}
                 sx={{ minWidth: '40px', height: '40px', p: 0.5 }}
-                title="Swap currencies"
+                title={t('swapCurrencies')}
               >
                 <SwapHoriz />
               </Button>
             </Grid>
             <Grid item xs={5}>
               <FormControl fullWidth>
-                <InputLabel>To Currency</InputLabel>
-                <Select value={formData.toCurrency} label="To Currency" onChange={(e) => setFormData({ ...formData, toCurrency: e.target.value })}>
+                <InputLabel>{t('toCurrency')}</InputLabel>
+                <Select value={formData.toCurrency} label={t('toCurrency')} onChange={(e) => setFormData({ ...formData, toCurrency: e.target.value })}>
                   <MenuItem value="USD">🇺🇸 USD</MenuItem>
                   <MenuItem value="AFN">🇦🇫 ؋</MenuItem>
                   <MenuItem value="PKR">🇵🇰 PKR</MenuItem>
+                  <MenuItem value="AED">🇦🇪 AED</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="Amount"
+                label={t('amount')}
                 type="number"
                 placeholder="0"
                 value={formData.fromAmount}
@@ -250,7 +256,7 @@ export default function CurrencyPage() {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="Exchange Rate"
+                label={t('exchangeRate')}
                 type="number"
                 placeholder="0.0000"
                 value={formData.exchangeRate}
@@ -262,7 +268,7 @@ export default function CurrencyPage() {
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }} />
               <Box sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.06), border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}` }}>
-                <Typography variant="body2" color="text.secondary">Converted Amount</Typography>
+                <Typography variant="body2" color="text.secondary">{t('convertedAmount')}</Typography>
                 <Typography variant="h5" fontWeight={700} color="primary.main">
                   {toAmount} {formData.toCurrency}
                 </Typography>
@@ -271,10 +277,10 @@ export default function CurrencyPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Notes"
+                label={t('notes')}
                 multiline
                 rows={2}
-                placeholder="Exchange notes..."
+                placeholder={t('notesPlaceholder')}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 InputProps={{ startAdornment: <InputAdornment position="start" sx={{ mt: -1 }}><Notes fontSize="small" color="action" /></InputAdornment> }}
@@ -283,8 +289,8 @@ export default function CurrencyPage() {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} startIcon={<SwapHoriz />}>Complete Exchange</Button>
+          <Button onClick={() => setOpen(false)}>{t('cancel')}</Button>
+          <Button variant="contained" onClick={handleSubmit} startIcon={<SwapHoriz />}>{t('completeExchange')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -294,17 +300,17 @@ export default function CurrencyPage() {
           <Box display="flex" alignItems="center" gap={1}>
             <Settings color="primary" />
             <Box>
-              <Typography variant="h6" fontWeight={700}>Exchange Rate Settings</Typography>
-              <Typography variant="caption" color="text.secondary">Update current exchange rates (1 unit = X ؋)</Typography>
+              <Typography variant="h6" fontWeight={700}>{t('rateSettingsTitle')}</Typography>
+              <Typography variant="caption" color="text.secondary">{t('rateSettingsSubtitle')}</Typography>
             </Box>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            💡 These rates are used throughout the system for vehicle purchases, sales, and all currency conversions.
+            {t('rateInfo')}
           </Typography>
           
-          {['USD', 'PKR'].map((currency) => {
+          {['USD', 'PKR', 'AED'].map((currency) => {
             const currentRate = currentRates.find(r => r.currency === currency);
             const isEditing = editingRate.currency === currency;
             
@@ -314,10 +320,10 @@ export default function CurrencyPage() {
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Typography variant="h6" fontWeight={600}>
-                        {currency === 'USD' ? '🇺🇸' : '🇵🇰'} {currency}
+                        {currency === 'USD' ? '🇺🇸' : currency === 'PKR' ? '🇵🇰' : '🇦🇪'} {currency}
                       </Typography>
                       <Chip 
-                        label={currentRate ? `1 ${currency} = ${Number(currentRate.rateToAFN).toFixed(4)} ؋` : 'Not set'} 
+                        label={currentRate ? t('rateValue', {currency: currentRate.currency, rate: Number(currentRate.rateToAFN).toFixed(4)}) : t('notSet')}
                         size="small" 
                         color={currentRate ? 'success' : 'default'}
                       />
@@ -333,7 +339,7 @@ export default function CurrencyPage() {
                     <Box>
                       <TextField
                         fullWidth
-                        label={`Rate (1 ${currency} = X ؋)`}
+                        label={t('editRateLabel', { currency })}
                         type="number"
                         placeholder="0.0000"
                         value={editingRate.rateToAFN}
@@ -346,15 +352,15 @@ export default function CurrencyPage() {
                         }}
                       />
                       <Box display="flex" gap={1}>
-                        <Button size="small" onClick={() => setEditingRate({ currency: '', rateToAFN: '' })}>Cancel</Button>
-                        <Button size="small" variant="contained" onClick={handleUpdateRate}>Update</Button>
+                        <Button size="small" onClick={() => setEditingRate({ currency: '', rateToAFN: '' })}>{t('cancel')}</Button>
+                        <Button size="small" variant="contained" onClick={handleUpdateRate}>{t('update')}</Button>
                       </Box>
                     </Box>
                   )}
                   
                   {currentRate && !isEditing && (
                     <Typography variant="caption" color="text.secondary">
-                      Last updated: {new Date(currentRate.effectiveDate).toLocaleString()}
+                      {t('lastUpdated', { date: new Date(currentRate.effectiveDate).toLocaleString() })}
                     </Typography>
                   )}
                 </CardContent>
@@ -363,15 +369,15 @@ export default function CurrencyPage() {
           })}
           
           <Box sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.06), border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}` }}>
-            <Typography variant="caption" color="warning.dark" display="block" fontWeight={600}>⚠️ Important</Typography>
+            <Typography variant="caption" color="warning.dark" display="block" fontWeight={600}>{t('important')}</Typography>
             <Typography variant="caption" color="text.secondary">
-              Updating rates affects NEW transactions only. Historical data remains unchanged to preserve accounting accuracy.
+              {t('importantNote')}
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => { setSettingsOpen(false); setEditingRate({ currency: '', rateToAFN: '' }); }}>Close</Button>
-          <Button variant="outlined" startIcon={<Refresh />} onClick={() => { fetchCurrentRates(); fetchRates(); }}>Refresh Rates</Button>
+          <Button onClick={() => { setSettingsOpen(false); setEditingRate({ currency: '', rateToAFN: '' }); }}>{t('close')}</Button>
+          <Button variant="outlined" startIcon={<Refresh />} onClick={() => { fetchCurrentRates(); fetchRates(); }}>{t('refreshRates')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

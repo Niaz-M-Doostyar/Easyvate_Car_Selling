@@ -47,6 +47,18 @@ import { formatCurrency } from '@/utils/currency';
 
 const fmtCurrency = (n) => formatCurrency(n);
 
+const toAFN = (amount, fromCurrency, rates) => {
+  if (!amount) return 0;
+  if (!fromCurrency || fromCurrency === 'AFN') return Number(amount);
+  const rate = rates[`${fromCurrency}-AFN`];
+  if (rate && rate !== 0) return Number(amount) * rate;
+  // fallback: try inverse
+  const invRate = rates[`AFN-${fromCurrency}`];
+  if (invRate && invRate !== 0) return Number(amount) / invRate;
+  // if no rate found, assume amount is already AFN (worst case)
+  return Number(amount);
+};
+
 const EMPTY_STATS = {
   totalVehicles: 0,
   totalCustomers: 0,
@@ -134,16 +146,34 @@ export default function DashboardPage() {
   const [vehiclesByStatus, setVehiclesByStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState({ fullName: 'User', role: 'Viewer' });
+  const [exchangeRates, setExchangeRates] = useState({});
 
   useEffect(() => {
+    const init = async () => {
+      // 1. Fetch rates first
+      let rates = {};
+      try {
+        const ratesRes = await apiClient.get('/currency/rates');
+        rates = ratesRes.data.data || {};
+      } catch (err) {
+        console.error('Failed to fetch rates', err);
+      }
+      setExchangeRates(rates);
+
+      // 2. Fetch data with rates
+      await fetchData(rates);
+      setLoading(false);
+    };
+
     try {
       const u = JSON.parse(localStorage.getItem('user') || '{}');
       if (u.fullName) setCurrentUser(u);
     } catch {}
-    fetchData();
+
+    init();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (rates = {}) => {
     try {
       const [vehicles, customers, sales, loans, balance, employees] = await Promise.allSettled([
         apiClient.get('/vehicles'),
@@ -174,7 +204,7 @@ export default function DashboardPage() {
         statusMap[st] = (statusMap[st] || 0) + 1;
       });
 
-      const totalRevenue = s.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
+      const totalIncome = bal.totalIncome || 0;
 
       const now = new Date();
       const thisMonth = s.filter((sale) => {
@@ -189,8 +219,16 @@ export default function DashboardPage() {
       const salesTrend = lastMonth.length > 0
         ? (((thisMonth.length - lastMonth.length) / lastMonth.length) * 100).toFixed(1)
         : thisMonth.length > 0 ? 100 : 0;
-      const revThisMonth = thisMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
-      const revLastMonth = lastMonth.reduce((sum, sale) => sum + parseFloat(sale.sellingPrice || 0), 0);
+      const revThisMonth = thisMonth.reduce((sum, sale) => {
+        const currency = sale.paymentCurrency || 'AFN';
+        return sum + toAFN(parseFloat(sale.sellingPrice) || 0, currency, rates);
+      }, 0);
+
+      const revLastMonth = lastMonth.reduce((sum, sale) => {
+        const currency = sale.paymentCurrency || 'AFN';
+        return sum + toAFN(parseFloat(sale.sellingPrice) || 0, currency, rates);
+      }, 0);
+      
       const revTrend = revLastMonth > 0
         ? (((revThisMonth - revLastMonth) / revLastMonth) * 100).toFixed(1)
         : revThisMonth > 0 ? 100 : 0;
@@ -199,7 +237,7 @@ export default function DashboardPage() {
         totalVehicles: v.length,
         totalCustomers: c.length,
         totalSales: s.length,
-        totalRevenue,
+        totalRevenue: totalIncome,
         totalOwnerWithdrawal: bal.totalOwnerWithdrawal ?? 0,
         totalCommission: bal.totalCommission ?? 0,
         totalEmployees: e.length,

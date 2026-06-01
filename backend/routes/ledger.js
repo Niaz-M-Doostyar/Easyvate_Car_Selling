@@ -153,10 +153,25 @@ router.get('/showroom/balance', async (req, res) => {
       where: { type: 'Vehicle Sale' }
     }) || 0;
 
+    // Showroom Balance (operational inflows)
+    const totalShowroomBalance = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Showroom Balance' }
+    }) || 0;
+
     // Expenses (operational outflows)
     const totalExpenses = await ShowroomLedger.sum('amountInPKR', {
       where: { type: 'Expense' }
     }) || 0;
+
+    // Expenses (operational outflows)
+    const totalPartnerProfit = await ShowroomLedger.sum('amountInPKR', {
+      where: { type: 'Partner Profit' }
+    }) || 0;
+
+    // Currency Exchange adjustments (outflow if negative, inflow if positive)
+    // const totalCurrencyExchange = await ShowroomLedger.sum('amountInPKR', {
+    //   where: { type: 'Currency Exchange', amountInPKR: { [Op.gt]: 0 } }
+    // }) || 0;
 
     // Vehicle purchases (outflow)
     const totalVehiclePurchases = await ShowroomLedger.sum('amountInPKR', {
@@ -177,9 +192,9 @@ router.get('/showroom/balance', async (req, res) => {
     const totalOutflows = totalExpenses + totalVehiclePurchases + totalOwnerWithdrawal;
 
     // Showroom balance = totalIncome + commission - outflows
-    const showroomBalance = totalIncome + totalCommission - totalOutflows;
+    const showroomBalance = totalShowroomBalance + totalIncome + totalCommission - totalOutflows;
 
-    const ownerProfit = totalIncome - totalVehiclePurchases - totalExpenses + totalCommission;
+    const ownerProfit = totalIncome + totalCommission - totalVehiclePurchases - totalExpenses - totalPartnerProfit;
 
     res.json({
       totalIncome,           // revenue from sales (selling prices)
