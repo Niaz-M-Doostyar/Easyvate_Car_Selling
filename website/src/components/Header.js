@@ -108,7 +108,7 @@ export default function Header() {
           <Link href="http://localhost:3000/admin/en/login" locale={false} className="primary-btn">{t('login')}</Link>
         </div>
         <div className="offcanvas__logo">
-          <Link href={`/${locale}`}><img src="/img/header-logo.png" alt="logo" /></Link>
+          <Link href={`/${locale}`}><img src="/img/NiazaiKhapalwak.jpeg" alt="logo" /></Link>
         </div>
         <div id="mobile-menu-wrap"></div>
         <ul className="offcanvas__widget__add">
@@ -160,7 +160,7 @@ export default function Header() {
           <div className="row">
             <div className="col-lg-3">
               <div className="header__logo">
-                <Link href={`/${locale}`}><img src="/img/header-logo.png" style={{height:'100px', width:'210px', objectFit: 'cover'}} alt="logo" /></Link>
+                <Link href={`/${locale}`}><img src="/img/NiazaiKhapalwak.jpeg" style={{height:'100px', width:'210px', objectFit: 'cover'}} alt="logo" /></Link>
               </div>
             </div>
             <div className="col-lg-9">

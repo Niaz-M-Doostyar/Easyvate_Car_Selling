@@ -56,7 +56,7 @@ export default function Footer() {
               <div className="footer__about">
                 <div className="footer__logo">
                   <img
-                    src="/img/Niazi1.png"
+                    src="/img/NiazaiKhapalwak.png"
                     alt="logo"
                   />
                 </div>
