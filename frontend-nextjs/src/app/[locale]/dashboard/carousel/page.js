@@ -15,6 +15,8 @@ import {
 import { useSnackbar } from 'notistack';
 import apiClient, { getUploadUrl } from '@/utils/api'; // adjust path to your api utility
 
+const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
+
 export default function CarouselPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [items, setItems] = useState([]);
@@ -24,7 +26,8 @@ export default function CarouselPage() {
   const [formData, setFormData] = useState({
     title: '',
     model: '',
-    price: ''
+    price: '',
+    currency: 'AFN'
   });
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -48,7 +51,7 @@ export default function CarouselPage() {
   };
 
   const resetForm = () => {
-    setFormData({ title: '', model: '', price: '' });
+    setFormData({ title: '', model: '', price: '', currency: 'AFN' });
     setSelectedImage(null);
     setImagePreview(null);
     setImageError('');
@@ -61,7 +64,8 @@ export default function CarouselPage() {
       setFormData({
         title: item.title,
         model: item.model,
-        price: item.price
+        price: item.price,
+        currency: item.currency || 'AFN'
       });
       if (item.image) setImagePreview(item.image); // existing image preview
     } else {
@@ -105,6 +109,7 @@ export default function CarouselPage() {
     submitData.append('title', formData.title);
     submitData.append('model', formData.model);
     submitData.append('price', formData.price);
+    submitData.append('currency', formData.currency);
     if (selectedImage) submitData.append('image', selectedImage);
 
     try {
@@ -176,7 +181,9 @@ export default function CarouselPage() {
                 <TableRow key={item.id}>
                   <TableCell>{item.title}</TableCell>
                   <TableCell>{item.model}</TableCell>
-                  <TableCell align="right">؋{parseFloat(item.price).toLocaleString()}</TableCell>
+                  <TableCell align="right">
+                    {CURRENCY_SYMBOLS[item.currency] || '؋'} {parseFloat(item.price).toLocaleString()}
+                  </TableCell>
                   <TableCell>
                     {item.image ? (
                       <img
@@ -255,6 +262,22 @@ export default function CarouselPage() {
                   startAdornment: <InputAdornment position="start"><AttachMoney fontSize="small" /></InputAdornment>
                 }}
               />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Currency</InputLabel>
+                <Select
+                  value={formData.currency}
+                  label="Currency"
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                >
+                  <MenuItem value="AFN">AFN</MenuItem>
+                  <MenuItem value="USD">USD</MenuItem>
+                  <MenuItem value="PKR">PKR</MenuItem>
+                  <MenuItem value="AED">AED</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
 
             {/* Image upload */}

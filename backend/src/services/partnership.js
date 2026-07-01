@@ -1,5 +1,5 @@
 const PARTNER_PROFIT_LEDGER_TYPE = 'Profit Share';
-const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', PARTNER_PROFIT_LEDGER_TYPE];
+const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', 'Commission', PARTNER_PROFIT_LEDGER_TYPE];
 
 const safeNum = (value) => {
   const parsed = Number.parseFloat(value);

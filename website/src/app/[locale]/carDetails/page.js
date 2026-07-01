@@ -304,7 +304,18 @@ export default function CarDetailsPage() {
                 </div>
                 <div className="car__details__sidebar__payment">
                   <ul>
-                    <li>{t('price_label') || 'Price'} <span>؋ {vehicle.sellingPrice?.toLocaleString() || '-'}</span></li>
+                    <li>{t('price_label') || 'Price'}
+                      <span className="car-option">
+                        {(() => {
+                          const symbols = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
+                          const cur = vehicle.baseCurrency || 'AFN';
+                          const price = vehicle.sellingPrice
+                            ? parseInt(vehicle.sellingPrice, 10).toLocaleString()
+                            : 'N/A';
+                          return `${symbols[cur] || '؋'} ${price}`;
+                        })()}
+                      </span>
+                    </li>
                   </ul>
                 </div>
                 <div>

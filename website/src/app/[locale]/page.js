@@ -14,6 +14,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
 
 const getImageUrl = (path) => {
   if (!path) return '/img/cars/car-1.jpg';
@@ -158,7 +159,10 @@ export default function HomePage() {
                         </div>
                         <div className="hero__text__price">
                           <div className="car-model">{t('model_label')}: {slide.model}</div>
-                          <h2>{t('price_label')}: ؋{slide.price}</h2>
+                          <h2>
+                            {t('price_label')}: {CURRENCY_SYMBOLS[slide.currency] || '؋'}
+                            {parseInt(slide.price, 10).toLocaleString()}
+                          </h2>
                         </div>
                       </div>
                     </div>
@@ -481,7 +485,9 @@ export default function HomePage() {
                           </ul>
                         </div>
                         <div className="car__item__price d-flex justify-content-between align-items-center">
-                          <span className="car-option">؋ {car.sellingPrice?.toLocaleString() || 'N/A'}</span>
+                          <span className="car-option">
+                            {CURRENCY_SYMBOLS[car.baseCurrency] || '؋'} {car.sellingPrice ? parseInt(car.sellingPrice, 10).toLocaleString() : 'N/A'}
+                          </span>
                           <Link href={`/${locale}/carDetails?id=${car.id}`} className="primary-btn">
                             <i className="fa fa-eye"></i>
                           </Link>
@@ -554,7 +560,9 @@ export default function HomePage() {
                 <div className="app-text" style={{ color: '#fff' }}>
                   <h4>{t('downloadAppStore')}</h4>
                   <p>{t('appStoreDesc')}</p>
-                  <a href="#"><img src="/img/cta/appStore.png" alt="App Store" style={{ width: '120px', marginTop: '10px' }} /></a>
+                  <a href="https://apps.apple.com/us/app/niazikhpalwak/id6761908264" target="_blank">
+                    <img src="/img/cta/appStore.png" alt="App Store" style={{ width: '120px', marginTop: '10px' }} />
+                  </a>
                 </div>
                 <div className="app-image"><img src="/img/cta/app.png" alt="App Screenshot" style={{ maxHeight: '150px', borderRadius: '10px' }} /></div>
               </div>

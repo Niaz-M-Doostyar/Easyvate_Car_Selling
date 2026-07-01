@@ -449,7 +449,16 @@ export default function CarPage() {
                               </ul>
                             </div>
                             <div className="car__item__price" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                              <span className="car-option">؋ {vehicle.sellingPrice?.toLocaleString() || 'N/A'}</span>
+                              <span className="car-option">
+                                {(() => {
+                                  const symbols = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
+                                  const cur = vehicle.baseCurrency || 'AFN';
+                                  const price = vehicle.sellingPrice
+                                    ? parseInt(vehicle.sellingPrice, 10).toLocaleString()
+                                    : 'N/A';
+                                  return `${symbols[cur] || '؋'} ${price}`;
+                                })()}
+                              </span>
                             </div>
                           </div>
                         </div>

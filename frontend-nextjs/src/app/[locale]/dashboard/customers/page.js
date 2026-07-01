@@ -26,16 +26,17 @@ const CUSTOMER_TYPES = [
   { value: 'Borrower', label: '📋 Borrower', color: 'warning' },
 ];
 
-const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', 'Profit Share'];
+const CREDIT_LEDGER_TYPES = ['Received', 'Installment', 'Loan Payment', 'Investment', 'Commission', 'Profit Share'];
 
 const LEDGER_TYPES = [
   { value: 'Received', label: '💵 Received (Credit)' },
   { value: 'Paid', label: '💸 Paid (Debit)' },
+  { value: 'Commission', label: '🏷️ Commission' },
   { value: 'Investment', label: '💰 Investment' },
   { value: 'Profit Share', label: '🤝 Partner Profit Share' },
-  { value: 'Loan', label: '📋 Loan' },
-  { value: 'Loan Payment', label: '💳 Loan Payment' },
-  { value: 'Installment', label: '📅 Installment Payment' },
+  // { value: 'Loan', label: '📋 Loan' },
+  // { value: 'Loan Payment', label: '💳 Loan Payment' },
+  // { value: 'Installment', label: '📅 Installment Payment' },
 ];
 
 const AFGHAN_PROVINCES = [

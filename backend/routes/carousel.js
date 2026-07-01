@@ -66,7 +66,7 @@ router.get('/:id', async (req, res) => {
 // POST create new carousel item (with optional image)
 router.post('/', upload.single('image'), async (req, res) => {
   try {
-    const { title, model, price, order } = req.body;
+    const { title, model, price, currency } = req.body;
     const imageFile = req.file ? await optimizeUploadedImage(req.file, { maxWidth: 1800, quality: 72 }) : null;
     const imagePath = imageFile ? `/uploads/carousel-images/${imageFile.filename}` : null;
 
@@ -74,6 +74,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       title,
       model,
       price,
+      currency: currency || 'AFN',
       image: imagePath
     });
 
@@ -89,19 +90,17 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     const item = await Carousel.findByPk(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
-    const { title, model, price, order } = req.body;
+    const { title, model, price, currency } = req.body;
 
-    // Prepare update data
     const updateData = {
       title: title || item.title,
       model: model || item.model,
-      price: price || item.price
+      price: price || item.price,
+      currency: currency || item.currency
     };
 
-    // If a new image was uploaded, replace the old one
     if (req.file) {
       const imageFile = await optimizeUploadedImage(req.file, { maxWidth: 1800, quality: 72 });
-      // Delete old image file if exists
       if (item.image) {
         const oldPath = path.join(__dirname, '..', item.image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);

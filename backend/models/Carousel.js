@@ -19,6 +19,11 @@ const Carousel = sequelize.define('Carousel', {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false
   },
+  currency: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: 'AFN'
+  },
   image: {
     type: DataTypes.STRING(255),
     allowNull: true,
