@@ -634,8 +634,8 @@ function buildFinancialReportHtml(reportData, fontB64) {
       position: relative;
     }
     .company { font-size: 22px; font-weight: 800; }
-    .report-title { font-size: 14px; color: #f6dba9; margin-top: 6px; }
-    .address { font-size: 9px; color: #94a3b8; margin-top: 8px; }
+    .report-title { font-size: 18px; font-weight: 800; color: #f6dba9; margin-top: 4px; }
+    .address { font-size: 14px; color: #94a3b8; margin-top: 6px; }
     .date-badge {
       position: absolute;
       ${t.direction === 'rtl' ? 'left: 20px;' : 'right: 20px;'}
@@ -643,7 +643,7 @@ function buildFinancialReportHtml(reportData, fontB64) {
       background: rgba(255,255,255,0.15);
       padding: 4px 10px;
       border-radius: 20px;
-      font-size: 9px;
+      font-size: 12px;
     }
     .summary-grid {
       display: grid;
@@ -659,12 +659,12 @@ function buildFinancialReportHtml(reportData, fontB64) {
       text-align: center;
     }
     .summary-icon { font-size: 28px; margin-bottom: 6px; }
-    .summary-label { font-size: 11px; color: var(--gray-text); text-transform: uppercase; margin-bottom: 6px; }
+    .summary-label { font-size: 16px; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; }
     .summary-value { font-size: 18px; font-weight: 800; color: var(--primary); }
-    .currency { font-size: 11px; font-weight: normal; color: var(--gray-text); }
+    .currency { font-size: 14px; font-weight: normal; color: var(--gray-text); }
     .sub-values {
-      font-size: 10px;
-      color: var(--gray-text);
+      font-size: 14px;
+      color: var(--primary);
       margin-top: 4px;
       display: flex;
       justify-content: center;
@@ -672,7 +672,7 @@ function buildFinancialReportHtml(reportData, fontB64) {
       flex-wrap: wrap;
     }
     .section-title {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 800;
       color: var(--primary);
       margin: 20px 0 12px 0;
@@ -690,7 +690,7 @@ function buildFinancialReportHtml(reportData, fontB64) {
       border: 1px solid var(--border);
       padding: 10px 12px;
       text-align: ${t.direction === 'rtl' ? 'right' : 'left'};
-      font-size: 11px;
+      font-size: 14px;
     }
     .balance-table th {
       background: #f1f5f9;
@@ -710,7 +710,7 @@ function buildFinancialReportHtml(reportData, fontB64) {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 14px;
     }
     .shared-name { font-weight: 700; }
     .shared-amounts {
@@ -722,7 +722,7 @@ function buildFinancialReportHtml(reportData, fontB64) {
     .footer {
       margin-top: 24px;
       text-align: center;
-      font-size: 8px;
+      font-size: 10px;
       color: var(--gray-text);
       border-top: 1px solid var(--border);
       padding-top: 12px;
@@ -848,7 +848,217 @@ async function generateFinancialReportPdf(reportData, outputDir) {
   }
 }
 
+// ================================================================
+//  Vehicle PDF (Pashto) – Puppeteer
+// ================================================================
+
+const VEHICLE_FIELDS_PS = [
+  { label: 'د موټر نمبر', key: 'vehicleId' },
+  { label: 'ډول', key: 'category' },
+  { label: 'جوړونکی', key: 'manufacturer' },
+  { label: 'ماډل', key: 'model' },
+  { label: 'کال', key: 'year' },
+  { label: 'رنګ', key: 'color' },
+  { label: 'چاسيس / VIN', key: 'chassisNumber' },
+  { label: 'د انجن شمیره', key: 'engineNumber' },
+  { label: 'د انجن ډول', key: 'engineType' },
+  { label: 'د تیلو ډول', key: 'fuelType' },
+  { label: 'ګیربکس', key: 'transmission' },
+  { label: 'مسافه (km)', key: 'mileage' },
+  { label: 'پلیټ شمیره', key: 'plateNo' },
+  { label: 'د موټر جواز', key: 'vehicleLicense' },
+  { label: 'سټیرینګ', key: 'steering' },
+  { label: 'قطعه / برشي', key: 'monolithicCut' },
+  { label: 'حالت', key: 'status' },
+];
+
+function buildVehicleHtml(vehicle, fontB64) {
+  const rows = VEHICLE_FIELDS_PS.map(field => {
+    const value = vehicle[field.key] != null ? String(vehicle[field.key]) : '—';
+    return `<tr><td>${field.label}</td><td>${safeText(value)}</td></tr>`;
+  }).join('');
+
+  // Format selling price as integer with currency symbol
+  const currency = vehicle.baseCurrency || 'AFN';
+  const symbols = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
+  const symbol = symbols[currency] || '؋';
+  const priceInt = vehicle.sellingPrice
+    ? parseInt(vehicle.sellingPrice, 10).toLocaleString()
+    : '—';
+
+  // Add price row
+  const priceRow = `<tr><td>د پلور قیمت</td><td>${symbol} ${priceInt}</td></tr>`;
+
+  return `<!doctype html>
+<html lang="ps" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>د موټر معلومات</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --gold: #c8963e;
+      --gray-text: #5b6474;
+      --border: #e2e8f0;
+      --panel: #f8fafc;
+      --shadow: 0 10px 30px rgba(15,23,42,0.08);
+    }
+    @page { size: A4; margin: 0mm; }
+    @font-face {
+      font-family: 'BahijNazaninLocal';
+      src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #f1f5f9; }
+    body {
+      font-family: 'BahijNazaninLocal', 'Noto Naskh Arabic', serif;
+      direction: rtl;
+      unicode-bidi: embed;
+      padding: 8mm;
+      background: #f1f5f9;
+    }
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 8mm 9mm;
+    }
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+      position: relative;
+    }
+    .company { font-size: 22px; font-weight: 800; }
+    .report-title { font-size: 18px; color: #f6dba9; margin-top: 4px; }
+    .address { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .specs-table th, .specs-table td {
+      border: 1px solid var(--border);
+      padding: 5px 6px;
+      text-align: right;
+      font-size: 20px;
+    }
+    .specs-table th {
+      background: #f1f5f9;
+      font-weight: 800;
+    }
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray-text);
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="company">نیازي خپلواک موټر پلورنځي</div>
+      <div class="report-title">د موټر معلومات</div>
+      <div class="address">کندهار، سپین بولدک عمومی سړک، ګمرک ته مخامخ | تلیفون: ۰۷۰۰۰۰۸۹۸۳</div>
+    </div>
+    <table class="specs-table">
+      <thead>
+        <tr><th>توضیح</th><th>مقدار</th></tr>
+      </thead>
+      <tbody>
+        ${rows}
+        ${priceRow}
+      </tbody>
+    </table>
+    <div class="footer">
+      دا سند د شوروم د مالیاتو د ثبت اتوماتیک سیسټم لخوا چاپ شوی دی.
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+async function generateVehiclePdf(vehicle, outputDir) {
+  ensureDir(outputDir);
+  const fileName = `vehicle_${vehicle.vehicleId || Date.now()}.pdf`;
+  const filePath = path.join(outputDir, fileName);
+
+  const fontsDir = path.join(__dirname, '..', '..', 'fonts');
+  const bahijPath = path.join(fontsDir, 'BahijNazanin.ttf');
+  if (!fs.existsSync(bahijPath)) {
+    throw new Error('BahijNazanin.ttf not found in backend/fonts');
+  }
+  const fontB64 = fs.readFileSync(bahijPath).toString('base64');
+
+  const html = buildVehicleHtml(vehicle, fontB64);
+
+  let browser = null;
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+  try {
+    browser = await puppeteer.launch({ headless: 'new', args: launchArgs });
+  } catch (err) {
+    const chrome = await findChromeExecutable();
+    if (!chrome) throw err;
+    browser = await puppeteer.launch({ headless: 'new', executablePath: chrome, args: launchArgs });
+  }
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    await page.emulateMediaType('screen');
+    await new Promise(r => setTimeout(r, 200));
+
+    // Scale to fit A4 if needed
+    const contentSize = await page.evaluate(() => {
+      const el = document.querySelector('.page') || document.body;
+      const rect = el.getBoundingClientRect();
+      return { width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+    });
+    const mmToPx = (mm) => (mm * 96) / 25.4;
+    const a4WidthPx = Math.round(mmToPx(210));
+    const a4HeightPx = Math.round(mmToPx(297));
+    const scaleX = a4WidthPx / Math.max(contentSize.width, 1);
+    const scaleY = a4HeightPx / Math.max(contentSize.height, 1);
+    const scale = Math.min(scaleX, scaleY, 1);
+    if (scale < 1) {
+      await page.$eval('.page', (el, s) => {
+        el.style.transformOrigin = 'top left';
+        el.style.transform = `scale(${s})`;
+      }, scale);
+      await new Promise(r => setTimeout(r, 80));
+    }
+
+    await page.pdf({
+      path: filePath,
+      printBackground: true,
+      width: '210mm',
+      height: '297mm',
+      margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' },
+    });
+    await browser.close();
+    return { filePath, fileName };
+  } catch (err) {
+    if (browser) await browser.close().catch(() => {});
+    throw err;
+  }
+}
+
 module.exports = {
   generateSaleInvoicePdf,
   generateFinancialReportPdf,
+  generateVehiclePdf,
 };

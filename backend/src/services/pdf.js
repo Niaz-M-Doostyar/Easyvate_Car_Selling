@@ -824,77 +824,10 @@ var generateFinancialReportPdf = function(reportData, outputDir) {
 // ================================================================
 //  Vehicle PDF
 // ================================================================
-var generateVehiclePdf = function(vehicle, outputDir) {
-  ensureDir(outputDir);
-  var fileName = 'vehicle_' + vehicle.vehicleId + '.pdf';
-  var filePath = path.join(outputDir, fileName);
-
-  return new Promise(function(resolve, reject) {
-    var doc = new PDFDocument({ size: 'A4', margins: { top: 24, bottom: 0, left: 24, right: 24 } });
-    var stream = fs.createWriteStream(filePath);
-    doc.pipe(stream);
-
-    doc.rect(0, 0, PAGE_W, 58).fill(COLORS.headerBg);
-    doc.rect(0, 58, PAGE_W, 2).fill(COLORS.gold);
-    drawCarSilhouette(doc, PAGE_W / 2 - 45, 6, 90, 34, COLORS.gold);
-    doc.font('Helvetica-Bold').fontSize(15).fillColor('#fff')
-      .text('Vehicle Information Card', 24, 36, { width: PAGE_W - 48, align: 'center', lineBreak: false });
-
-    var rows = [
-      [VEHICLE_PDF_LABELS.vehicleId, vehicle.vehicleId],
-      [VEHICLE_PDF_LABELS.category, vehicle.category],
-      [VEHICLE_PDF_LABELS.manufacturer, vehicle.manufacturer],
-      [VEHICLE_PDF_LABELS.model, vehicle.model],
-      [VEHICLE_PDF_LABELS.year, vehicle.year],
-      [VEHICLE_PDF_LABELS.color, vehicle.color],
-      [VEHICLE_PDF_LABELS.chassis, vehicle.chassisNumber],
-      [VEHICLE_PDF_LABELS.engineNumber, vehicle.engineNumber],
-      [VEHICLE_PDF_LABELS.engineType, vehicle.engineType],
-      [VEHICLE_PDF_LABELS.fuelType, vehicle.fuelType],
-      [VEHICLE_PDF_LABELS.transmission, vehicle.transmission],
-      [VEHICLE_PDF_LABELS.mileage, vehicle.mileage != null ? `${vehicle.mileage}` : '—'],
-      [VEHICLE_PDF_LABELS.plateNo, vehicle.plateNo],
-      [VEHICLE_PDF_LABELS.vehicleLicense, vehicle.vehicleLicense],
-      [VEHICLE_PDF_LABELS.steering, vehicle.steering],
-      [VEHICLE_PDF_LABELS.monolithicCut, vehicle.monolithicCut],
-      [VEHICLE_PDF_LABELS.status, vehicle.status],
-      [VEHICLE_PDF_LABELS.sellingPrice, vehicle.sellingPrice],
-    ];
-
-    var columnGap = 12;
-    var columnWidth = (PAGE_W - 48 - columnGap) / 2;
-    var columnStartY = 82;
-    var rowHeight = 18;
-    var labelWidth = 86;
-    var leftColumnCount = Math.ceil(rows.length / 2);
-    var columns = [rows.slice(0, leftColumnCount), rows.slice(leftColumnCount)];
-
-    for (var columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-      var columnRows = columns[columnIndex];
-      var x = 24 + columnIndex * (columnWidth + columnGap);
-      var y = columnStartY;
-
-      for (var ri = 0; ri < columnRows.length; ri++) {
-        var row = columnRows[ri];
-        var rowBackground = ri % 2 === 0 ? COLORS.lightGray : '#fff';
-        doc.roundedRect(x, y, columnWidth, rowHeight, 2).fill(rowBackground).stroke('#d7deea');
-        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORS.grayText)
-          .text(row[0], x + 8, y + 5, { width: labelWidth, lineBreak: false });
-        doc.font('Helvetica').fontSize(8.5).fillColor(COLORS.darkText)
-          .text(String(row[1] != null && row[1] !== '' ? row[1] : '—'), x + labelWidth + 14, y + 5, { width: columnWidth - labelWidth - 22, lineBreak: false });
-        y += rowHeight + 4;
-      }
-    }
-
-    doc.rect(0, PAGE_H - 28, PAGE_W, 28).fill(COLORS.headerBg);
-    doc.font('Helvetica').fontSize(7).fillColor('#aaa')
-      .text('Niazi Khpalwak Motor Puranchi - Vehicle Record', 24, PAGE_H - 18, { width: PAGE_W - 48, align: 'center', lineBreak: false });
-
-    doc.end();
-    stream.on('finish', function() { resolve({ filePath: filePath, fileName: fileName }); });
-    stream.on('error', reject);
-  });
-};
+async function generateVehiclePdf(vehicle, outputDir) {
+  const puppeteerGen = require('./pdf_puppeteer');
+  return puppeteerGen.generateVehiclePdf(vehicle, outputDir);
+}
 
 // Try to require the Puppeteer-based HTML->PDF generator at load time, but do
 // not replace the pdfkit dispatcher outright. Instead keep a reference to the
