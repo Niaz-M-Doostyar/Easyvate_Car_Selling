@@ -7,40 +7,52 @@ function ensureDir(dir) {
 }
 
 function safeText(v) {
-  return v === undefined || v === null || v === '' ? '—' : String(v);
+  return v === undefined || v === null || v === '' ? '' : String(v);
 }
 
 function toPashtoNumber(n) {
-  try { return new Intl.NumberFormat('fa-AF').format(Number(n)); } catch (e) { return String(n || '—'); }
+  try { return new Intl.NumberFormat('fa-AF').format(Number(n)); } catch (e) { return String(n || ''); }
 }
 
 function toPashtoDate(d) {
-  try { return d ? new Date(d).toLocaleDateString('fa-AF') : '—'; } catch (e) { return d || '—'; }
+  try { return d ? new Date(d).toLocaleDateString('fa-AF') : ''; } catch (e) { return d || ''; }
 }
 
-function buildHtmlForSale(sale, vehicle, customer, fontB64) {
-  const toPashtoNumber = (n) => {
-    try { return new Intl.NumberFormat('fa-AF').format(Number(n)); } catch (e) { return String(n || '—'); }
-  };
-  const toPashtoDate = (d) => { try { return d ? new Date(d).toLocaleDateString('fa-AF') : '—'; } catch (e) { return d || '—'; } };
-
-  // Basic fields
-  const paymentCurrency = safeText(sale.paymentCurrency || 'AFN');
-  const price = sale.sellingPrice ? paymentCurrency + ' ' + toPashtoNumber(sale.sellingPrice) : '—';
-  const downPayment = sale.downPayment ? paymentCurrency + ' ' + toPashtoNumber(sale.downPayment) : null;
-  const remaining = sale.remainingAmount ? paymentCurrency + ' ' + toPashtoNumber(sale.remainingAmount) : null;
-  const priceDiff = sale.priceDifference ? paymentCurrency + ' ' + toPashtoNumber(sale.priceDifference) : null;
-  const priceDiffBy = sale.priceDifferencePaidBy ? safeText(sale.priceDifferencePaidBy) : null;
+function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rightImgB64 = '') {
+  const paymentCurrency = safeText(sale.paymentCurrency || 'افغانۍ');
+  const price = sale.sellingPrice ? toPashtoNumber(sale.sellingPrice) : '';
+  const downPayment = sale.downPayment ? toPashtoNumber(sale.downPayment) : '';
+  const remaining = sale.remainingAmount ? toPashtoNumber(sale.remainingAmount) : '';
+  const priceDiff = sale.priceDifference ? toPashtoNumber(sale.priceDifference) : '';
+  const priceDiffBy = sale.priceDifferencePaidBy ? safeText(sale.priceDifferencePaidBy) : '';
+  const trafficDate = sale.trafficTransferDate ? toPashtoDate(sale.trafficTransferDate) : '';
   const date = toPashtoDate(sale.saleDate);
-  const trafficDate = sale.trafficTransferDate ? toPashtoDate(sale.trafficTransferDate) : null;
+  const typeKey = sale.saleType || 'Container One Key';
 
-  // Document metadata
-  const serialNumber = safeText(sale.serialNumber || sale.saleSerial || sale.systemGeneratedNo);
-  const officeNumber = safeText(sale.officeNumber || sale.officeNo || sale.registerNumber);
+   // Exchange car price calculation
+  let exchangeCarPriceNum = null;
+  let exchangeCarPriceFormatted = '';
+  const priceDiffNum = Number(sale.priceDifference) || 0;
+
+  if (typeKey === 'Exchange Car' && sale.sellingPrice && sale.priceDifference) {
+    if (sale.priceDifferencePaidBy === 'Seller') {
+      exchangeCarPriceNum = Number(sale.sellingPrice) + priceDiffNum;
+    } else {
+      // Buyer pays the difference (default)
+      exchangeCarPriceNum = Number(sale.sellingPrice) - priceDiffNum;
+    }
+    exchangeCarPriceFormatted = toPashtoNumber(exchangeCarPriceNum);
+  }
+
+  let serialNumber = safeText(
+    sale.serialNumber ||
+    sale.saleSerial ||
+    sale.systemGeneratedNo ||
+    (sale.saleId ? `S-${sale.saleId}` : `S-${Date.now()}`)
+  );
   const bookVolume = safeText(sale.bookVolume || sale.volume || sale.jild);
   const pageNumber = safeText(sale.pageNumber || sale.page || sale.safha);
 
-  // Buyer and seller full details
   const buyer = {
     name: safeText(sale.buyerName || (customer && customer.fullName)),
     father: safeText(sale.buyerFatherName || (customer && customer.fatherName)),
@@ -51,272 +63,431 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
     id: safeText(sale.buyerIdNumber || (customer && customer.nationalIdNumber)),
     phone: safeText(sale.buyerPhone || (customer && customer.phoneNumber)),
   };
+  
   const seller = {
-    name: safeText(sale.sellerName), father: safeText(sale.sellerFatherName), province: safeText(sale.sellerProvince), district: safeText(sale.sellerDistrict), village: safeText(sale.sellerVillage), address: safeText(sale.sellerAddress), id: safeText(sale.sellerIdNumber), phone: safeText(sale.sellerPhone)
+    name: safeText(sale.sellerName),
+    father: safeText(sale.sellerFatherName),
+    province: safeText(sale.sellerProvince),
+    district: safeText(sale.sellerDistrict),
+    village: safeText(sale.sellerVillage),
+    address: safeText(sale.sellerAddress),
+    id: safeText(sale.sellerIdNumber),
+    phone: safeText(sale.sellerPhone)
   };
 
-  // Vehicle fields
   const veh = {
-    manufacturer: safeText(vehicle && vehicle.manufacturer), model: safeText(vehicle && vehicle.model), year: safeText(vehicle && vehicle.year), category: safeText(vehicle && vehicle.category), color: safeText(vehicle && vehicle.color), chassis: safeText(vehicle && vehicle.chassisNumber), engine: safeText(vehicle && vehicle.engineNumber), fuelType: safeText(vehicle && vehicle.fuelType), transmission: safeText(vehicle && vehicle.transmission), plate: safeText(vehicle && vehicle.plateNo), steering: safeText(vehicle && vehicle.steering), monolithic: safeText(vehicle && vehicle.monolithicCut), mileage: vehicle && vehicle.mileage ? toPashtoNumber(vehicle.mileage) + ' km' : '—', vehicleId: safeText(vehicle && vehicle.vehicleId), license: safeText(vehicle && vehicle.vehicleLicense)
+    manufacturer: safeText(vehicle && vehicle.manufacturer),
+    model: safeText(vehicle && vehicle.model),
+    year: safeText(vehicle && vehicle.year),
+    category: safeText(vehicle && vehicle.category),
+    color: safeText(vehicle && vehicle.color),
+    chassis: safeText(vehicle && vehicle.chassisNumber),
+    engine: safeText(vehicle && vehicle.engineNumber),
+    fuelType: safeText(vehicle && vehicle.fuelType),
+    transmission: safeText(vehicle && vehicle.transmission),
+    plate: safeText(vehicle && vehicle.plateNo),
+    steering: safeText(vehicle && vehicle.steering),
+    monolithic: safeText(vehicle && vehicle.monolithicCut),
+    mileage: vehicle && vehicle.mileage ? toPashtoNumber(vehicle.mileage) : '',
+    vehicleId: safeText(vehicle && vehicle.vehicleId),
+    license: safeText(vehicle && vehicle.vehicleLicense)
   };
 
-  // Exchange vehicle (if any)
   const exch = {
-    manufacturer: safeText(sale.exchVehicleManufacturer), model: safeText(sale.exchVehicleModel), year: safeText(sale.exchVehicleYear), category: safeText(sale.exchVehicleCategory), color: safeText(sale.exchVehicleColor), chassis: safeText(sale.exchVehicleChassis), engine: safeText(sale.exchVehicleEngine), engineType: safeText(sale.exchVehicleEngineType), fuelType: safeText(sale.exchVehicleFuelType), transmission: safeText(sale.exchVehicleTransmission), plate: safeText(sale.exchVehiclePlateNo), steering: safeText(sale.exchVehicleSteering), monolithic: safeText(sale.exchVehicleMonolithicCut), mileage: safeText(sale.exchVehicleMileage), license: safeText(sale.exchVehicleLicense)
+    manufacturer: safeText(sale.exchVehicleManufacturer),
+    model: safeText(sale.exchVehicleModel),
+    year: safeText(sale.exchVehicleYear),
+    category: safeText(sale.exchVehicleCategory),
+    color: safeText(sale.exchVehicleColor),
+    chassis: safeText(sale.exchVehicleChassis),
+    engine: safeText(sale.exchVehicleEngine),
+    fuelType: safeText(sale.exchVehicleFuelType),
+    plate: safeText(sale.exchVehiclePlateNo),
+    steering: safeText(sale.exchVehicleSteering),
+    monolithic: safeText(sale.exchVehicleMonolithicCut),
+    mileage: safeText(sale.exchVehicleMileage),
+    license: safeText(sale.exchVehicleLicense)
   };
 
-  const typeKey = sale.saleType || 'Container One Key';
-  const types = {
-    'Exchange Car': { label: 'د تبادلې بل', color: '#1565c0', accent: '#e3f2fd' },
-    'Container One Key': { label: 'کانټینري یوه کیلي بل', color: '#e65100', accent: '#fff3e0' },
-    'Licensed Car': { label: 'اسناد دار هفتر مکمل بل', color: '#2e7d32', accent: '#e8f5e9' }
-  };
-  const billLabel = types[typeKey] ? types[typeKey].label : (sale.saleType || 'بل');
-  const accentBg = types[typeKey] ? types[typeKey].accent : '#f5f5f5';
-  const accentColor = types[typeKey] ? types[typeKey].color : '#1565c0';
+  // Setup Titles based on bill type
+  let topSubtitle = 'نثاراحمد خپلواک 0700008982 - 0700008983';
+  if (typeKey === 'Container One Key') topSubtitle = 'کانټینري یوه کیلي موټر بيل<br/>د دفتر شمیره: 0700008982 - 0700000213';
+  if (typeKey === 'Licensed Car') topSubtitle = 'اسناد لرونکې موټر بيل<br/>د دفتر شمیره: 0700008982 - 0700000213';
+  if (typeKey === 'Exchange Car') topSubtitle = 'ماچه موټر بيل<br/>نثاراحمد خپلواک 0700008982 - 0700008983';
 
-  // Calculate exchange car price (selling price - price difference)
-  let exchangeCarPrice = null;
-  if (typeKey === 'Exchange Car' && sale.sellingPrice && sale.priceDifference) {
-    exchangeCarPrice = Number(sale.sellingPrice) - Number(sale.priceDifference);
+  let customTermsHtml = '';
+  
+  if (typeKey === 'Exchange Car') {
+    customTermsHtml = `
+      <div class="terms-text">
+        شرعي اقرار کوم چې دوي عراده موټران سره متبادله په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
+      </div>
+      <ol class="terms-list">
+        <li>د موټر تیر ترافیکي پیښې مسؤلیت د غلا ضمانت او پور له دغه تاریخ سه  ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په متبادله کوونکي اړه لري.</li>
+        <li>د متبادله کوونکي په رضایت سودا صورت ونیو.</li>
+        <li>موټران بعد له ټرایي څخه یو او بل ته فعال سره تسلیم سوه.</li>
+        <li>باید طرفین یو د بله ضمانت سره واخلي ځکه پلورنځی د دوی په پیژندګلوی په هکله مسؤلیت نه لري. د موټر پلورنځي دفتر د هیچا ضمانت نه کوي.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم ۲ فیصده اخیستل کیږي د معاملی د فسخی په صورت کی کمیشن نه مسترد کیږي.</li>
+        <li>د بیت المال د موټرانو د خرید او فروش څخه جداً معذرت غواړو.</li>
+      </ol>
+    `;
+  } else if (typeKey === 'Container One Key') {
+    customTermsHtml = `
+      <div class="terms-text">
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+      </div>
+      <ol class="terms-list">
+        <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته بې مسؤلیت د رانیوونکي په غاړه دي.</li>
+        <li>ذکر شوي موټر کوم قانوني اسناد نه لري فقط یوه کیلي ده.</li>
+        <li>موټر چې مکمل چیک او ټرایي سو تر خط لیکلو وروسته رانیوونکی د شکایت حق نه لري.</li>
+        <li>د ذکر سوي موټر د غلا مسؤلیت په خرڅوونکي پورې اړه لري.</li>
+        <li>رانیوونکي او خرڅوونکي دي یو د بله ضمانت سره واخلي ځکه پلورنځی د هیڅا ضمانت حق نه لري.</li>
+        <li>پلورنځي فقط د شاهد په حیث خط ورته لیکي.</li>
+        <li>د پښیمانۍ په صورت کې د شورم کمیشن نه مسترد کیږي.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چې یو فیصد د رانیوونکي څخه او یو فیصد د خرڅوونکي څخه اخیستل کیږي.</li>
+      </ol>
+    `;
+  } else {
+    // Licensed Car
+    customTermsHtml = `
+      <div class="terms-text">
+        شرعي اقرار کوم چې ذکر سوی موټر بیه ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+      </div>
+      <ol class="terms-list">
+        <li>د موټر د اسنادو او قبالې په نوم کولو مصارف په رانیونکي پورې اړه لري.</li>
+        <li>د موټر نمبر ترافیکي مسؤلیت د غلا ضمانت او پور تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په خرڅوونکي پورې اړه لري تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته په رانیونکي پورې اړه لري.</li>
+        <li>رانیوونکي موټر ټول فعال ټرایي کړي او اسنادو ورته تسلیم سول جانیبینو قناعت کړيدي چې بعداً دعوا یې د اعتبار وړ نده.</li>
+        <li>باید طرفین یو د بله ضمانت واخلي ځکه پلورنځی د دوی د پیژندګلوی په هکله هیڅ مسؤلیت نه لري.</li>
+        <li>د موټر پلورنځي سند درې نقله لیکل کیږي چې یو نقل یې خرڅوونکي ته بل یې رانیوونکي ته ورکول کیږي او یو نقل یې په دفتر کې قیدیږي.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چې یو فیصد یې د رانیونکي څخه او یو فیصد یې د خرڅوونکي څخه اخیستل کیږي. د پښیمانۍ په صورت کې د شورم کمیشن نه مسترد کیږي.</li>
+        <li>خرید او فروش د بیت المال د موټرانو څخه معذرت غواړو.</li>
+      </ol>
+    `;
   }
 
-  const buildTermsSection = ({ title, summary, intro, items }) => `
-    <div class="terms-card">
-      <div class="section-title">شرطونه او تعهدات</div>
-      <div class="terms-heading">${title}</div>
-      <div class="terms-summary">${summary}</div>
-      <p class="terms-intro">${intro}</p>
-      <ol class="terms-list">
-        ${items.map((item) => `<li>${item}</li>`).join('')}
-      </ol>
-      <div class="terms-note">نوټ: ${safeText(sale.notes)}</div>
-    </div>
-  `;
+  // Generate the specific table layout based on sale type
+  let tableHtml = '';
+  let priceSectionHtml = '';
+  
+  if (typeKey === 'Exchange Car') {
+    tableHtml = `
+      <table class="data-table exchange-table">
+        <thead>
+          <tr>
+            <th colspan="2">د متبادله کوونکي شهرت</th>
+            <th colspan="2">د موټر شهرت</th>
+            <th colspan="2">د متبادله کوونکي شهرت</th>
+            <th colspan="2">د موټر شهرت</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.manufacturer} ${veh.category}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td><td class="lbl">نوع</td><td class="val">${exch.manufacturer} ${exch.category}</td></tr>
+          <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td><td class="lbl">رنګ</td><td class="val">${exch.color}</td></tr>
+          <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td><td class="lbl">ماډل</td><td class="val">${exch.model}</td></tr>
+          <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td><td class="lbl">انجن</td><td class="val">${exch.engine}</td></tr>
+          <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">کاټ یا روغ</td><td class="val">${veh.monolithic}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td><td class="lbl">کاټ یا روغ</td><td class="val">${exch.monolithic}</td></tr>
+          <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${exch.fuelType}</td></tr>
+          <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td><td class="lbl">شاسي</td><td class="val">${exch.chassis}</td></tr>
+          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">سند</td><td class="val">${veh.license}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td><td class="lbl">سند</td><td class="val">${exch.license}</td></tr>
+        </tbody>
+      </table>
+    `;
+    // Add price section for exchange car
+    priceSectionHtml = `
+      <div class="price-section">
+        <div class="price-items">
+          <span class="price-item"><span class="price-label">د پلورل شوي موټر قیمت:</span> <span class="price-value">${price} ${paymentCurrency}</span></span>
+          <span class="price-item"><span class="price-label">د تبادلې موټر قیمت:</span> <span class="price-value">${exchangeCarPriceFormatted} ${paymentCurrency}</span></span>
+          <span class="price-item"><span class="price-label">د قیمت توپیر:</span> <span class="price-value">${priceDiff} ${paymentCurrency}</span></span>
+          <span class="price-item"><span class="price-label">د توپیر ادا کوونکی:</span> <span class="price-value">${priceDiffBy}</span></span>
+        </div>
+      </div>
+    `;
+  } else if (typeKey === 'Container One Key') {
+    // Container One Key – no plate number
+    tableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th colspan="2">د خرڅوونکي شهرت</th>
+            <th colspan="2">د موټر مشخصات</th>
+            <th colspan="2">د رانیوونکي شهرت</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.category}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
+          <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
+          <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
+          <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
+          <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td></tr>
+          <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td></tr>
+          <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">کټ یا روغ</td><td class="val">${veh.monolithic}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td></tr>
+          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl"></td><td class="val"></td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
+        </tbody>
+      </table>
+    `;
+  } else {
+    // Licensed Car – with plate number
+    tableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th colspan="2">د خرڅوونکي شهرت</th>
+            <th colspan="2">د موټر مشخصات</th>
+            <th colspan="2">د رانیوونکي شهرت</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">جوازسیر شمیره</td><td class="val">${veh.license}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
+          <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
+          <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
+          <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
+          <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td></tr>
+          <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td></tr>
+          <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">د پلیټ شمیره</td><td class="val">${veh.plate}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td></tr>
+          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">کټ یا روغ</td><td class="val">${veh.monolithic}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
+        </tbody>
+      </table>
+    `;
+  }
 
-  // Custom Pashto terms/clauses per bill type
-  const customTermsHtml = (() => {
-    if (typeKey === 'Exchange Car') {
-      return buildTermsSection({
-        title: 'د ماچه موټرانو بیل',
-        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر، سند، قیمت',
-        intro: 'شرعی اقرار کوم چی دوي عراده موثران سره متبدله به طور سره ................................. نمایی افغانی ...................... و(            ) ته ورکړي.',
-        items: [
-          'موتر تیر ترافيکي پيښي مسؤليت د غلا ضمانت او پور له دغه تاریخ (    /     /      ) په متبادله کوونکی اړه لري.',
-          'د متبادله کوونکي په رضایت سودا صورت ونیو.',
-          'موتران بعد له ترائي څخه يو او بل ته فعال سره تسلیم شوه.',
-          'باید طرفین یو د بله ضمانت سره واخلي ځکه پلورنځې د دوی په پیژند گلوی په هکله مسؤليت نه لري. د موټر پلورنځی دفتر د هیچا ضمانت نه کوی.',
-          'د رهنما کمیشن د تجارت د قانون سره سم ۲ فیصده اخیستل کیږی د معاملی د فسخی په صورت کی کمیشن نه مسترد کيږي.',
-          'د بیت المال د موترانو د خرید او فروش څخه جداً معذرت غوارو.',
-        ],
-      });
-    }
+  // Add financial info for container/one key and licensed car
+  if (typeKey !== 'Exchange Car') {
+    priceSectionHtml = `
+      <div class="price-section">
+        <div class="price-items">
+          <span class="price-item"><span class="price-label">د پلور قیمت:</span> <span class="price-value">${price} ${paymentCurrency}</span></span>
+          ${downPayment ? `<span class="price-item"><span class="price-label">پیش پیسه:</span> <span class="price-value">${downPayment} ${paymentCurrency}</span></span>` : ''}
+          ${remaining ? `<span class="price-item"><span class="price-label">پاتې:</span> <span class="price-value">${remaining} ${paymentCurrency}</span></span>` : ''}
+          ${trafficDate ? `<span class="price-item"><span class="price-label">د ټرافیک د لیږد نیټه:</span> <span class="price-value">${trafficDate}</span></span>` : ''}
+        </div>
+      </div>
+    `;
+  }
 
-    if (typeKey === 'Container One Key') {
-      return buildTermsSection({
-        title: 'د کانټینري موټرانو بیل',
-        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر',
-        intro: 'شرعی اقرار کوم چې ذکر سوي موټر قیمت ................................. افغاني چې نیمايې يې ...................... افغانی کیږي په لاندي شرايطو خرڅ کړه:',
-        items: [
-          'د ذكر سوي موټر د ترافیکی پیښي مسؤلیت تر دغه نبتي (    /     /      ) پوری د خرڅوونکي په غاړه دي تر دغه نیتی (    /     /    ) وروسته بي مسولیت درانیوونکي په غاړه دي.',
-          'ذکر شوي موټر كوم قانوني اسناد نه لري فقط يوه کيلي ده.',
-          'موتر چی مکمل چیک او ترایی سو تر خط ليکلو وروسته رانیوونکی د شکایت حق نه لري.',
-          'د ذکر سوي موټر د غلا مسؤليت په خرڅوونکي پوري اړه لري.',
-          'رانیوونکي او خرځوونکي دي يو د بله ضمانت سره و اخلي ځکه پلورنځې د هیچا ضمانت حق نه لري. پلورنځي فقط د شاهد په حيث خط ورته ليکي.',
-          'د پښیمانی په صورت کې د شورم کمیشن نه مسترد کيږي.',
-          'در هنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چي د يو فیصد د رانیونکی څخه او يو فیصد د خرڅوونکي څخه.',
-        ],
-      });
-    }
+  const notesText = safeText(sale.notes);
 
-    if (typeKey === 'Licensed Car') {
-      return buildTermsSection({
-        title: 'د اسناد داره موټرانو بیل',
-        summary: 'موټر مشخصات: نوع، رنګ، ماډل، انجن، کاټ یا روغ، پطرول/ ډیزل، شاسې نمبر، جواز سیر، نمبر پلیټ',
-        intro: 'شرعی اقرار کوم چې ذکر سوي موټر قیمت ................................. افغاني چې نیمايې يې ...................... افغاني کیږي په لاندې شرایطو خرڅ کړه:',
-        items: [
-          'د موټر د اسنادو او قبالي په نوم کولو مصرف په رانیونکي پورې اړه لري.',
-          'د ذکر سوي موټر د ترافیکی پیښي مسؤلیت تر دغه نبتي (    /     /      ) پوری د خرڅوونکي په غاړه دي تر دغه نیتی (    /     /    ) وروسته بي مسولیت درانیوونکي په غاړه دي.',
-          'معامله په رضایت د جانیبینو صورت ونیوی او رانیونکي موټر ټول چیک او ټرایی کړی، د اسنادو سره تسلیم سو. جانیبینو قناعت کړي دي چې بعداَ دعوا یې د اعتبار وړ نده.',
-          'د موټر پلورنځي سند درې نقله لیکل کیږي چې یو نقل یی خرڅوونکې ته دوم نقل یی رانیوونکې ته او دریم نقل یی خپله همدلته دفتر کی قیدیږي.',
-          'رانیوونکي او خرځوونکي دي يو د بله ضمانت سره و اخلي ځکه پلورنځې د هیچا ضمانت حق نه لري. پلورنځي فقط د شاهد په حيث خط ورته ليکي.',
-          'درهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چي د يو فیصد د رانیونکی څخه او يو فیصد د خرڅوونکي څخه اخیستل کیږي. د پښیمانې په صورت کې د شوروم کمیشن نه مسترد کیږي.',
-          'د بیت المال د موټرانو د خرید او فروش څخه معذرت غواړو.',
-        ],
-      });
-    }
-
-    return buildTermsSection({
-      title: safeText(sale.saleType || 'بل'),
-      summary: 'معامله د دواړو لورو په رضایت ثبت شوه.',
-      intro: 'دا سند د پلور د ثبت او تسلیمۍ لپاره ترتیب شوی دی.',
-      items: ['ټول معلومات د دواړو لورو د تایید وروسته درج شوي دي.'],
-    });
-  })();
-
-  // Build HTML with all fields
   return `<!doctype html>
   <html lang="ps">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      :root{ --primary:#0f172a; --gold:#c8963e; --lightGold:#fbf5ea; --grayText:#5b6474; --border:#e2e8f0; --panel:#f8fafc; --shadow:0 10px 30px rgba(15,23,42,0.08); }
-      @page { size: A4; margin: 0mm; }
-      @font-face{ font-family: 'BahijNazaninLocal'; src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype'); font-weight: normal; font-style: normal; }
-      html,body{height:100%; margin:0; padding:0;}
-      body{ font-family:'BahijNazaninLocal', 'Noto Naskh Arabic', serif; direction:rtl; unicode-bidi:embed; background:#fff; color:var(--primary); }
-      .page{ width:210mm; height:297mm; max-width:210mm; margin:0 auto; padding:8mm 9mm 7mm; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
-      /* For Exchange Car, slightly reduce padding to fit all content */
-      ${typeKey === 'Exchange Car' ? `.page { padding: 2mm 1mm 2mm; gap: 1px; }` : ''}
-      .header{ background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color:#fff; padding:10px 14px; position:relative; border-radius:14px; box-shadow:var(--shadow); }
-      .company{ font-size:22px; font-weight:800; text-align:center; letter-spacing:.2px; line-height:1.2; }
-      .subtitle{ font-size:14px; color:#dbe4f1; text-align:center; margin-top:2px; line-height:1.2; }
-      .address{ font-size:12px; color:#f6dba9; text-align:center; margin-top:5px; line-height:1.2; }
-      .sil{ position:absolute; top:12px; width:95px; height:58px; fill:rgba(245, 219, 169, 0.85); }
-      .sil.right{ right:12px; transform:scaleX(-1); }
-      .sil.left{ left:12px; }
-      .bill-banner{ margin:0px auto; display:inline-block; background:${accentBg}; border:1px solid rgba(15,23,42,0.08); border-radius:999px; padding:6px 12px; position:relative; align-self:flex-start; }
-      .bill-banner .label{ color:${accentColor}; font-weight:800; font-size:17px; text-align:center; line-height:1.2; }
-      .meta{ display:flex; justify-content:space-between; gap:8px; margin-top:2px; font-size:14px; color:var(--grayText); line-height:1.2; }
-      .meta-pill{ flex:1; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:5px 8px; }
-      .section{ margin-top:2px; }
-      .section-title{ font-size:14px; font-weight:800; color:var(--primary); margin-bottom:6px; line-height:1.2; }
-      .cols{ display:flex; gap:8px; }
-      .col{ flex:1; }
-      .row-card{ border:1px solid var(--border); padding:6px 8px; background:var(--panel); margin-bottom:0; border-radius:12px; box-shadow:0 2px 10px rgba(15,23,42,0.03); }
-      .row-card .lbl{ font-size:12px; color:var(--grayText); text-align:right; line-height:1.2; }
-      .row-card .val{ font-size:14px; color:var(--primary); font-weight:700; text-align:right; line-height:1.2; }
-      .specs{ border:1px solid var(--border); border-radius:12px; background:#fff; padding:4px 6px; }
-      .specs table{ width:100%; border-collapse:separate; border-spacing:0; }
-      .specs td{ border-bottom:1px solid var(--border); padding:3px 4px; font-size:14px; text-align:right; line-height:1.2; }
-      .specs tr:last-child td{ border-bottom:none; }
-      .specs td:nth-child(odd){ color:var(--grayText); font-weight:700; background:rgba(248,250,252,0.9); }
-      .price-badge{ margin-top:4px; background:linear-gradient(135deg, var(--lightGold) 0%, #fffaf0 100%); border:1px solid rgba(200,150,62,0.45); padding:5px 6px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
-      .price-badge .label{ font-size:14px; color:var(--primary); line-height:1.2; }
-      .price-badge .amount{ font-size:18px; font-weight:800; color:var(--primary); line-height:1.2; }
-      .financial-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
-      .financial-chip{ border:1px dashed var(--border); background:var(--panel); border-radius:999px; padding:3px 6px; font-size:12px; color:var(--primary); line-height:1.2; }
-      .terms-card{ border:1px solid var(--border); border-radius:12px; padding:6px 8px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
-      .terms-heading{ font-size:14px; font-weight:800; color:var(--primary); margin-bottom:3px; line-height:1.2; }
-      .terms-summary, .terms-intro{ font-size:14px; color:var(--primary); margin:0 0 4px 0; line-height:1.2; }
-      .terms-list{ padding-right:16px; margin:0; font-size:14px; line-height:1.2; }
-      .terms-list li{ margin-bottom:2px; }
-      .terms-note{ margin-top:6px; min-height:30px; border:1px dashed #cfd8e3; border-radius:8px; padding:4px 6px; font-size:14px; color:var(--primary); line-height:1.2; }
-      .signs{ display:flex; gap:4px; margin-top:2px; flex-wrap:wrap; }
-      .sig{ flex:1 1 calc(20% - 6px); border:1px dashed #cbd5e1; height:20px; display:flex; align-items:flex-end; justify-content:center; font-size:14px; color:var(--primary); padding:0 4px 6px; border-radius:10px; background:#fff; text-align:center; line-height:1.2; }
-      .footer{ margin-top:2px; color:var(--primary); padding-top:5px; text-align:center; font-size:13px; border-top:1px solid var(--border); line-height:1.2; }
-      .person-table { display:grid; grid-template-columns: 88px 1fr; gap:2px 6px; align-items:start; margin-top:4px; direction:rtl; }
-      .pt-label { font-size:14px; color:var(--primary); text-align:right; padding-right:6px; font-weight:700; line-height:1.2; }
-      .pt-value { font-size:14px; color:var(--primary); text-align:right; font-weight:700; white-space:pre-wrap; word-break:break-word; line-height:1.2; }
-      .person-header { font-size:14px; font-weight:800; color:var(--primary); margin-bottom:6px; text-align:right; line-height:1.2; }
-      .small { font-size:14px; color:var(--primary); line-height:1.2; }
+      @page { size: A4; margin: 0; }
+      @font-face { font-family: 'BahijNazaninLocal'; src: url(data:font/truetype;charset=utf-8;base64,${fontB64}) format('truetype'); }
+      
+      * { box-sizing: border-box; }
+      body { 
+        font-family: 'BahijNazaninLocal', sans-serif; 
+        direction: rtl; 
+        margin: 0; 
+        padding: 0;
+        background: #fff; 
+        color: #1e3a8a;
+      }
+      
+      .page { 
+        width: 210mm; 
+        height: 297mm;
+        padding: 6mm; 
+        display: flex; 
+        flex-direction: column; 
+        overflow: hidden;
+      }
+      
+      .border-wrapper {
+        border: 4px solid #2563eb; 
+        outline: 2px solid #2563eb;
+        outline-offset: -10px;
+        padding: 18px 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        position: relative;
+        border-radius: 2px;
+      }
+      
+      .inner-border {
+        border: 1px solid #60a5fa;
+        padding: 8px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+
+      .header-center { text-align: center; flex-grow: 1; }
+
+      .main-title {
+        font-size: 30px; font-weight: bolder; margin: 0;
+        color: #1e40af; text-shadow: 1px 1px 0px #bfdbfe;
+      }
+
+      .sub-title { font-size: 22px; margin: 3px 0 0 0; font-weight: bold; color: #1e3a8a; }
+
+      .highlight-badge {
+        background: #93c5fd; color: #1e3a8a; padding: 2px 15px;
+        border-radius: 20px; border: 1px solid #3b82f6;
+        display: inline-block; margin-top: 3px;
+      }
+
+      .car-img { width: 150px; height: 90px; object-fit: contain; }
+
+      .address-bar {
+        background-color: #60a5fa; color: white; text-align: center;
+        padding: 4px; font-size: 18px; font-weight: bold; border: 2px solid #3b82f6;
+      }
+
+      .meta-row {
+        display: flex; justify-content: space-between;
+        font-size: 16px; font-weight: bold; margin: 6px 0;
+      }
+
+      .red-text { color: #dc2626; font-size: 22px; font-weight: bold; }
+      
+      .data-table {
+        width: 100%; border-collapse: collapse; table-layout: auto;
+      }
+
+      .data-table th {
+        background-color: #60a5fa; color: white; border: 2px solid #2563eb;
+        padding: 4px; font-size: 20px; font-weight: bold;
+      }
+        
+      .data-table td {
+        border: 1px solid #3b82f6; padding: 2px 4px; font-size: 16px;
+        color: #1e3a8a; height: auto; vertical-align: middle;
+        word-break: break-word; overflow-wrap: break-word;
+      }
+      
+      .lbl {
+        background-color: #eff6ff; font-weight: bold; white-space: nowrap;
+      }
+      
+      .val { text-align: right; word-break: break-word; }
+      
+      .exchange-table td { font-size: 15px; padding: 1px 2px; }
+
+      .price-section {
+        background: #f0f9ff;
+        border: 1px solid #3b82f6;
+        border-radius: 6px;
+        padding: 4px;
+        margin: 4px 0;
+      }
+
+      .price-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .price-item {
+        font-size: 16px;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+
+      .price-label {
+        color: #1e40af;
+      }
+
+      .price-value {
+        color: #1e3a8a;
+      }
+
+      .terms-section { flex-grow: 1; margin-top: 10px; }
+
+      .terms-text {
+        font-size: 18px; font-weight: bold; line-height: 1.2; margin-bottom: 8px;
+      }
+
+      .terms-list { padding-right: 25px; margin: 0; font-size: 18px; line-height: 1.2; }
+      .terms-list li { margin-bottom: 4px; }
+
+      .notes-text {
+        font-size: 16px;
+        line-height: 28px;                     /* space between lines */
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 27px,
+          #3b82f6 27px,
+          #3b82f6 28px
+        );
+        padding: 4px 0;
+        min-height: 28px;
+        white-space: pre-wrap;                 /* preserve manual line breaks */
+      }
+
+      .signatures-container {
+        display: flex; justify-content: space-between;
+      }
+
+      .sig-box { text-align: center; font-size: 18px; font-weight: bold; width: 30%; }
+      .sig-line { border-bottom: 1px solid #3b82f6; height: 50px; margin-bottom: 3px; }
     </style>
   </head>
   <body>
     <div class="page">
-      <div class="header">
-        <svg class="sil left" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path d="M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 Z"/></svg>
-        <svg class="sil right" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path d="M10,35 L15,35 L20,20 L45,12 L90,12 L105,20 L115,35 L120,35 L120,42 L110,42 L108,38 L102,38 L100,42 L30,42 L28,38 L22,38 L20,42 L0,42 Z"/></svg>
-        <div style="position:absolute; left:12px; top:8px; color:#d32f2f; font-weight:800; font-size:13px;">${serialNumber}</div>
-        <div class="company">نیازي خپلواک موټر پلورنځي</div>
-        <div style="text-align: center;"><div class="bill-banner"><div class="label">${billLabel}</div></div></div>
-        <div class="address">تیلیفون: ۰۷۰۰۰۰8۹۸۳ | ۰7۰۰۰۰8۹۸۲ | سپین بولدک عمومی سړک، ګمرک ته مخامخ. کندهار. افغانستان</div>
-      </div>
+      <div class="border-wrapper">
+        <div class="inner-border">
+          
+          <div class="header">
+            <img class="car-img" src="${rightImgB64 ? `data:image/jpeg;base64,${rightImgB64}` : ''}" alt="" />
+            <div class="header-center">
+              <h1 class="main-title">نیازي خپلواک موټر پلورنځي</h1>
+              <div class="sub-title">${topSubtitle}</div>
+            </div>
+            <img class="car-img" src="${leftImgB64 ? `data:image/jpeg;base64,${leftImgB64}` : ''}" alt="" />
+          </div>
+          
+          <div class="address-bar">
+            ادرس: کندهار ښار، د بولدک عمومي سړک، ګمرک ته مخامخ
+          </div>
 
-      <div class="meta small">
-        <div class="meta-pill">د بل شمیره: ${safeText(sale.saleId)} — نیټه: ${date}</div>
-      </div>
+          <div class="meta-row">
+            <div><span class="red-text">${serialNumber}</span></div>
+            <div>نیټه: ${date}</div>
+          </div>
 
-      <div class="section cols">
-        <div class="col">
-          <div class="row-card">
-            <div class="person-header">پيرودونکی</div>
-            <div class="person-table">
-              <div class="pt-label">بشپړ نوم</div><div class="pt-value">${buyer.name}</div>
-              <div class="pt-label">د پلار نوم</div><div class="pt-value">${buyer.father}</div>
-              <div class="pt-label">ولایت</div><div class="pt-value">${buyer.province}</div>
-              <div class="pt-label">ولسوالي</div><div class="pt-value">${buyer.district}</div>
-              <div class="pt-label">کلی</div><div class="pt-value">${buyer.village}</div>
-              <div class="pt-label">پته</div><div class="pt-value">${buyer.address}</div>
-              <div class="pt-label">د تذکرې شمیره</div><div class="pt-value">${buyer.id}</div>
-              <div class="pt-label">تیلیفون</div><div class="pt-value">${buyer.phone}</div>
+          ${tableHtml}
+          ${priceSectionHtml}
+
+          <div class="terms-section">
+            ${customTermsHtml}
+            <div class="notes-label">نوټ: <span class="notes-text">${notesText || ' '}</span></div>
+          </div>
+
+          <div class="signatures-container">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              د خرڅوونکي ګوته / لاسلیک
+              <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
+              شاهد
+            </div>
+            <div class="sig-box">
+              <div class="sig-line" style="border:none;"></div>
+              د پلورنځي مهر او لاسلیک
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              د رانیوونکي ګوته / لاسلیک
+              <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
+              شاهد
             </div>
           </div>
-        </div>
-        <div class="col">
-          <div class="row-card">
-            <div class="person-header">پلورونکی</div>
-            <div class="person-table">
-              <div class="pt-label">بشپړ نوم</div><div class="pt-value">${seller.name}</div>
-              <div class="pt-label">د پلار نوم</div><div class="pt-value">${seller.father}</div>
-              <div class="pt-label">ولایت</div><div class="pt-value">${seller.province}</div>
-              <div class="pt-label">ولسوالي</div><div class="pt-value">${seller.district}</div>
-              <div class="pt-label">کلی</div><div class="pt-value">${seller.village}</div>
-              <div class="pt-label">پته</div><div class="pt-value">${seller.address}</div>
-              <div class="pt-label">د تذکرې شمیره</div><div class="pt-value">${seller.id}</div>
-              <div class="pt-label">تیلیفون</div><div class="pt-value">${seller.phone}</div>
-            </div>
-          </div>
+
         </div>
       </div>
-
-      <div class="section specs">
-        <div class="section-title">مشخصات موټر</div>
-        <table>
-          <tr><td>جوړونکی</td><td>${veh.manufacturer}</td><td>ماډل</td><td>${veh.model}</td></tr>
-          <tr><td>کال</td><td>${veh.year}</td><td>ډول</td><td>${veh.category}</td></tr>
-          <tr><td>رنګ</td><td>${veh.color}</td><td>چاسيس</td><td>${veh.chassis}</td></tr>
-          <tr><td>انجن شمیره</td><td>${veh.engine}</td><td>د تیلو ډول</td><td>${veh.fuelType}</td></tr>
-          <tr><td>ګیربکس</td><td>${veh.transmission}</td><td>سټیرینګ</td><td>${veh.steering}</td></tr>
-          <tr><td>پلیت</td><td>${veh.plate}</td><td>موټر نمبر / جواز</td><td>${veh.license}</td></tr>
-          <tr><td>موجوده مسافه</td><td>${veh.mileage}</td><td>قطعه / برشي</td><td>${veh.monolithic}</td></tr>
-        </table>
-      </div>
-
-      ${typeKey === 'Exchange Car' ? `
-        <div class="section specs">
-          <div class="section-title">بدیل شوی موټر (تبادله)</div>
-          <table>
-            <tr><td>جوړونکی</td><td>${exch.manufacturer}</td><td>ماډل</td><td>${exch.model}</td></tr>
-            <tr><td>کال</td><td>${exch.year}</td><td>ډول</td><td>${exch.category}</td></tr>
-            <tr><td>رنګ</td><td>${exch.color}</td><td>چاسيس</td><td>${exch.chassis}</td></tr>
-            <tr><td>انجن</td><td>${exch.engine}</td><td>پلیت</td><td>${exch.plate}</td></tr>
-          </table>
-        </div>
-      ` : ''}
-
-      <div class="price-badge">
-        <div class="label">د پلور قیمت / اسعار: ${paymentCurrency}</div>
-        <div class="amount">${price}</div>
-      </div>
-
-      <div class="financial-meta">
-        ${downPayment ? `<div class="financial-chip">پیش پیسه: ${downPayment} — پاتې: ${remaining || '—'}</div>` : ''}
-        ${priceDiff ? `<div class="financial-chip">د قیمت توپیر: ${priceDiff} — ادا کوونکی: ${priceDiffBy || '—'}</div>` : ''}
-        ${trafficDate ? `<div class="financial-chip">د ټرافیک د لیږد نیټه: ${trafficDate}</div>` : ''}
-      </div>
-
-      ${typeKey === 'Exchange Car' && exchangeCarPrice !== null ? `
-        <div class="price-badge" style="margin-top:4px; background:#f0f9ff; border-color:#0284c7;">
-          <div class="label" style="color:#0284c7;">د تبادلې موټر قیمت: </div>
-          <div class="amount" style="color:#0284c7;">${toPashtoNumber(exchangeCarPrice)} ${paymentCurrency}</div>
-        </div>
-      ` : ''}
-
-      ${customTermsHtml}
-
-      <div class="signs" style="flex-wrap:wrap;">
-        <div class="sig"><span class="small">د پلورونکی لاسلیک  (${safeText(sale.sellerName)})</span></div>
-        <div class="sig">مهر</div>
-        <div class="sig"><span class="small">د پیرودونکی لاسلیک  (${safeText(sale.buyerName)})</span></div>
-      </div>
-      <div class="signs" style="flex-wrap:wrap;">
-        <div class="sig"><span class="small">شاهد۱  (${safeText(sale.witnessName1)})</span></div>
-        <div class="sig"><span class="small">شاهد۲  (${safeText(sale.witnessName2)})</span></div>
-      </div>
-
-      <div class="footer">دا سند د نیازي خپلواک موټر پلورنځي رسمي د پلور ثبت او تسلیمۍ ریکارډ دی.</div>
     </div>
   </body>
   </html>`;
@@ -324,13 +495,8 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64) {
 
 async function findChromeExecutable() {
   const candidates = [
-    // Linux (VPS / server)
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
-    '/snap/bin/chromium',
-    // macOS
+    '/usr/bin/google-chrome-stable', '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser', '/usr/bin/chromium', '/snap/bin/chromium',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
   ];
@@ -345,6 +511,33 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
   const fileName = `${(sale.saleType || 'invoice').replace(/\s+/g, '_')}_${sale.saleId || Date.now()}.pdf`;
   const filePath = path.join(outputDir, fileName);
 
+  // Load two car images from the same directory as this script
+  const leftImgPath = path.join(__dirname, 'ford.jpg');  // or whatever filenames you used
+  const rightImgPath = path.join(__dirname, 'lx600.jpg'); // rename accordingly
+
+  let leftImgB64 = '';
+  let rightImgB64 = '';
+
+  try {
+    if (fs.existsSync(leftImgPath)) {
+      leftImgB64 = fs.readFileSync(leftImgPath).toString('base64');
+    } else {
+      console.warn('[pdf] Left car image not found at', leftImgPath);
+    }
+  } catch (e) {
+    console.warn('[pdf] Failed to load left car image', e.message);
+  }
+
+  try {
+    if (fs.existsSync(rightImgPath)) {
+      rightImgB64 = fs.readFileSync(rightImgPath).toString('base64');
+    } else {
+      console.warn('[pdf] Right car image not found at', rightImgPath);
+    }
+  } catch (e) {
+    console.warn('[pdf] Failed to load right car image', e.message);
+  }
+
   const fontsDir = path.join(__dirname, '..', '..', 'fonts');
   const bahijPath = path.join(fontsDir, 'BahijNazanin.ttf');
   if (!fs.existsSync(bahijPath)) {
@@ -352,11 +545,12 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
   }
   const fontB64 = fs.readFileSync(bahijPath).toString('base64');
 
-  const html = buildHtmlForSale(sale, vehicle, customer, fontB64);
+  const html = buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64, rightImgB64);
 
   let browser = null;
   let launched = false;
   const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+  
   try {
     browser = await puppeteer.launch({ headless: 'new', args: launchArgs });
     launched = true;
@@ -367,59 +561,37 @@ async function generateSaleInvoicePdf(sale, vehicle, customer, outputDir) {
     launched = true;
   }
 
-    try {
+  try {
     const page = await browser.newPage();
-    // Use 'load' instead of 'networkidle0' because Chrome may keep
-    // background connections open (GCM/updater) which prevents
-    // networkidle0 from ever firing and causes a hang.
+    
+    // Increase load timeout and explicitly remove scaling logic to respect the strict 210x297 CSS limit
     await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
     await page.emulateMediaType('screen');
 
-    // Wait briefly for fonts to settle. Prefer document.fonts.ready but
-    // don't block indefinitely if it misbehaves on some Chrome builds.
     try {
       await page.evaluate(async () => {
-        if (!document.fonts || !document.fonts.ready) {
-          return;
-        }
-
+        if (!document.fonts || !document.fonts.ready) return;
         await Promise.race([
           document.fonts.ready,
           new Promise((resolve) => setTimeout(resolve, 1200)),
         ]);
       });
-      console.info('[pdf] document.fonts.ready resolved');
     } catch (e) {
-      console.warn('[pdf] document.fonts.ready did not resolve quickly, continuing');
+      console.warn('[pdf] font load delay');
     }
     await new Promise((r) => setTimeout(r, 200));
 
-    // Measure content (.page) and compute scale to fit single A4
-    const contentSize = await page.evaluate(() => {
-      const el = document.querySelector('.page') || document.body;
-      const rect = el.getBoundingClientRect();
-      return { width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+    // Notice we removed your custom scaling block here. The rigid flexbox A4 CSS container 
+    // now enforces the size natively, which prevents text stretching and pixelation.
+    
+    await page.pdf({ 
+        path: filePath, 
+        printBackground: true, 
+        width: '210mm', 
+        height: '297mm', 
+        margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' } 
     });
-
-    const mmToPx = (mm) => (mm * 96) / 25.4;
-    const a4WidthPx = Math.round(mmToPx(210));
-    const a4HeightPx = Math.round(mmToPx(297));
-
-    const scaleX = a4WidthPx / Math.max(contentSize.width, 1);
-    const scaleY = a4HeightPx / Math.max(contentSize.height, 1);
-    const scale = Math.min(scaleX, scaleY, 1);
-
-    if (scale < 1) {
-      await page.$eval('.page', (el, s) => {
-        el.style.transformOrigin = 'top left';
-        el.style.transform = `scale(${s})`;
-      }, scale);
-      // allow reflow after scaling
-      await new Promise((r) => setTimeout(r, 80));
-    }
-
-    // Produce a single A4 page (no margins) — content has been scaled to fit
-    await page.pdf({ path: filePath, printBackground: true, width: '210mm', height: '297mm', margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' } });
+    
     await browser.close();
     return { filePath, fileName };
   } catch (err) {
