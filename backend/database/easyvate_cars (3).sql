@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 03, 2026 at 08:20 AM
+-- Generation Time: Jul 08, 2026 at 01:12 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -225,18 +225,20 @@ CREATE TABLE `carousel_items` (
   `price` decimal(15,2) NOT NULL,
   `image` varchar(255) DEFAULT NULL COMMENT 'Path to uploaded image',
   `createdAt` datetime NOT NULL,
-  `updatedAt` datetime NOT NULL
+  `updatedAt` datetime NOT NULL,
+  `currency` varchar(10) NOT NULL DEFAULT 'AFN'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `carousel_items`
 --
 
-INSERT INTO `carousel_items` (`id`, `title`, `model`, `price`, `image`, `createdAt`, `updatedAt`) VALUES
-(1, 'Audi Q7', '2020', 600000.00, '/uploads/carousel-images/carousel-1774704999805-554960949.jpg', '2026-03-28 13:36:39', '2026-03-28 13:36:39'),
-(2, 'BMW', '2021', 800000.00, '/uploads/carousel-images/carousel-1774705443124-119788713.jpg', '2026-03-28 13:44:03', '2026-03-28 13:44:03'),
-(3, 'Porsche Cayenne S', '2019', 550000.00, '/uploads/carousel-images/carousel-1774718064754-420712677.jpg', '2026-03-28 17:14:24', '2026-03-28 17:14:46'),
-(4, 'Land Cruiser', '2024', 5500000.00, '/uploads/carousel-images/carousel-1777984789022-733824780.webp', '2026-05-05 12:39:49', '2026-05-05 12:39:49');
+INSERT INTO `carousel_items` (`id`, `title`, `model`, `price`, `image`, `createdAt`, `updatedAt`, `currency`) VALUES
+(1, 'Audi Q7', '2020', 600000.00, '/uploads/carousel-images/carousel-1774704999805-554960949.jpg', '2026-03-28 13:36:39', '2026-03-28 13:36:39', 'AFN'),
+(2, 'BMW', '2021', 80000.00, '/uploads/carousel-images/carousel-1774705443124-119788713.jpg', '2026-03-28 13:44:03', '2026-07-01 08:34:30', 'USD'),
+(3, 'Porsche Cayenne S', '2019', 550000.00, '/uploads/carousel-images/carousel-1774718064754-420712677.jpg', '2026-03-28 17:14:24', '2026-03-28 17:14:46', 'AFN'),
+(4, 'Land Cruiser', '2024', 55000.00, '/uploads/carousel-images/carousel-1777984789022-733824780.webp', '2026-05-05 12:39:49', '2026-07-01 08:33:00', 'USD'),
+(5, 'Crown', '2025', 300000.00, '/uploads/carousel-images/carousel-1782894945545-141691261.webp', '2026-07-01 08:35:45', '2026-07-01 08:35:45', 'AED');
 
 -- --------------------------------------------------------
 
@@ -290,13 +292,13 @@ INSERT INTO `commission_distributions` (`id`, `saleId`, `sharingPersonId`, `pers
 (8, 66, 10, 'Farid', 50.00, 50.00, '2026-05-21 00:00:00', 'Paid', '2026-05-21 11:17:04', '2026-05-21 11:17:04', 63, 150.00, 'Percentage'),
 (9, 69, 11, 'Farid', 50.00, 50.00, '2026-05-21 00:00:00', 'Paid', '2026-05-21 12:15:16', '2026-05-21 12:15:16', 63, 3250.00, 'Percentage'),
 (12, 72, 13, 'Farid', 50.00, 50.00, '2026-05-22 00:00:00', 'Paid', '2026-05-22 21:39:45', '2026-05-22 21:39:45', 63, 100.00, 'Percentage'),
-(13, 73, 14, 'Farid', 50.00, 50.00, '2026-05-22 00:00:00', 'Paid', '2026-05-22 21:43:46', '2026-05-22 21:43:46', 63, 3250.00, 'Percentage'),
-(14, 74, 15, 'Farid', 50.00, 0.77, '2026-05-22 00:00:00', 'Paid', '2026-05-22 22:20:49', '2026-05-22 22:20:49', 63, 3250.00, 'Percentage'),
-(15, 75, 16, 'Farid', 50.00, 50.00, '2026-05-22 00:00:00', 'Paid', '2026-05-22 22:28:57', '2026-05-22 22:28:57', 63, 3250.00, 'Percentage'),
-(16, 76, 20, 'Farid', 50.00, 50.00, '2026-05-23 00:00:00', 'Paid', '2026-05-23 11:05:05', '2026-05-23 11:05:05', 63, 3250.00, 'Percentage'),
 (17, 77, 22, 'Bilal Khan', 50.00, 50.00, '2026-05-24 00:00:00', 'Paid', '2026-05-24 19:38:50', '2026-05-24 19:38:50', 76, 50.00, 'Percentage'),
 (18, 78, 21, 'Farid', 50.00, 50.00, '2026-05-24 00:00:00', 'Paid', '2026-05-24 19:40:41', '2026-05-24 19:40:41', 63, 3250.00, 'Percentage'),
-(19, 79, 18, 'Farid', 50.00, 50.00, '2026-05-24 00:00:00', 'Paid', '2026-05-24 20:01:31', '2026-05-24 20:01:31', 63, 100.00, 'Percentage');
+(19, 79, 18, 'Farid', 50.00, 50.00, '2026-05-24 00:00:00', 'Paid', '2026-05-24 20:01:31', '2026-05-24 20:01:31', 63, 100.00, 'Percentage'),
+(20, 80, 23, 'Farid', 50.00, 4950.00, '2026-06-06 00:00:00', 'Paid', '2026-06-06 12:19:43', '2026-06-06 12:19:43', 63, 3250.00, 'Percentage'),
+(21, 81, 20, 'Farid', 50.00, 50.00, '2026-07-01 00:00:00', 'Paid', '2026-07-01 08:00:18', '2026-07-01 08:00:18', 63, 3250.00, 'Percentage'),
+(22, 83, 12, 'Farid', 50.00, 25.00, '2026-07-06 00:00:00', 'Paid', '2026-07-06 04:55:03', '2026-07-06 04:55:03', 63, 3250.00, 'Percentage'),
+(23, 84, 24, 'Farid', 50.00, 50.00, '2026-07-06 00:00:00', 'Paid', '2026-07-06 05:39:49', '2026-07-06 05:39:49', 63, 3175.00, 'Percentage');
 
 -- --------------------------------------------------------
 
@@ -419,7 +421,8 @@ INSERT INTO `currency_exchanges` (`id`, `fromCurrency`, `toCurrency`, `fromAmoun
 (12, 'AED', 'AFN', 100.00, 2000.00, 20.0000, '2026-05-21 07:25:17', '', 1, '2026-05-21 07:25:17', '2026-05-21 07:25:17'),
 (13, 'USD', 'AFN', 1000.00, 65000.00, 65.0000, '2026-05-21 07:27:57', '', 1, '2026-05-21 07:27:57', '2026-05-21 07:27:57'),
 (14, 'AFN', 'AED', 2000.00, 100.00, 0.0500, '2026-05-21 07:33:40', '', 1, '2026-05-21 07:33:40', '2026-05-21 07:33:40'),
-(15, 'USD', 'AFN', 10.00, 650.00, 65.0000, '2026-05-21 12:03:40', '', 1, '2026-05-21 12:03:40', '2026-05-21 12:03:40');
+(15, 'USD', 'AFN', 10.00, 650.00, 65.0000, '2026-05-21 12:03:40', '', 1, '2026-05-21 12:03:40', '2026-05-21 12:03:40'),
+(16, 'AED', 'USD', 100.00, 34.65, 0.3465, '2026-06-06 12:53:35', '', 1, '2026-06-06 12:53:35', '2026-06-06 12:53:35');
 
 -- --------------------------------------------------------
 
@@ -453,11 +456,11 @@ CREATE TABLE `customers` (
 --
 
 INSERT INTO `customers` (`id`, `fullName`, `fatherName`, `phoneNumber`, `currentAddress`, `originalAddress`, `province`, `district`, `nationalIdNumber`, `customerType`, `balance`, `createdAt`, `updatedAt`, `village`, `balanceAFN`, `balanceUSD`, `balancePKR`, `balanceAED`) VALUES
-(59, 'Khan', 'Jan', '0787654321', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', 'Dand', '8979877868687', 'Buyer', 0.00, '2026-05-21 08:50:26', '2026-05-21 08:50:26', '', 0.00, 0.00, 0.00, 0.00),
+(59, 'Khan', 'Jan', '0787654321', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', 'Dand', '8979877868687', 'Buyer', 0.00, '2026-05-21 08:50:26', '2026-07-06 05:39:49', '', 0.00, 0.00, 0.00, 0.00),
 (60, 'khan', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 09:38:21', '2026-05-21 09:38:21', '', 0.00, 0.00, 0.00, 0.00),
 (61, 'jan', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 09:44:33', '2026-05-21 09:44:33', '', 0.00, 0.00, 0.00, 0.00),
 (62, 'Jan', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 10:12:15', '2026-05-21 10:12:15', '', 0.00, 0.00, 0.00, 0.00),
-(63, 'Farid', 'Khan', '0703654789', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', 'City', '546554578522', 'Investor', 6800.77, '2026-05-21 10:14:16', '2026-05-24 20:01:31', '', 550.00, 250.77, 0.00, 0.00),
+(63, 'Farid', 'Khan', '0703654789', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', 'City', '546554578522', 'Investor', 11488.27, '2026-05-21 10:14:16', '2026-07-06 05:39:49', '', 8750.00, 425.77, 0.00, 0.00),
 (64, 'Mohammad', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 10:16:23', '2026-05-21 10:16:23', '', 0.00, 0.00, 0.00, 0.00),
 (65, 'Baz', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 11:17:04', '2026-05-21 11:17:04', '', 0.00, 0.00, 0.00, 0.00),
 (66, 'khan', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-21 11:34:43', '2026-05-21 11:34:43', '', 0.00, 0.00, 0.00, 0.00),
@@ -470,10 +473,15 @@ INSERT INTO `customers` (`id`, `fullName`, `fatherName`, `phoneNumber`, `current
 (73, 'test', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-22 22:20:49', '2026-05-22 22:20:49', '', 0.00, 0.00, 0.00, 0.00),
 (74, 'test', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-22 22:28:57', '2026-05-22 22:28:57', '', 0.00, 0.00, 0.00, 0.00),
 (75, 'test', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-23 11:05:05', '2026-05-23 11:05:05', '', 0.00, 0.00, 0.00, 0.00),
-(76, 'Bilal Khan', 'Khan', '07089654123', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', '1', '654534654351351', 'Investor', 550.00, '2026-05-24 19:35:21', '2026-05-24 19:38:50', '', 550.00, 0.00, 0.00, 0.00),
+(76, 'Bilal Khan', 'Khan', '07089654123', 'Kandahar, Afghanistan', 'Kandahar, Afghanistan', 'Kandahar', '1', '654534654351351', 'Investor', 3875.00, '2026-05-24 19:35:21', '2026-07-01 07:08:21', '', 550.00, 50.00, 0.00, 0.00),
 (77, 'kjh', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-24 19:38:50', '2026-05-24 19:38:50', '', 0.00, 0.00, 0.00, 0.00),
 (78, 'Timor', '', '', '', '', '', '', '', 'Buyer', 3200.00, '2026-05-24 19:40:41', '2026-05-24 19:58:15', '', 0.00, 0.00, 0.00, 0.00),
-(79, 'thh', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-24 20:01:31', '2026-05-24 20:02:53', '', 0.00, 0.00, 0.00, 0.00);
+(79, 'thh', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-05-24 20:01:31', '2026-05-24 20:02:53', '', 0.00, 0.00, 0.00, 0.00),
+(80, 'Khan', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-06-06 12:19:43', '2026-06-06 12:20:18', '', 0.00, 0.00, 0.00, 0.00),
+(81, 'tet=st', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-07-01 08:00:18', '2026-07-01 08:00:18', '', 0.00, 0.00, 0.00, 0.00),
+(82, 'محمد', 'حان', '۰۷۱۲۳۴۵۶۷۸', 'کندهار', 'کندهار', 'کندخار', 'ښار', '۲۳۸۷۴۸۹', 'Buyer', 0.00, '2026-07-05 19:24:28', '2026-07-05 19:24:28', '۲ ناحیه', 0.00, 0.00, 0.00, 0.00),
+(83, 'جان محمد', 'سردار محمد', '۰۷۰۸۷۶۵۴۳۲', 'شهرنو، کابل', 'شهرنو، کابل', 'کابل', 'ښار', '۸۷۶۰۸۵۶۲', 'Buyer', 0.00, '2026-07-06 04:55:03', '2026-07-06 04:55:03', 'شهر نو', 0.00, 0.00, 0.00, 0.00),
+(84, 'جان', '', '', '', '', '', '', '', 'Buyer', 0.00, '2026-07-08 11:03:09', '2026-07-08 11:03:09', '', 0.00, 0.00, 0.00, 0.00);
 
 -- --------------------------------------------------------
 
@@ -527,20 +535,7 @@ INSERT INTO `customer_ledger` (`id`, `customerId`, `type`, `amount`, `currency`,
 (155, 63, 'Profit Share', 50.00, 'AFN', 50.00, 'Partner profit from sale S000009 (50%)', '2026-05-22 00:00:00', 7125.00, 72, 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
 (156, 71, 'Sale', 300.00, 'AFN', 300.00, 'Purchase of V000007 — total price', '2026-05-22 00:00:00', -300.00, 72, 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
 (157, 71, 'Received', 300.00, 'AFN', 300.00, 'Down payment for V000007', '2026-05-22 00:00:00', 0.00, 72, 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
-(158, 63, 'Profit Share', 50.00, 'USD', 3250.00, 'Partner profit from sale S000010 (50%)', '2026-05-22 00:00:00', 7175.00, 73, 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
-(159, 72, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000010 — total price', '2026-05-22 00:00:00', -200.00, 73, 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
-(160, 72, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000010', '2026-05-22 00:00:00', 0.00, 73, 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
-(161, 63, 'Profit Share', 0.77, 'USD', 50.00, 'Partner profit from sale S000011 (50%)', '2026-05-22 00:00:00', 7225.00, 74, 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(162, 73, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000011 — total price', '2026-05-22 00:00:00', -200.00, 74, 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(163, 73, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000011', '2026-05-22 00:00:00', 0.00, 74, 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(164, 63, 'Profit Share', 50.00, 'USD', 3250.00, 'Partner profit from sale S000012 (50%)', '2026-05-22 00:00:00', 10475.00, 75, 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(165, 74, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000012 — total price', '2026-05-22 00:00:00', -200.00, 75, 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(166, 74, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000012', '2026-05-22 00:00:00', 0.00, 75, 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
 (167, 63, 'Investment', 50.00, 'USD', 3250.00, 'Investment in vehicle V000016', '2026-05-23 10:53:51', 100.77, NULL, NULL, '2026-05-23 10:53:51', '2026-05-23 10:53:51'),
-(168, 63, 'Profit Share', 50.00, 'USD', 3250.00, 'Partner profit from sale S000013 (50%)', '2026-05-23 00:00:00', 3350.77, 76, 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
-(169, 63, '', 50.00, 'USD', 3250.00, 'Return of investment in vehicle V000016 (50.00%)', '2026-05-23 00:00:00', 6600.77, 76, 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
-(170, 75, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000016 — total price', '2026-05-23 00:00:00', -200.00, 76, 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
-(171, 75, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000016', '2026-05-23 00:00:00', 0.00, 76, 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
 (172, 63, 'Investment', 50.00, 'USD', 3250.00, 'Investment in vehicle V000015', '2026-05-23 11:09:10', 150.77, NULL, NULL, '2026-05-23 11:09:10', '2026-05-23 11:09:10'),
 (173, 76, 'Received', 500.00, 'AFN', 500.00, '', '2026-05-24 00:00:00', 500.00, NULL, 1, '2026-05-24 19:35:35', '2026-05-24 19:35:35'),
 (174, 76, 'Investment', 50.00, 'AFN', 50.00, 'Investment in vehicle V000017', '2026-05-24 19:37:01', 450.00, NULL, NULL, '2026-05-24 19:37:01', '2026-05-24 19:37:01'),
@@ -557,7 +552,34 @@ INSERT INTO `customer_ledger` (`id`, `customerId`, `type`, `amount`, `currency`,
 (185, 63, '', 100.00, 'AFN', 100.00, 'Return of investment in vehicle V000014 (50.00%)', '2026-05-24 00:00:00', 6800.77, 79, 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
 (186, 79, 'Sale', 300.00, 'AFN', 300.00, 'Purchase of V000014 — total price', '2026-05-24 00:00:00', -300.00, 79, 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
 (187, 79, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000014', '2026-05-24 00:00:00', -100.00, 79, 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
-(188, 79, 'Installment', 100.00, 'AFN', 100.00, 'Installment payment for sale S000016 — V000014', '2026-05-24 00:00:00', 0.00, 79, 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53');
+(188, 79, 'Installment', 100.00, 'AFN', 100.00, 'Installment payment for sale S000016 — V000014', '2026-05-24 00:00:00', 0.00, 79, 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53'),
+(189, 63, 'Investment', 50.00, 'USD', 3250.00, 'Investment in vehicle V000013', '2026-06-06 12:18:30', 200.77, NULL, NULL, '2026-06-06 12:18:30', '2026-06-06 12:18:30'),
+(190, 63, 'Profit Share', 4950.00, 'AFN', 4950.00, 'Partner profit from sale S000017 (50%)', '2026-06-06 00:00:00', 5150.77, 80, 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(191, 63, '', 50.00, 'USD', 3250.00, 'Return of investment in vehicle V000013 (50.00%)', '2026-06-06 00:00:00', 8400.77, 80, 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(192, 80, 'Sale', 10000.00, 'AFN', 10000.00, 'Purchase of V000013 — total price', '2026-06-06 00:00:00', -10000.00, 80, 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(193, 80, 'Received', 5000.00, 'AFN', 5000.00, 'Down payment for V000013', '2026-06-06 00:00:00', -5000.00, 80, 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(194, 80, 'Installment', 5000.00, 'AFN', 5000.00, 'Installment payment for sale S000017 — V000013', '2026-06-06 00:00:00', 0.00, 80, 1, '2026-06-06 12:20:18', '2026-06-06 12:20:18'),
+(195, 76, 'Paid', 1000.00, 'AFN', 1000.00, '', '2026-06-06 00:00:00', -450.00, NULL, 1, '2026-06-06 12:40:47', '2026-06-06 12:40:47'),
+(196, 76, 'Received', 100.00, 'USD', 6500.00, '', '2026-06-06 00:00:00', 6050.00, NULL, 1, '2026-06-06 12:43:09', '2026-06-06 12:43:09'),
+(197, 76, 'Paid', 50.00, 'USD', 3175.00, '', '2026-06-06 00:00:00', 2875.00, NULL, 1, '2026-06-06 12:54:24', '2026-06-06 12:54:24'),
+(198, 76, '', 1000.00, 'AFN', 1000.00, '', '2026-07-01 00:00:00', 3875.00, NULL, 1, '2026-07-01 07:08:21', '2026-07-01 07:08:21'),
+(199, 63, 'Profit Share', 50.00, 'USD', 3175.00, 'Partner profit from sale S000018 (50%)', '2026-07-01 00:00:00', 11575.77, 81, 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(200, 63, '', 50.00, 'USD', 3175.00, 'Return of investment in vehicle V000016 (50.00%)', '2026-07-01 00:00:00', 14750.77, 81, 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(201, 81, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000016 — total price', '2026-07-01 00:00:00', -200.00, 81, 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(202, 81, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000016', '2026-07-01 00:00:00', 0.00, 81, 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(203, 82, 'Sale', 4000.00, 'AFN', 4000.00, 'Purchase of V000018 — total price', '2026-07-05 00:00:00', -4000.00, 82, 1, '2026-07-05 19:24:28', '2026-07-05 19:24:28'),
+(204, 82, 'Received', 4000.00, 'AFN', 4000.00, 'Down payment for V000018', '2026-07-05 00:00:00', 0.00, 82, 1, '2026-07-05 19:24:28', '2026-07-05 19:24:28'),
+(205, 63, 'Investment', 50.00, 'USD', 3175.00, 'Investment in vehicle V000012', '2026-07-06 04:42:52', 300.77, NULL, NULL, '2026-07-06 04:42:52', '2026-07-06 04:42:52'),
+(206, 63, 'Profit Share', 25.00, 'USD', 1587.50, 'Partner profit from sale S000020 (50%)', '2026-07-06 00:00:00', 1888.27, 83, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(207, 63, '', 3250.00, 'AFN', 3250.00, 'Return of investment in vehicle V000009 (50.00%)', '2026-07-06 00:00:00', 5138.27, 83, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(208, 83, 'Sale', 150.00, 'AFN', 150.00, 'Purchase of V000009 — total price', '2026-07-06 00:00:00', -150.00, 83, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(209, 83, 'Received', 150.00, 'AFN', 150.00, 'Down payment for V000009', '2026-07-06 00:00:00', 0.00, 83, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(210, 63, 'Profit Share', 50.00, 'USD', 3175.00, 'Partner profit from sale S000021 (50%)', '2026-07-06 00:00:00', 8313.27, 84, 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(211, 63, '', 50.00, 'USD', 3175.00, 'Return of investment in vehicle V000012 (50.00%)', '2026-07-06 00:00:00', 11488.27, 84, 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(212, 59, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000012 — total price', '2026-07-06 00:00:00', -200.00, 84, 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(213, 59, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000012', '2026-07-06 00:00:00', 0.00, 84, 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(214, 84, 'Sale', 200.00, 'AFN', 200.00, 'Purchase of V000019 — total price', '2026-07-08 00:00:00', -200.00, 85, 1, '2026-07-08 11:03:09', '2026-07-08 11:03:09'),
+(215, 84, 'Received', 200.00, 'AFN', 200.00, 'Down payment for V000019', '2026-07-08 00:00:00', 0.00, 85, 1, '2026-07-08 11:03:09', '2026-07-08 11:03:09');
 
 -- --------------------------------------------------------
 
@@ -609,7 +631,17 @@ INSERT INTO `edit_history` (`id`, `entityType`, `entityId`, `fieldName`, `oldVal
 (377, 'Vehicle', 74, 'transmission', 'null', '', '15', 1, '2026-05-22 21:39:16'),
 (378, 'Vehicle', 74, 'mileage', 'null', '0', '15', 1, '2026-05-22 21:39:16'),
 (379, 'Vehicle', 74, 'plateNo', 'null', '', '15', 1, '2026-05-22 21:39:16'),
-(380, 'Vehicle', 74, 'vehicleLicense', 'null', '', '15', 1, '2026-05-22 21:39:16');
+(380, 'Vehicle', 74, 'vehicleLicense', 'null', '', '15', 1, '2026-05-22 21:39:16'),
+(381, 'Vehicle', 80, 'sellingPrice', '200.00', '10000', '4336\n', 1, '2026-06-06 12:18:30'),
+(382, 'Vehicle', 80, 'sellingPriceCurrency', 'USD', 'AFN', '4336\n', 1, '2026-06-06 12:18:30'),
+(383, 'Vehicle', 90, 'plateNo', '', 'KDR-34567', '123\n\n', 1, '2026-07-05 19:18:18'),
+(384, 'Vehicle', 90, 'vehicleLicense', '', 'hd45678', '123\n\n', 1, '2026-07-05 19:18:18'),
+(385, 'Vehicle', 79, 'plateNo', '', 'KDR-123', 'a', 1, '2026-07-06 04:42:52'),
+(386, 'Vehicle', 79, 'vehicleLicense', '', '24dslkfj34', 'a', 1, '2026-07-06 04:42:52'),
+(387, 'Vehicle', 79, 'totalCostPKR', '6500.00', '6350', 'a', 1, '2026-07-06 04:42:52'),
+(388, 'Vehicle', 91, 'sellingPrice', 'null', '200', 'س', 1, '2026-07-08 11:02:06'),
+(389, 'Vehicle', 91, 'sellingPriceCurrency', 'AFN', 'USD', 'س', 1, '2026-07-08 11:02:06'),
+(390, 'Vehicle', 91, 'transmission', 'null', '', 'س', 1, '2026-07-08 11:02:06');
 
 -- --------------------------------------------------------
 
@@ -669,9 +701,9 @@ CREATE TABLE `exchange_rates` (
 --
 
 INSERT INTO `exchange_rates` (`id`, `currency`, `rateToAFN`, `effectiveDate`, `isActive`, `updatedBy`, `createdAt`, `updatedAt`) VALUES
-(1, 'USD', 65.000000, '2026-05-09 13:33:26', 1, 1, '2026-02-08 09:32:15', '2026-05-09 13:33:26'),
-(2, 'PKR', 0.250000, '2026-02-08 09:32:15', 1, NULL, '2026-02-08 09:32:15', '2026-02-08 09:32:15'),
-(3, 'AED', 20.000000, '2026-05-21 07:01:49', 1, 1, '2026-05-21 07:01:49', '2026-05-21 07:01:49');
+(1, 'USD', 63.500000, '2026-06-06 12:51:32', 1, 1, '2026-02-08 09:32:15', '2026-06-06 12:51:32'),
+(2, 'PKR', 0.200000, '2026-06-06 12:52:25', 1, 1, '2026-02-08 09:32:15', '2026-06-06 12:52:25'),
+(3, 'AED', 22.000000, '2026-06-06 12:52:35', 1, 1, '2026-05-21 07:01:49', '2026-06-06 12:52:35');
 
 -- --------------------------------------------------------
 
@@ -713,14 +745,6 @@ INSERT INTO `ledger_transactions` (`id`, `transactionId`, `transactionType`, `am
 (92, 'TR1779365716012_11', 'Commission', 50.00, 'AFN', 50.00, 'SaleCommission', 69, 'Partner profit share for Farid from sale S000007 - 50% (profit)', '2026-05-21 00:00:00', 1, '2026-05-21 12:15:16', '2026-05-21 12:15:16'),
 (97, 'TR1779485985116', 'Vehicle Sale', 300.00, 'AFN', 300.00, 'Sale', 72, 'Vehicle V000007 sold to customer', '2026-05-22 00:00:00', 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
 (98, 'TR1779485985161_13', 'Commission', 50.00, 'AFN', 50.00, 'SaleCommission', 72, 'Partner profit share for Farid from sale S000009 - 50% (profit)', '2026-05-22 00:00:00', 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
-(99, 'TR1779486225999', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 73, 'Vehicle V000010 sold to customer', '2026-05-22 00:00:00', 1, '2026-05-22 21:43:45', '2026-05-22 21:43:45'),
-(100, 'TR1779486226035_14', 'Commission', 50.00, 'AFN', 50.00, 'SaleCommission', 73, 'Partner profit share for Farid from sale S000010 - 50% (profit)', '2026-05-22 00:00:00', 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
-(101, 'TR1779488449524', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 74, 'Vehicle V000011 sold to customer', '2026-05-22 00:00:00', 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(102, 'TR1779488449556_15', 'Commission', 0.77, 'USD', 50.00, 'SaleCommission', 74, 'Partner profit share for Farid from sale S000011 - 50% (profit)', '2026-05-22 00:00:00', 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(103, 'TR1779488937231', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 75, 'Vehicle V000012 sold to customer', '2026-05-22 00:00:00', 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(104, 'TR1779488937259_16', 'Commission', 50.00, 'USD', 3250.00, 'SaleCommission', 75, 'Partner profit share for Farid from sale S000012 - 50% (profit)', '2026-05-22 00:00:00', 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(105, 'TR1779534305764', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 76, 'Vehicle V000016 sold to customer', '2026-05-23 00:00:00', 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
-(106, 'TR1779534305790_20', 'Commission', 50.00, 'USD', 3250.00, 'SaleCommission', 76, 'Partner profit share for Farid from sale S000013 - 50% (profit)', '2026-05-23 00:00:00', 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
 (107, 'TR1779651530722', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 77, 'Vehicle V000017 sold to customer', '2026-05-24 00:00:00', 1, '2026-05-24 19:38:50', '2026-05-24 19:38:50'),
 (108, 'TR1779651530745_22', 'Commission', 50.00, 'AFN', 50.00, 'SaleCommission', 77, 'Partner profit share for Bilal Khan from sale S000014 - 50% (profit)', '2026-05-24 00:00:00', 1, '2026-05-24 19:38:50', '2026-05-24 19:38:50'),
 (109, 'TR1779651641612', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 78, 'Vehicle V000015 sold to customer', '2026-05-24 00:00:00', 1, '2026-05-24 19:40:41', '2026-05-24 19:40:41'),
@@ -728,7 +752,18 @@ INSERT INTO `ledger_transactions` (`id`, `transactionId`, `transactionType`, `am
 (111, 'TR1779652695671', 'Credit', 50.00, 'USD', 3250.00, 'Installment', 78, 'Installment payment — S000015', '2026-05-24 00:00:00', 1, '2026-05-24 19:58:15', '2026-05-24 19:58:15'),
 (112, 'TR1779652891457', 'Vehicle Sale', 300.00, 'AFN', 300.00, 'Sale', 79, 'Vehicle V000014 sold to customer', '2026-05-24 00:00:00', 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
 (113, 'TR1779652891478_18', 'Commission', 50.00, 'AFN', 50.00, 'SaleCommission', 79, 'Partner profit share for Farid from sale S000016 - 50% (profit)', '2026-05-24 00:00:00', 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
-(114, 'TR1779652973695', 'Credit', 100.00, 'AFN', 100.00, 'Installment', 79, 'Installment payment — S000016', '2026-05-24 00:00:00', 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53');
+(114, 'TR1779652973695', 'Credit', 100.00, 'AFN', 100.00, 'Installment', 79, 'Installment payment — S000016', '2026-05-24 00:00:00', 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53'),
+(115, 'TR1780748383433', 'Vehicle Sale', 10000.00, 'AFN', 10000.00, 'Sale', 80, 'Vehicle V000013 sold to customer', '2026-06-06 00:00:00', 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(116, 'TR1780748383524_23', 'Commission', 4950.00, 'AFN', 4950.00, 'SaleCommission', 80, 'Partner profit share for Farid from sale S000017 - 50% (profit)', '2026-06-06 00:00:00', 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(117, 'TR1780748419000', 'Credit', 5000.00, 'AFN', 5000.00, 'Installment', 80, 'Installment payment — S000017', '2026-06-06 00:00:00', 1, '2026-06-06 12:20:19', '2026-06-06 12:20:19'),
+(118, 'TR1782892818588', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 81, 'Vehicle V000016 sold to customer', '2026-07-01 00:00:00', 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(119, 'TR1782892818602_20', 'Commission', 50.00, 'USD', 3175.00, 'SaleCommission', 81, 'Partner profit share for Farid from sale S000018 - 50% (profit)', '2026-07-01 00:00:00', 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(120, 'TR1783279468562', 'Vehicle Sale', 4000.00, 'AFN', 4000.00, 'Sale', 82, 'Vehicle V000018 sold to customer', '2026-07-05 00:00:00', 1, '2026-07-05 19:24:28', '2026-07-05 19:24:28'),
+(121, 'TR1783313703451', 'Vehicle Sale', 150.00, 'AFN', 150.00, 'Sale', 83, 'Vehicle V000009 sold to customer', '2026-07-06 00:00:00', 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(122, 'TR1783313703466_12', 'Commission', 25.00, 'USD', 1587.50, 'SaleCommission', 83, 'Partner profit share for Farid from sale S000020 - 50% (profit)', '2026-07-06 00:00:00', 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(123, 'TR1783316389529', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 84, 'Vehicle V000012 sold to customer', '2026-07-06 00:00:00', 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(124, 'TR1783316389570_24', 'Commission', 50.00, 'USD', 3175.00, 'SaleCommission', 84, 'Partner profit share for Farid from sale S000021 - 50% (profit)', '2026-07-06 00:00:00', 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(125, 'TR1783508589163', 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Sale', 85, 'Vehicle V000019 sold to customer', '2026-07-08 00:00:00', 1, '2026-07-08 11:03:09', '2026-07-08 11:03:09');
 
 -- --------------------------------------------------------
 
@@ -951,29 +986,32 @@ CREATE TABLE `sales` (
   `buyerAddress` text DEFAULT NULL,
   `buyerIdNumber` varchar(50) DEFAULT NULL,
   `buyerPhone` varchar(20) DEFAULT NULL,
-  `paymentCurrency` varchar(10) DEFAULT 'AFN'
+  `paymentCurrency` varchar(10) DEFAULT 'AFN',
+  `licensePersonName` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `sales`
 --
 
-INSERT INTO `sales` (`id`, `saleId`, `vehicleId`, `customerId`, `sellingPrice`, `totalCost`, `profit`, `commission`, `ownerShare`, `saleDate`, `paymentMethod`, `downPayment`, `remainingAmount`, `paidAmount`, `paymentStatus`, `notes`, `invoicePath`, `soldBy`, `createdAt`, `updatedAt`, `saleType`, `sellerName`, `sellerFatherName`, `sellerProvince`, `sellerDistrict`, `sellerVillage`, `sellerAddress`, `sellerIdNumber`, `sellerPhone`, `exchVehicleColor`, `exchVehicleModel`, `exchVehicleEngine`, `exchVehicleChassis`, `exchVehicleFuelType`, `exchVehiclePlateNo`, `exchVehicleMonolithicCut`, `priceDifference`, `priceDifferencePaidBy`, `trafficTransferDate`, `note2`, `witnessName1`, `witnessName2`, `exchangeVehicleId`, `exchVehicleCategory`, `exchVehicleManufacturer`, `exchVehicleYear`, `exchVehicleEngineType`, `exchVehicleTransmission`, `exchVehicleMileage`, `exchVehicleLicense`, `exchVehicleSteering`, `buyerName`, `buyerFatherName`, `buyerProvince`, `buyerDistrict`, `buyerVillage`, `buyerAddress`, `buyerIdNumber`, `buyerPhone`, `paymentCurrency`) VALUES
-(63, 'S000001', 68, 61, 150.00, 100.00, 50.00, 0.00, 50.00, '2026-05-21 00:00:00', 'Cash', 150.00, 0.00, 150.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000001.pdf', 1, '2026-05-21 09:44:33', '2026-05-21 09:44:35', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(64, 'S000002', 69, 62, 600.00, 500.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 600.00, 0.00, 600.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000002.pdf', 1, '2026-05-21 10:12:15', '2026-05-21 10:12:16', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'car', 'dsjfklkr3rfk', 'SDAFJDJSFK3443dsfk', 'Petrol', NULL, 'Monolithic', 100.00, 'Buyer', NULL, NULL, NULL, NULL, 70, 'Coupe', 'Audi', 2025, 'V4', NULL, NULL, NULL, 'Left', 'Jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(65, 'S000003', 70, 64, 600.00, 500.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 600.00, 0.00, 600.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000003.pdf', 1, '2026-05-21 10:16:23', '2026-05-21 10:16:24', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'Mohammad', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(66, 'S000004', 71, 65, 400.00, 300.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 400.00, 0.00, 400.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000004.pdf', 1, '2026-05-21 11:17:04', '2026-05-21 11:17:06', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'camery', 'DFGK2342edf', 'SDJFJSDJFK3432', NULL, NULL, 'Monolithic', 200.00, 'Buyer', NULL, NULL, NULL, NULL, 72, 'Van', 'KIA', 2023, 'V4', NULL, NULL, NULL, 'Left', 'Baz', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(67, 'S000005', 72, 66, 300.00, 200.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 300.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000005.pdf', 1, '2026-05-21 11:34:43', '2026-05-21 11:34:45', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'car', 'DSFDF4334resdf', 'SDAJGKFD343fds', NULL, NULL, 'Monolithic', 100.00, 'Buyer', NULL, NULL, NULL, NULL, 74, 'SUV', 'Audi', 2024, 'Inline-4', NULL, NULL, NULL, 'Left', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(68, 'S000006', 73, 67, 200.00, 100.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000006.pdf', 1, '2026-05-21 11:37:44', '2026-05-21 11:37:45', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(69, 'S000007', 75, 68, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000007.pdf', 1, '2026-05-21 12:15:15', '2026-05-21 12:15:17', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(72, 'S000009', 74, 71, 300.00, 200.00, 100.00, 50.00, 50.00, '2026-05-22 00:00:00', 'Cash', 300.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000009.pdf', 1, '2026-05-22 21:39:45', '2026-05-22 21:39:47', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(73, 'S000010', 77, 72, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-22 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000010.pdf', 1, '2026-05-22 21:43:45', '2026-05-22 21:43:47', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(74, 'S000011', 78, 73, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-22 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000011.pdf', 1, '2026-05-22 22:20:49', '2026-05-22 22:20:51', 'Container One Key', 'tetst', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(75, 'S000012', 79, 74, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-22 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000012.pdf', 1, '2026-05-22 22:28:57', '2026-05-22 22:28:58', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(76, 'S000013', 83, 75, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-23 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000013.pdf', 1, '2026-05-23 11:05:05', '2026-05-23 11:05:12', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(77, 'S000014', 89, 77, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000014.pdf', 1, '2026-05-24 19:38:50', '2026-05-24 19:38:56', 'Container One Key', 'teat', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'kjh', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN'),
-(78, 'S000015', 82, 78, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 150.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000015.pdf', 1, '2026-05-24 19:40:41', '2026-05-24 19:58:15', 'Container One Key', 'kdjf', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'Timor', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD'),
-(79, 'S000016', 81, 79, 300.00, 200.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 200.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000016.pdf', 1, '2026-05-24 20:01:31', '2026-05-24 20:02:53', 'Container One Key', 'tet', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'thh', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN');
+INSERT INTO `sales` (`id`, `saleId`, `vehicleId`, `customerId`, `sellingPrice`, `totalCost`, `profit`, `commission`, `ownerShare`, `saleDate`, `paymentMethod`, `downPayment`, `remainingAmount`, `paidAmount`, `paymentStatus`, `notes`, `invoicePath`, `soldBy`, `createdAt`, `updatedAt`, `saleType`, `sellerName`, `sellerFatherName`, `sellerProvince`, `sellerDistrict`, `sellerVillage`, `sellerAddress`, `sellerIdNumber`, `sellerPhone`, `exchVehicleColor`, `exchVehicleModel`, `exchVehicleEngine`, `exchVehicleChassis`, `exchVehicleFuelType`, `exchVehiclePlateNo`, `exchVehicleMonolithicCut`, `priceDifference`, `priceDifferencePaidBy`, `trafficTransferDate`, `note2`, `witnessName1`, `witnessName2`, `exchangeVehicleId`, `exchVehicleCategory`, `exchVehicleManufacturer`, `exchVehicleYear`, `exchVehicleEngineType`, `exchVehicleTransmission`, `exchVehicleMileage`, `exchVehicleLicense`, `exchVehicleSteering`, `buyerName`, `buyerFatherName`, `buyerProvince`, `buyerDistrict`, `buyerVillage`, `buyerAddress`, `buyerIdNumber`, `buyerPhone`, `paymentCurrency`, `licensePersonName`) VALUES
+(63, 'S000001', 68, 61, 150.00, 100.00, 50.00, 0.00, 50.00, '2026-05-21 00:00:00', 'Cash', 150.00, 0.00, 150.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000001.pdf', 1, '2026-05-21 09:44:33', '2026-05-21 09:44:35', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD', NULL),
+(64, 'S000002', 69, 62, 600.00, 500.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 600.00, 0.00, 600.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000002.pdf', 1, '2026-05-21 10:12:15', '2026-05-21 10:12:16', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'car', 'dsjfklkr3rfk', 'SDAFJDJSFK3443dsfk', 'Petrol', NULL, 'Monolithic', 100.00, 'Buyer', NULL, NULL, NULL, NULL, 70, 'Coupe', 'Audi', 2025, 'V4', NULL, NULL, NULL, 'Left', 'Jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(65, 'S000003', 70, 64, 600.00, 500.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 600.00, 0.00, 600.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000003.pdf', 1, '2026-05-21 10:16:23', '2026-05-21 10:16:24', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'Mohammad', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(66, 'S000004', 71, 65, 400.00, 300.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 400.00, 0.00, 400.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000004.pdf', 1, '2026-05-21 11:17:04', '2026-05-21 11:17:06', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'camery', 'DFGK2342edf', 'SDJFJSDJFK3432', NULL, NULL, 'Monolithic', 200.00, 'Buyer', NULL, NULL, NULL, NULL, 72, 'Van', 'KIA', 2023, 'V4', NULL, NULL, NULL, 'Left', 'Baz', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(67, 'S000005', 72, 66, 300.00, 200.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 300.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000005.pdf', 1, '2026-05-21 11:34:43', '2026-05-21 11:34:45', 'Exchange Car', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'car', 'DSFDF4334resdf', 'SDAJGKFD343fds', NULL, NULL, 'Monolithic', 100.00, 'Buyer', NULL, NULL, NULL, NULL, 74, 'SUV', 'Audi', 2024, 'Inline-4', NULL, NULL, NULL, 'Left', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(68, 'S000006', 73, 67, 200.00, 100.00, 100.00, 0.00, 100.00, '2026-05-21 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000006.pdf', 1, '2026-05-21 11:37:44', '2026-05-21 11:37:45', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(69, 'S000007', 75, 68, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-21 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000007.pdf', 1, '2026-05-21 12:15:15', '2026-05-21 12:15:17', 'Container One Key', 'khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'jan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD', NULL),
+(72, 'S000009', 74, 71, 300.00, 200.00, 100.00, 50.00, 50.00, '2026-05-22 00:00:00', 'Cash', 300.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000009.pdf', 1, '2026-05-22 21:39:45', '2026-05-22 21:39:47', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(77, 'S000014', 89, 77, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000014.pdf', 1, '2026-05-24 19:38:50', '2026-05-24 19:38:56', 'Container One Key', 'teat', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'kjh', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(78, 'S000015', 82, 78, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 150.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000015.pdf', 1, '2026-05-24 19:40:41', '2026-05-24 19:58:15', 'Container One Key', 'kdjf', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'Timor', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD', NULL),
+(79, 'S000016', 81, 79, 300.00, 200.00, 100.00, 50.00, 50.00, '2026-05-24 00:00:00', 'Cash', 200.00, 0.00, 300.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000016.pdf', 1, '2026-05-24 20:01:31', '2026-05-24 20:02:53', 'Container One Key', 'tet', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'thh', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(80, 'S000017', 80, 80, 10000.00, 100.00, 9900.00, 4950.00, 4950.00, '2026-06-06 00:00:00', 'Cash', 5000.00, 0.00, 10000.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000017.pdf', 1, '2026-06-06 12:19:43', '2026-07-01 07:27:57', 'Container One Key', 'Khpalwak', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'Khan', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'AFN', NULL),
+(81, 'S000018', 83, 81, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-07-01 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', 'دغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سودغه موټر چک او خرڅ سو', 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000018.pdf', 1, '2026-07-01 08:00:18', '2026-07-05 18:13:15', 'Container One Key', 'test', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, 'ahmad', 'احمد', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'tet=st', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD', NULL),
+(82, 'S000019', 90, 82, 4000.00, 2000.00, 2000.00, 0.00, 2000.00, '2026-07-05 00:00:00', 'Cash', 4000.00, 0.00, 4000.00, 'Paid', 'دغه موټر خرڅ سو په ټول چک سره هیڅ ډول مشکل نلری یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول', 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Container_One_Key_S000019.pdf', 1, '2026-07-05 19:24:28', '2026-07-06 06:37:21', 'Container One Key', 'احمد', 'محمد', 'کندهار', 'ښار', 'اوله ناحیه', 'اوله ناحیه، کندهار', '۹۷۸۲۳۴۸۲۳۶۴', '۰۷۸۷۶۵۴۳۲۱', NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, 'کریم الله', 'خان جان', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'محمد', 'حان', 'کندخار', 'ښار', '۲ ناحیه', 'کندهار', '۲۳۸۷۴۸۹', '۰۷۱۲۳۴۵۶۷۸', 'AFN', NULL),
+(83, 'S000020', 76, 83, 150.00, 100.00, 50.00, 25.00, 25.00, '2026-07-06 00:00:00', 'Cash', 150.00, 0.00, 150.00, 'Paid', 'یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول یاد موټر پوره ډول سره چک او او خرڅ سو، ټول اپشنونه یی وکتل سول', 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Exchange_Car_S000020.pdf', 1, '2026-07-06 04:55:03', '2026-07-06 07:24:30', 'Exchange Car', 'داد محمد', 'حاجی غلام سرور', 'کندهار', 'ښار', 'اوله ناحیه', 'اوله ناحیه، کندهار', '۴۳۵۶۷۷۸۸۹', '۰۷۰۰۱۲۳۴۵۶', 'Blue', 'Corolla', '798607987', 'DJFAFJFKKF2312', 'Hybrid', 'kdr-567', 'Monolithic', 50.00, 'Buyer', NULL, NULL, 'کریم الله', 'نصیر احمد', 91, 'SUV', 'Honda', 2025, 'Inline-6', NULL, 2000, '724384892', 'Left', 'جان محمد', 'سردار محمد', 'کابل', 'ښار', 'شهر نو', 'شهرنو، کابل', '۸۷۶۰۸۵۶۲', '۰۷۰۸۷۶۵۴۳۲', 'USD', NULL),
+(84, 'S000021', 79, 59, 200.00, 100.00, 100.00, 50.00, 50.00, '2026-07-06 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', 'ذکر سوی موټر پوره ډول سره د مشتري له طرف څخه چک او بیا رانیول سو. ذکر سوی موټر پوره ډول سره د مشتري له طرف څخه چک او بیا رانیول سو. ', 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Licensed_Car_S000021.pdf', 1, '2026-07-06 05:39:49', '2026-07-06 07:50:31', 'Licensed Car', 'نثار احمد خپلواک', 'حاجی صاحب', 'کندهار', 'ښار', 'مرکز', 'کندهار، افغانستان', '۸۹۲۵۳۷۹۲۳۸۷۵', '۰۷۱۲۳۴۵۶۷۸', NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', '2027-12-06 00:00:00', NULL, 'احمد', 'محمد', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'ندا محمد', 'حاجی ګل محمد', 'کندهار', 'ښار', '۱۲ ناحیه', '۱۲ ناحیه، کندهار', '۸۷۵۹۶۷', '۰۷۸۷۶۵۴۳۲۱', 'USD', NULL),
+(85, 'S000022', 91, 84, 200.00, 100.00, 100.00, 0.00, 100.00, '2026-07-08 00:00:00', 'Cash', 200.00, 0.00, 200.00, 'Paid', NULL, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\Licensed_Car_S000022.pdf', 1, '2026-07-08 11:03:09', '2026-07-08 11:03:11', 'Licensed Car', 'خان', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Monolithic', 0.00, 'Buyer', NULL, NULL, 'احمد', 'محمد', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Left', 'جان', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'USD', 'نقیب الله');
 
 -- --------------------------------------------------------
 
@@ -1008,12 +1046,12 @@ INSERT INTO `sharing_persons` (`id`, `vehicleId`, `personName`, `percentage`, `i
 (13, 74, 'Farid', 50.00, 100.00, '0703654789', 1, '2026-05-22 21:39:17', '2026-05-22 21:39:17', 63, 'Percentage', 'AFN'),
 (14, 77, 'Farid', 50.00, 3250.00, '0703654789', 1, '2026-05-22 21:43:14', '2026-05-22 21:43:14', 63, 'Percentage', 'AFN'),
 (15, 78, 'Farid', 50.00, 3250.00, '0703654789', 1, '2026-05-22 22:20:07', '2026-05-22 22:20:07', 63, 'Percentage', 'AFN'),
-(16, 79, 'Farid', 50.00, 3250.00, '0703654789', 1, '2026-05-22 22:27:31', '2026-05-22 22:27:31', 63, 'Percentage', 'AFN'),
-(17, 80, 'Farid', 50.00, 3250.00, '0703654789', 1, '2026-05-23 10:04:05', '2026-05-23 10:04:05', 63, 'Percentage', 'AFN'),
 (18, 81, 'Farid', 50.00, 100.00, '0703654789', 1, '2026-05-23 10:09:27', '2026-05-23 10:09:27', 63, 'Percentage', 'AFN'),
 (20, 83, 'Farid', 50.00, 50.00, '0703654789', 1, '2026-05-23 10:53:51', '2026-05-23 10:53:51', 63, 'Percentage', 'USD'),
 (21, 82, 'Farid', 50.00, 50.00, '0703654789', 1, '2026-05-23 11:09:10', '2026-05-23 11:09:10', 63, 'Percentage', 'USD'),
-(22, 89, 'Bilal Khan', 50.00, 50.00, '07089654123', 1, '2026-05-24 19:37:01', '2026-05-24 19:37:01', 76, 'Percentage', 'AFN');
+(22, 89, 'Bilal Khan', 50.00, 50.00, '07089654123', 1, '2026-05-24 19:37:01', '2026-05-24 19:37:01', 76, 'Percentage', 'AFN'),
+(23, 80, 'Farid', 50.00, 50.00, '0703654789', 1, '2026-06-06 12:18:30', '2026-06-06 12:18:30', 63, 'Percentage', 'USD'),
+(24, 79, 'Farid', 50.00, 50.00, '0703654789', 1, '2026-07-06 04:42:52', '2026-07-06 04:42:52', 63, 'Percentage', 'USD');
 
 -- --------------------------------------------------------
 
@@ -1081,20 +1119,10 @@ INSERT INTO `showroom_ledger` (`id`, `type`, `amount`, `currency`, `amountInPKR`
 (291, 'Vehicle Sale', 300.00, 'AFN', 300.00, 'Down payment for V000007 — Paid in full', '2026-05-22 00:00:00', 72, 'Sale', NULL, 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
 (292, 'Partner Profit', 50.00, 'AFN', 50.00, 'Partner profit share for Farid from sale S000009 (50%)', '2026-05-22 00:00:00', 72, 'CommissionDistribution', 'Farid', 1, '2026-05-22 21:39:45', '2026-05-22 21:39:45'),
 (293, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000010', '2026-05-22 21:43:14', 77, 'Vehicle', NULL, 1, '2026-05-22 21:43:14', '2026-05-22 21:43:14'),
-(294, 'Vehicle Sale', 200.00, 'USD', 13000.00, 'Down payment for V000010 — Paid in full', '2026-05-22 00:00:00', 73, 'Sale', NULL, 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
-(295, 'Partner Profit', 50.00, 'USD', 3250.00, 'Partner profit share for Farid from sale S000010 (50%)', '2026-05-22 00:00:00', 73, 'CommissionDistribution', 'Farid', 1, '2026-05-22 21:43:46', '2026-05-22 21:43:46'),
 (296, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000011', '2026-05-22 22:20:07', 78, 'Vehicle', NULL, 1, '2026-05-22 22:20:07', '2026-05-22 22:20:07'),
-(297, 'Vehicle Sale', 200.00, 'USD', 13000.00, 'Down payment for V000011 — Paid in full', '2026-05-22 00:00:00', 74, 'Sale', NULL, 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(298, 'Partner Profit', 0.77, 'USD', 50.00, 'Partner profit share for Farid from sale S000011 (50%)', '2026-05-22 00:00:00', 74, 'CommissionDistribution', 'Farid', 1, '2026-05-22 22:20:49', '2026-05-22 22:20:49'),
-(299, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000012', '2026-05-22 22:27:31', 79, 'Vehicle', NULL, 1, '2026-05-22 22:27:31', '2026-05-22 22:27:31'),
-(300, 'Vehicle Sale', 200.00, 'USD', 13000.00, 'Down payment for V000012 — Paid in full', '2026-05-22 00:00:00', 75, 'Sale', NULL, 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(301, 'Partner Profit', 50.00, 'USD', 3250.00, 'Partner profit share for Farid from sale S000012 (50%)', '2026-05-22 00:00:00', 75, 'CommissionDistribution', 'Farid', 1, '2026-05-22 22:28:57', '2026-05-22 22:28:57'),
-(302, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000013', '2026-05-23 10:04:05', 80, 'Vehicle', NULL, 1, '2026-05-23 10:04:05', '2026-05-23 10:04:05'),
 (303, 'Vehicle Purchase', 200.00, 'AFN', 200.00, 'Base Purchase for V000014', '2026-05-23 10:09:27', 81, 'Vehicle', NULL, 1, '2026-05-23 10:09:27', '2026-05-23 10:09:27'),
 (306, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000017', '2026-05-23 10:45:26', 88, 'Vehicle', NULL, 1, '2026-05-23 10:45:26', '2026-05-23 10:45:26'),
 (307, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000016', '2026-05-23 10:53:51', 83, 'Vehicle', NULL, 1, '2026-05-23 10:53:51', '2026-05-23 10:53:51'),
-(308, 'Vehicle Sale', 200.00, 'USD', 13000.00, 'Down payment for V000016 — Paid in full', '2026-05-23 00:00:00', 76, 'Sale', NULL, 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
-(309, 'Partner Profit', 50.00, 'USD', 3250.00, 'Partner profit share for Farid from sale S000013 (50%)', '2026-05-23 00:00:00', 76, 'CommissionDistribution', 'Farid', 1, '2026-05-23 11:05:05', '2026-05-23 11:05:05'),
 (310, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000015', '2026-05-23 11:09:10', 82, 'Vehicle', NULL, 1, '2026-05-23 11:09:10', '2026-05-23 11:09:10'),
 (311, 'Owner Withdrawal', 1000.00, 'AFN', 1000.00, '', '2026-05-24 00:00:00', NULL, NULL, NULL, NULL, '2026-05-24 08:45:28', '2026-05-24 08:45:28'),
 (312, 'Showroom Balance', 500.00, 'AFN', 500.00, 'Payment received from Bilal Khan – ', '2026-05-24 00:00:00', NULL, NULL, 'Bilal Khan', 1, '2026-05-24 19:35:35', '2026-05-24 19:35:35'),
@@ -1106,7 +1134,28 @@ INSERT INTO `showroom_ledger` (`id`, `type`, `amount`, `currency`, `amountInPKR`
 (318, 'Vehicle Sale', 50.00, 'USD', 3250.00, 'Installment from Timor for V000015 (FULLY PAID)', '2026-05-24 00:00:00', 78, 'Sale', 'Timor', 1, '2026-05-24 19:58:15', '2026-05-24 19:58:15'),
 (319, 'Vehicle Sale', 200.00, 'AFN', 200.00, 'Down payment for V000014 — 200 of 300 AFN', '2026-05-24 00:00:00', 79, 'Sale', NULL, 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
 (320, 'Partner Profit', 50.00, 'AFN', 50.00, 'Partner profit share for Farid from sale S000016 (50%)', '2026-05-24 00:00:00', 79, 'CommissionDistribution', 'Farid', 1, '2026-05-24 20:01:31', '2026-05-24 20:01:31'),
-(321, 'Vehicle Sale', 100.00, 'AFN', 100.00, 'Installment from thh for V000014 (FULLY PAID)', '2026-05-24 00:00:00', 79, 'Sale', 'thh', 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53');
+(321, 'Vehicle Sale', 100.00, 'AFN', 100.00, 'Installment from thh for V000014 (FULLY PAID)', '2026-05-24 00:00:00', 79, 'Sale', 'thh', 1, '2026-05-24 20:02:53', '2026-05-24 20:02:53'),
+(322, 'Vehicle Purchase', 100.00, 'USD', 6500.00, 'Base Purchase for V000013', '2026-06-06 12:18:30', 80, 'Vehicle', NULL, 1, '2026-06-06 12:18:30', '2026-06-06 12:18:30'),
+(323, 'Vehicle Sale', 5000.00, 'AFN', 5000.00, 'Down payment for V000013 — 5,000 of 10,000 AFN', '2026-06-06 00:00:00', 80, 'Sale', NULL, 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(324, 'Partner Profit', 4950.00, 'AFN', 4950.00, 'Partner profit share for Farid from sale S000017 (50%)', '2026-06-06 00:00:00', 80, 'CommissionDistribution', 'Farid', 1, '2026-06-06 12:19:43', '2026-06-06 12:19:43'),
+(325, 'Vehicle Sale', 5000.00, 'AFN', 5000.00, 'Installment from Khan for V000013 (FULLY PAID)', '2026-06-06 00:00:00', 80, 'Sale', 'Khan', 1, '2026-06-06 12:20:18', '2026-06-06 12:20:18'),
+(326, 'Showroom Balance', -1000.00, 'AFN', -1000.00, 'Payment made to Bilal Khan – ', '2026-06-06 00:00:00', NULL, NULL, 'Bilal Khan', 1, '2026-06-06 12:40:47', '2026-06-06 12:40:47'),
+(327, 'Showroom Balance', 100.00, 'USD', 6500.00, 'Payment received from Bilal Khan – ', '2026-06-06 00:00:00', NULL, NULL, 'Bilal Khan', 1, '2026-06-06 12:43:09', '2026-06-06 12:43:09'),
+(328, 'Currency Exchange', -100.00, 'AED', -2200.00, 'Exchange out: 100 AED → 34.645669291338585 USD', '2026-06-06 12:53:35', 16, 'CurrencyExchange', NULL, 1, '2026-06-06 12:53:35', '2026-06-06 12:53:35'),
+(329, 'Currency Exchange', 34.65, 'USD', 2200.00, 'Exchange in: 100 AED → 34.645669291338585 USD', '2026-06-06 12:53:35', 16, 'CurrencyExchange', NULL, 1, '2026-06-06 12:53:35', '2026-06-06 12:53:35'),
+(330, 'Showroom Balance', -50.00, 'USD', -3175.00, 'Payment made to Bilal Khan – ', '2026-06-06 00:00:00', NULL, NULL, 'Bilal Khan', 1, '2026-06-06 12:54:24', '2026-06-06 12:54:24'),
+(331, 'Vehicle Sale', 200.00, 'USD', 12700.00, 'Down payment for V000016 — Paid in full', '2026-07-01 00:00:00', 81, 'Sale', NULL, 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(332, 'Partner Profit', 50.00, 'USD', 3175.00, 'Partner profit share for Farid from sale S000018 (50%)', '2026-07-01 00:00:00', 81, 'CommissionDistribution', 'Farid', 1, '2026-07-01 08:00:18', '2026-07-01 08:00:18'),
+(334, 'Vehicle Purchase', 2000.00, 'AFN', 2000.00, 'Base Purchase for V000018', '2026-07-05 19:18:18', 90, 'Vehicle', NULL, 1, '2026-07-05 19:18:18', '2026-07-05 19:18:18'),
+(335, 'Vehicle Sale', 4000.00, 'AFN', 4000.00, 'Down payment for V000018 — Paid in full', '2026-07-05 00:00:00', 82, 'Sale', NULL, 1, '2026-07-05 19:24:28', '2026-07-05 19:24:28'),
+(336, 'Vehicle Purchase', 100.00, 'USD', 6350.00, 'Base Purchase for V000012', '2026-07-06 04:42:52', 79, 'Vehicle', NULL, 1, '2026-07-06 04:42:52', '2026-07-06 04:42:52'),
+(337, 'Vehicle Purchase', 100.00, 'USD', 6350.00, 'Exchange vehicle acquisition: Honda Corolla (2025)', '2026-07-06 00:00:00', 91, 'Vehicle', NULL, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(338, 'Vehicle Sale', 150.00, 'USD', 9525.00, 'Down payment for V000009 — Paid in full', '2026-07-06 00:00:00', 83, 'Sale', NULL, 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(339, 'Partner Profit', 25.00, 'USD', 1587.50, 'Partner profit share for Farid from sale S000020 (50%)', '2026-07-06 00:00:00', 83, 'CommissionDistribution', 'Farid', 1, '2026-07-06 04:55:03', '2026-07-06 04:55:03'),
+(340, 'Vehicle Sale', 200.00, 'USD', 12700.00, 'Down payment for V000012 — Paid in full', '2026-07-06 00:00:00', 84, 'Sale', NULL, 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(341, 'Partner Profit', 50.00, 'USD', 3175.00, 'Partner profit share for Farid from sale S000021 (50%)', '2026-07-06 00:00:00', 84, 'CommissionDistribution', 'Farid', 1, '2026-07-06 05:39:49', '2026-07-06 05:39:49'),
+(342, 'Vehicle Purchase', 100.00, 'USD', 6350.00, 'Base Purchase for V000019', '2026-07-08 11:02:06', 91, 'Vehicle', NULL, 1, '2026-07-08 11:02:06', '2026-07-08 11:02:06'),
+(343, 'Vehicle Sale', 200.00, 'USD', 12700.00, 'Down payment for V000019 — Paid in full', '2026-07-08 00:00:00', 85, 'Sale', NULL, 1, '2026-07-08 11:03:09', '2026-07-08 11:03:09');
 
 -- --------------------------------------------------------
 
@@ -1312,10 +1361,10 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `fullName`, `email`, `phoneNumber`, `role`, `isActive`, `createdAt`, `updatedAt`) VALUES
-(1, 'admin', '$2b$10$aoLgQNnJzNTtf.LAOwId4.5TAv3cdl0wBG7khhROarBE7H9paHm2e', 'System Administrator', 'admin@easyvate.com', NULL, 'Super Admin', 1, '2026-02-08 09:32:15', '2026-02-08 09:32:15'),
+(1, 'admin', '$2b$10$zLOb64EsmGJLQsyfjdQOvON36HWaYP4/XQ5AinUaT0BODx7eZUpL.', 'System Administrator', 'admin@easyvate.com', '', 'Super Admin', 1, '2026-02-08 09:32:15', '2026-07-01 09:10:43'),
 (2, 'khan', '$2b$10$q1EAkbe/GKX.ht0P4L4KjOTSjNvl8cndBXyTHEaNIyFLlRkG0Lj9m', 'Khan', 'khan@gmail.com', '0700000000', 'Viewer', 1, '2026-04-30 08:29:16', '2026-04-30 08:29:16'),
 (3, 'gulabshah', '$2b$10$WfK6x/QxVE/5mvnR3XV/Re6OiwAKK/IYXEoGgRV1WuetuAn/HrSdq', 'Gulabshah', 'gulabshah@gmail.com', '0700000000', 'Inventory & Sales', 1, '2026-04-30 08:30:14', '2026-04-30 08:30:14'),
-(4, 'enayat', '$2b$10$5ZQ6gxdoj3qPUIX.ZmKDLeWJGmGtqIWjAnN6DCNyleqrCuYPOJQTO', 'Enayat', 'enayat@gmail.com', '070000000', 'Accountant', 1, '2026-04-30 08:30:48', '2026-04-30 08:30:48');
+(4, 'enayat', '$2b$10$6e.mPG3AXHUTVbc3zYnEeursQ/6OXB4tfilA0YD.cGojnMHAEmVqq', 'Enayat', 'enayat@gmail.com', '070000000', 'Accountant', 1, '2026-04-30 08:30:48', '2026-07-01 09:12:34');
 
 -- --------------------------------------------------------
 
@@ -1375,15 +1424,17 @@ INSERT INTO `vehicles` (`id`, `vehicleId`, `category`, `manufacturer`, `model`, 
 (73, 'V000006', 'Hatchback', 'Audi', 'camery', 2025, '', 'DSFJDAJFJ324234', 'dsafadf4334', 'Rotary', 'Petrol', '', 0, 'Sold', 100.00, 'AFN', 0.00, 0.00, 0.00, 100.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000006.pdf', '2026-05-21 11:28:52', '2026-05-21 11:37:44', '', '', 'Right', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'AFN'),
 (74, 'V000007', 'SUV', 'Audi', 'car', 2024, '', 'SDAJGKFD343fds', 'DSFDF4334resdf', 'Inline-4', '', '', 0, 'Sold', 200.00, 'AFN', 0.00, 0.00, 0.00, 200.00, 300.00, 1, NULL, '2026-05-21 11:34:43', '2026-05-22 21:39:45', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 200.00, 'AFN'),
 (75, 'V000008', 'Other', 'FAW', 'test', 2025, '', 'SDFJGKFDSKg435df', 'dfgdlk;jg4543dlkjf', '', '', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000008.pdf', '2026-05-21 11:57:48', '2026-05-21 12:15:15', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(76, 'V000009', 'Hatchback', 'Changan', 'test', 2024, '', 'FDGFDGFDSG4534gf', 'DFDSert345345rrdf', 'Inline-5', 'Petrol', '', 0, 'Available', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 150.00, 0, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000009.pdf', '2026-05-22 19:52:12', '2026-05-22 21:41:25', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(77, 'V000010', 'Sedan', 'FAW', 'tets', 2025, '', 'ADSFJDSKFK32423', 'SDAFSDASf324', 'Inline-5', 'Hybrid', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000010.pdf', '2026-05-22 21:43:13', '2026-05-22 21:43:45', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(78, 'V000011', 'Coupe', 'Audi', 'car', 2024, '', 'DSFJSDJF324', 'DSFSF3423', 'Inline-4', 'Diesel', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000011.pdf', '2026-05-22 22:20:07', '2026-05-22 22:20:49', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(79, 'V000012', 'Coupe', 'Changan', 'jhg', 2025, '', 'KCXVKXCKVserevxcv', 'FGDFGerte', 'Rotary', 'Petrol', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000012.pdf', '2026-05-22 22:27:31', '2026-05-22 22:28:57', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(80, 'V000013', 'Other', 'Chevrolet', 'test', 2024, '', 'DSAFJDAJFJ3243234sdf', 'DSGFFDS3432', 'Inline-4', 'Diesel', '', 0, 'Available', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 0, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000013.pdf', '2026-05-23 10:04:04', '2026-05-23 10:04:05', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(76, 'V000009', 'Hatchback', 'Changan', 'test', 2024, '', 'FDGFDGFDSG4534gf', 'DFDSert345345rrdf', 'Inline-5', 'Petrol', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 150.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000009.pdf', '2026-05-22 19:52:12', '2026-07-06 04:55:03', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(77, 'V000010', 'Sedan', 'FAW', 'tets', 2025, '', 'ADSFJDSKFK32423', 'SDAFSDASf324', 'Inline-5', 'Hybrid', '', 0, 'Available', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 0, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000010.pdf', '2026-05-22 21:43:13', '2026-07-01 07:47:20', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(78, 'V000011', 'Coupe', 'Audi', 'car', 2024, '', 'DSFJSDJF324', 'DSFSF3423', 'Inline-4', 'Diesel', '', 0, 'Available', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 0, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000011.pdf', '2026-05-22 22:20:07', '2026-07-01 07:47:19', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(79, 'V000012', 'Coupe', 'Changan', 'jhg', 2025, '', 'KCXVKXCKVserevxcv', 'FGDFGerte', 'Rotary', 'Petrol', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6350.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000012.pdf', '2026-05-22 22:27:31', '2026-07-06 05:39:49', 'KDR-123', '24dslkfj34', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(80, 'V000013', 'Other', 'Chevrolet', 'test', 2024, '', 'DSAFJDAJFJ3243234sdf', 'DSGFFDS3432', 'Inline-4', 'Diesel', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 10000.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000013.pdf', '2026-05-23 10:04:04', '2026-06-06 12:19:43', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'AFN'),
 (81, 'V000014', 'Hatchback', 'BMW', 'test', 2025, '', 'DSAFJFDSK324sdaf', 'dsaFDSAF32423', 'Inline-4', 'Petrol', '', 0, 'Sold', 200.00, 'AFN', 0.00, 0.00, 0.00, 200.00, 300.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000014.pdf', '2026-05-23 10:09:27', '2026-05-24 20:01:31', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 200.00, 'AFN'),
 (82, 'V000015', 'SUV', 'Honda', 'test', 2023, '', 'DSFJDASFK234dsfj', 'DASFDSAF32423fds', 'Inline-5', 'Petrol', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000015.pdf', '2026-05-23 10:19:28', '2026-05-24 19:40:41', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(83, 'V000016', 'Coupe', 'Daihatsu', 'test', 2020, '', 'DFGDFK332', 'DFDS32432sdfc', '', '', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, NULL, '2026-05-23 10:37:22', '2026-05-23 11:05:05', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
-(89, 'V000017', 'Other', 'Ford', 'test', 2024, '', 'DSAFFadsfasdf3w4', 'dsfdsfasdfwersdf3', 'Inline-5', 'Diesel', '', 0, 'Sold', 100.00, 'AFN', 0.00, 0.00, 0.00, 100.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000017.pdf', '2026-05-24 19:37:01', '2026-05-24 19:38:50', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'AFN');
+(83, 'V000016', 'Coupe', 'Daihatsu', 'test', 2020, '', 'DFGDFK332', 'DFDS32432sdfc', '', '', '', 0, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6500.00, 200.00, 1, NULL, '2026-05-23 10:37:22', '2026-07-01 08:00:18', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD'),
+(89, 'V000017', 'Other', 'Ford', 'test', 2024, '', 'DSAFFadsfasdf3w4', 'dsfdsfasdfwersdf3', 'Inline-5', 'Diesel', '', 0, 'Sold', 100.00, 'AFN', 0.00, 0.00, 0.00, 100.00, 200.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000017.pdf', '2026-05-24 19:37:01', '2026-05-24 19:38:50', '', '', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'AFN'),
+(90, 'V000018', 'SUV', 'Audi', 'corolla', 2024, 'white', 'DSFJSKFK324sdf', 'daSFJafkjlk3w4324', 'Inline-4', 'Petrol', '', 20000, 'Sold', 2000.00, 'AFN', 0.00, 0.00, 0.00, 2000.00, 4000.00, 1, 'D:\\Projects\\Laravel\\Easyvate_Car_Selling\\backend\\uploads\\pdf\\vehicle_V000018.pdf', '2026-07-01 08:11:51', '2026-07-05 19:24:28', 'KDR-34567', 'hd45678', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 2000.00, 'AFN'),
+(91, 'V000019', 'SUV', 'Honda', 'Corolla', 2025, 'Blue', 'DJFAFJFKKF2312', '798607987', 'Inline-6', 'Hybrid', '', 2000, 'Sold', 100.00, 'USD', 0.00, 0.00, 0.00, 6350.00, 200.00, 1, NULL, '2026-07-06 04:55:03', '2026-07-08 11:03:09', 'kdr-567', '724384892', 'Left', 'Monolithic', 'AFN', 'AFN', 'AFN', 'AFN', 'AFN', 100.00, 'USD');
 
 -- --------------------------------------------------------
 
@@ -1422,12 +1473,14 @@ INSERT INTO `vehicle_costs` (`id`, `vehicleId`, `stage`, `amount`, `currency`, `
 (60, 74, 'Base Purchase', 200.00, 'AFN', 200.00, NULL, '2026-05-22 21:39:16', 1, '2026-05-22 21:39:16', '2026-05-22 21:39:16'),
 (61, 77, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-22 21:43:14', 1, '2026-05-22 21:43:14', '2026-05-22 21:43:14'),
 (62, 78, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-22 22:20:07', 1, '2026-05-22 22:20:07', '2026-05-22 22:20:07'),
-(63, 79, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-22 22:27:31', 1, '2026-05-22 22:27:31', '2026-05-22 22:27:31'),
-(64, 80, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-23 10:04:05', 1, '2026-05-23 10:04:05', '2026-05-23 10:04:05'),
 (65, 81, 'Base Purchase', 200.00, 'AFN', 200.00, NULL, '2026-05-23 10:09:27', 1, '2026-05-23 10:09:27', '2026-05-23 10:09:27'),
 (69, 83, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-23 10:53:51', 1, '2026-05-23 10:53:51', '2026-05-23 10:53:51'),
 (70, 82, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-05-23 11:09:10', 1, '2026-05-23 11:09:10', '2026-05-23 11:09:10'),
-(71, 89, 'Base Purchase', 100.00, 'AFN', 100.00, NULL, '2026-05-24 19:37:01', 1, '2026-05-24 19:37:01', '2026-05-24 19:37:01');
+(71, 89, 'Base Purchase', 100.00, 'AFN', 100.00, NULL, '2026-05-24 19:37:01', 1, '2026-05-24 19:37:01', '2026-05-24 19:37:01'),
+(72, 80, 'Base Purchase', 100.00, 'USD', 6500.00, NULL, '2026-06-06 12:18:30', 1, '2026-06-06 12:18:30', '2026-06-06 12:18:30'),
+(74, 90, 'Base Purchase', 2000.00, 'AFN', 2000.00, NULL, '2026-07-05 19:18:18', 1, '2026-07-05 19:18:18', '2026-07-05 19:18:18'),
+(75, 79, 'Base Purchase', 100.00, 'USD', 6350.00, NULL, '2026-07-06 04:42:52', 1, '2026-07-06 04:42:52', '2026-07-06 04:42:52'),
+(76, 91, 'Base Purchase', 100.00, 'USD', 6350.00, NULL, '2026-07-08 11:02:06', 1, '2026-07-08 11:02:06', '2026-07-08 11:02:06');
 
 -- --------------------------------------------------------
 
@@ -1455,7 +1508,11 @@ INSERT INTO `vehicle_images` (`id`, `vehicleId`, `filename`, `path`, `size`, `or
 (37, 82, 'cd-2.jpg', '/uploads/vehicle-images/vehicle-82-1779534550899-639928632.webp', 20476, 1, '2026-05-23 11:09:11', '2026-05-23 11:09:11'),
 (38, 82, 'cd-3.jpg', '/uploads/vehicle-images/vehicle-82-1779534550900-700299281.webp', 36748, 2, '2026-05-23 11:09:11', '2026-05-23 11:09:11'),
 (39, 82, 'cd-4.jpg', '/uploads/vehicle-images/vehicle-82-1779534550903-898730750.webp', 27812, 3, '2026-05-23 11:09:11', '2026-05-23 11:09:11'),
-(40, 82, 'cd-5.jpg', '/uploads/vehicle-images/vehicle-82-1779534550905-486773391.webp', 66194, 4, '2026-05-23 11:09:11', '2026-05-23 11:09:11');
+(40, 82, 'cd-5.jpg', '/uploads/vehicle-images/vehicle-82-1779534550905-486773391.webp', 66194, 4, '2026-05-23 11:09:11', '2026-05-23 11:09:11'),
+(41, 90, 'cd-1.jpg', '/uploads/vehicle-images/vehicle-90-1782893512608-467435848.webp', 21826, 0, '2026-07-01 08:11:52', '2026-07-01 08:11:52'),
+(42, 90, 'cd-3.jpg', '/uploads/vehicle-images/vehicle-90-1782893512612-673899263.webp', 36748, 2, '2026-07-01 08:11:52', '2026-07-01 08:11:52'),
+(43, 90, 'cd-2.jpg', '/uploads/vehicle-images/vehicle-90-1782893512610-392492763.webp', 20476, 1, '2026-07-01 08:11:52', '2026-07-01 08:11:52'),
+(44, 90, 'cd-4.jpg', '/uploads/vehicle-images/vehicle-90-1782893512616-358357856.webp', 27812, 3, '2026-07-01 08:11:52', '2026-07-01 08:11:52');
 
 -- --------------------------------------------------------
 
@@ -2063,7 +2120,7 @@ ALTER TABLE `attendance`
 -- AUTO_INCREMENT for table `carousel_items`
 --
 ALTER TABLE `carousel_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `choose_videos`
@@ -2075,7 +2132,7 @@ ALTER TABLE `choose_videos`
 -- AUTO_INCREMENT for table `commission_distributions`
 --
 ALTER TABLE `commission_distributions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `contact_en`
@@ -2099,25 +2156,25 @@ ALTER TABLE `contact_ps`
 -- AUTO_INCREMENT for table `currency_exchanges`
 --
 ALTER TABLE `currency_exchanges`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `customers`
 --
 ALTER TABLE `customers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
 
 --
 -- AUTO_INCREMENT for table `customer_ledger`
 --
 ALTER TABLE `customer_ledger`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
 
 --
 -- AUTO_INCREMENT for table `edit_history`
 --
 ALTER TABLE `edit_history`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=381;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=391;
 
 --
 -- AUTO_INCREMENT for table `employees`
@@ -2135,7 +2192,7 @@ ALTER TABLE `exchange_rates`
 -- AUTO_INCREMENT for table `ledger_transactions`
 --
 ALTER TABLE `ledger_transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=126;
 
 --
 -- AUTO_INCREMENT for table `loans`
@@ -2165,19 +2222,19 @@ ALTER TABLE `reference_persons`
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
 
 --
 -- AUTO_INCREMENT for table `sharing_persons`
 --
 ALTER TABLE `sharing_persons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `showroom_ledger`
 --
 ALTER TABLE `showroom_ledger`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=322;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=344;
 
 --
 -- AUTO_INCREMENT for table `team_en`
@@ -2225,19 +2282,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `vehicles`
 --
 ALTER TABLE `vehicles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT for table `vehicle_costs`
 --
 ALTER TABLE `vehicle_costs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
 
 --
 -- AUTO_INCREMENT for table `vehicle_images`
 --
 ALTER TABLE `vehicle_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- AUTO_INCREMENT for table `vehicle_options`

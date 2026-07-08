@@ -261,7 +261,12 @@
     "vehiclesSold": "vehicles sold",
     "vehiclesComing": "vehicles coming",
     "vehiclesUnderRepair": "vehicles under repair",
-    "investmentCurrency": "Investment Currency"
+    "investmentCurrency": "Investment Currency",
+    "labelVehicleId": "Vehicle ID",
+    "labelTotalCost": "Total Cost",
+    "lockedLabel": "Locked",
+    "yes": "Yes",
+    "no": "No"
   },
   "Sales": {
     "pageTitle": "Sales Management",
@@ -309,6 +314,7 @@
     "sellerExchanger": "Seller (خرخونکي)",
     "licenseDocumentInfo": "License / Document Info (اسناد)",
     "trafficTransferDate": "Traffic Transfer Date / د ترافیک تبدیل نیټه",
+    "licensePersonName": "License Person Name / د جوازسیر په نامه",
     "paymentInfo": "Payment Info",
     "currencyLabel": "Currency / اسعار",
     "currencyAFN": "؋ AFN (افغاني)",

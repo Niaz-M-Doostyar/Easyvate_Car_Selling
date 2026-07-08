@@ -28,6 +28,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
   const trafficDate = sale.trafficTransferDate ? toPashtoDate(sale.trafficTransferDate) : '';
   const date = toPashtoDate(sale.saleDate);
   const typeKey = sale.saleType || 'Container One Key';
+  const licensePersonName = safeText(sale.licensePersonName || '');
 
    // Exchange car price calculation
   let exchangeCarPriceNum = null;
@@ -111,23 +112,23 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
 
   // Setup Titles based on bill type
   let topSubtitle = 'نثاراحمد خپلواک 0700008982 - 0700008983';
-  if (typeKey === 'Container One Key') topSubtitle = 'کانټینري یوه کیلي موټر بيل<br/>د دفتر شمیره: 0700008982 - 0700000213';
-  if (typeKey === 'Licensed Car') topSubtitle = 'اسناد لرونکې موټر بيل<br/>د دفتر شمیره: 0700008982 - 0700000213';
-  if (typeKey === 'Exchange Car') topSubtitle = 'ماچه موټر بيل<br/>نثاراحمد خپلواک 0700008982 - 0700008983';
+  if (typeKey === 'Container One Key') topSubtitle = 'کانټینري یوه کليد موټر سند<br/>د دفتر شمیره: 0700008982 - 0700008983';
+  if (typeKey === 'Licensed Car') topSubtitle = 'اسناد لرونکې موټر سند<br/>د دفتر شمیره: 0700008982 - 0700008983';
+  if (typeKey === 'Exchange Car') topSubtitle = 'تبادله موټر سند<br/>د دفتر شمیره: 0700008982 - 0700008983';
 
   let customTermsHtml = '';
   
   if (typeKey === 'Exchange Car') {
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې دوي عراده موټران سره متبادله په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
+        شرعي اقرار کوم چې دوي عراده موټران سره تبادله سول په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
       </div>
       <ol class="terms-list">
         <li>د موټر تیر ترافیکي پیښې مسؤلیت د غلا ضمانت او پور له دغه تاریخ سه  ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په متبادله کوونکي اړه لري.</li>
         <li>د متبادله کوونکي په رضایت سودا صورت ونیو.</li>
         <li>موټران بعد له ټرایي څخه یو او بل ته فعال سره تسلیم سوه.</li>
-        <li>باید طرفین یو د بله ضمانت سره واخلي ځکه پلورنځی د دوی په پیژندګلوی په هکله مسؤلیت نه لري. د موټر پلورنځي دفتر د هیچا ضمانت نه کوي.</li>
-        <li>د رهنما کمیشن د تجارت د قانون سره سم ۲ فیصده اخیستل کیږي د معاملی د فسخی په صورت کی کمیشن نه مسترد کیږي.</li>
+        <li>باید طرفین یو د بله ضمانت سره واخلي ځکه موټر پلورنځی د دوی ضمانت په غاړه نلري.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم اخیستل کیږي د معاملی د فسخه کیدلو په صورت کی کمیشن نه مسترد کیږي.</li>
         <li>د بیت المال د موټرانو د خرید او فروش څخه جداً معذرت غواړو.</li>
       </ol>
     `;
@@ -137,29 +138,28 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
         شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
-        <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته بې مسؤلیت د رانیوونکي په غاړه دي.</li>
+        <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته د رانیوونکي په غاړه دي.</li>
         <li>ذکر شوي موټر کوم قانوني اسناد نه لري فقط یوه کیلي ده.</li>
         <li>موټر چې مکمل چیک او ټرایي سو تر خط لیکلو وروسته رانیوونکی د شکایت حق نه لري.</li>
         <li>د ذکر سوي موټر د غلا مسؤلیت په خرڅوونکي پورې اړه لري.</li>
-        <li>رانیوونکي او خرڅوونکي دي یو د بله ضمانت سره واخلي ځکه پلورنځی د هیڅا ضمانت حق نه لري.</li>
+        <li>باید طرفین یو د بله ضمانت سره واخلي ځکه موټر پلورنځی د دوی ضمانت په غاړه نلري.</li>
         <li>پلورنځي فقط د شاهد په حیث خط ورته لیکي.</li>
-        <li>د پښیمانۍ په صورت کې د شورم کمیشن نه مسترد کیږي.</li>
-        <li>د رهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چې یو فیصد د رانیوونکي څخه او یو فیصد د خرڅوونکي څخه اخیستل کیږي.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم اخیستل کیږي د معاملی د فسخه کیدلو په صورت کی کمیشن نه مسترد کیږي.</li>
       </ol>
     `;
   } else {
     // Licensed Car
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې ذکر سوی موټر بیه ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
         <li>د موټر د اسنادو او قبالې په نوم کولو مصارف په رانیونکي پورې اړه لري.</li>
         <li>د موټر نمبر ترافیکي مسؤلیت د غلا ضمانت او پور تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په خرڅوونکي پورې اړه لري تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته په رانیونکي پورې اړه لري.</li>
-        <li>رانیوونکي موټر ټول فعال ټرایي کړي او اسنادو ورته تسلیم سول جانیبینو قناعت کړيدي چې بعداً دعوا یې د اعتبار وړ نده.</li>
-        <li>باید طرفین یو د بله ضمانت واخلي ځکه پلورنځی د دوی د پیژندګلوی په هکله هیڅ مسؤلیت نه لري.</li>
-        <li>د موټر پلورنځي سند درې نقله لیکل کیږي چې یو نقل یې خرڅوونکي ته بل یې رانیوونکي ته ورکول کیږي او یو نقل یې په دفتر کې قیدیږي.</li>
-        <li>د رهنما کمیشن د تجارت د قانون سره سم دوه فیصده اخیستل کیږي چې یو فیصد یې د رانیونکي څخه او یو فیصد یې د خرڅوونکي څخه اخیستل کیږي. د پښیمانۍ په صورت کې د شورم کمیشن نه مسترد کیږي.</li>
+        <li>رانیوونکي موټر فعال ټرایي کړي او اسنادونه ورته تسلیم سول جانیبینو قناعت کړيدي چې بعداً دعوا یې د اعتبار وړ نده.</li>
+        <li>باید طرفین یو د بله ضمانت سره واخلي ځکه موټر پلورنځی د دوی ضمانت په غاړه نلري.</li>
+        <li>دا سند درې نقله لیکل کیږي چې یو نقل یې خرڅوونکي ته، بل یې رانیوونکي ته او یو نقل یې په دفتر کې قیدیږي.</li>
+        <li>د رهنما کمیشن د تجارت د قانون سره سم اخیستل کیږي. د پښیمانۍ په صورت کې د موټر پلورنځي کمیشن نه مسترد کیږي.</li>
         <li>خرید او فروش د بیت المال د موټرانو څخه معذرت غواړو.</li>
       </ol>
     `;
@@ -238,14 +238,14 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
           </tr>
         </thead>
         <tbody>
-          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">جوازسیر شمیره</td><td class="val">${veh.license}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">جوازسیر په نامه</td><td class="val">${licensePersonName}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
           <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
           <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
           <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
           <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td></tr>
           <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td></tr>
           <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">د پلیټ شمیره</td><td class="val">${veh.plate}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td></tr>
-          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">کټ یا روغ</td><td class="val">${veh.monolithic}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
+          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">نوع</td><td class="val">${veh.category}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
         </tbody>
       </table>
     `;
@@ -257,8 +257,8 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
       <div class="price-section">
         <div class="price-items">
           <span class="price-item"><span class="price-label">د پلور قیمت:</span> <span class="price-value">${price} ${paymentCurrency}</span></span>
-          ${downPayment ? `<span class="price-item"><span class="price-label">پیش پیسه:</span> <span class="price-value">${downPayment} ${paymentCurrency}</span></span>` : ''}
-          ${remaining ? `<span class="price-item"><span class="price-label">پاتې:</span> <span class="price-value">${remaining} ${paymentCurrency}</span></span>` : ''}
+          ${downPayment ? `<span class="price-item"><span class="price-label">تحول سوی پیسي:</span> <span class="price-value">${downPayment} ${paymentCurrency}</span></span>` : ''}
+          ${remaining ? `<span class="price-item"><span class="price-label">پاتې پیسي:</span> <span class="price-value">${remaining} ${paymentCurrency}</span></span>` : ''}
           ${trafficDate ? `<span class="price-item"><span class="price-label">د ټرافیک د لیږد نیټه:</span> <span class="price-value">${trafficDate}</span></span>` : ''}
         </div>
       </div>
@@ -431,8 +431,17 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
       .signatures-container {
         display: flex; justify-content: space-between;
       }
+        .footer-contact {
+          font-size: 16px;
+          text-align: center;
+          color: #1e3a8a;
+          padding-top: 4px;
+          margin-top: 4px;
+          border-top: 1px solid #3b82f6;
+          direction: ltr;   /* keep contact info left‑to‑right even in RTL page */
+        }
 
-      .sig-box { text-align: center; font-size: 18px; font-weight: bold; width: 30%; }
+      .sig-box { text-align: center; font-size: 16px; font-weight: bold; width: 30%; }
       .sig-line { border-bottom: 1px solid #3b82f6; height: 50px; margin-bottom: 3px; }
     </style>
   </head>
@@ -451,7 +460,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
           </div>
           
           <div class="address-bar">
-            ادرس: کندهار ښار، د بولدک عمومي سړک، ګمرک ته مخامخ
+            ادرس: کندهار ښار احمدشاهی جاده، ګمرک ته مخامخ
           </div>
 
           <div class="meta-row">
@@ -464,7 +473,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
 
           <div class="terms-section">
             ${customTermsHtml}
-            <div class="notes-label">نوټ: <span class="notes-text">${notesText || ' '}</span></div>
+            ${notesText ? `<div class="notes-label">نوټ: <span class="notes-text">${notesText}</span></div>` : ''}
           </div>
 
           <div class="signatures-container">
@@ -472,7 +481,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
               <div class="sig-line"></div>
               د خرڅوونکي ګوته / لاسلیک
               <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
-              شاهد
+              شاهد: (${safeText(sale.witnessName1)})
             </div>
             <div class="sig-box">
               <div class="sig-line" style="border:none;"></div>
@@ -482,11 +491,14 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
               <div class="sig-line"></div>
               د رانیوونکي ګوته / لاسلیک
               <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
-              شاهد
+              شاهد: (${safeText(sale.witnessName2)})
             </div>
           </div>
 
         </div>
+      </div>
+      <div class="footer-contact">
+        Email: info@niazikhpalwak.com | Website: niazikhpalwak.com | iOS App: Niazikhpalwak | Android App: Niazikhpalwak
       </div>
     </div>
   </body>

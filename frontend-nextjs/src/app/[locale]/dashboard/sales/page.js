@@ -24,9 +24,9 @@ import { getCurrencySymbol, formatCurrency } from '@/utils/currency';
 import EnhancedDataTable from '@/components/EnhancedDataTable';
 
 const SALE_TYPES = [
-  { value: 'Exchange Car', label: 'Exchange Car', pashto: 'تبادله', icon: <SwapHoriz />, color: '#1565c0' },
-  { value: 'Container One Key', label: 'Container One Key', pashto: 'کانتینري یوه کیلي', icon: <LocalShipping />, color: '#e65100' },
-  { value: 'Licensed Car', label: 'Licensed Car', pashto: 'اسناد دار هفتر مکمل', icon: <Description />, color: '#2e7d32' },
+  { value: 'Exchange Car', label: 'Exchange Car', pashto: 'تبادله موټر', icon: <SwapHoriz />, color: '#1565c0' },
+  { value: 'Container One Key', label: 'Container One Key', pashto: 'کانتینري یوه کیلید', icon: <LocalShipping />, color: '#e65100' },
+  { value: 'Licensed Car', label: 'Licensed Car', pashto: 'اسناد دار موټر', icon: <Description />, color: '#2e7d32' },
 ];
 
 const defaultForm = {
@@ -46,6 +46,7 @@ const defaultForm = {
   exchVehiclePlateNo: '', exchVehicleLicense: '', exchVehicleSteering: 'Left', exchVehicleMonolithicCut: 'Monolithic',
   priceDifference: '', priceDifferencePaidBy: 'Buyer',
   trafficTransferDate: '',
+  licensePersonName: '',
   witnessName1: '', witnessName2: '',
   exchangeVehicleCost: '',
   exchangeVehicleCostCurrency: 'AFN',
@@ -204,6 +205,7 @@ export default function SalesPage() {
       priceDifference: sale.priceDifference?.toString() || '',
       priceDifferencePaidBy: sale.priceDifferencePaidBy || 'Buyer',
       trafficTransferDate: sale.trafficTransferDate ? new Date(sale.trafficTransferDate).toISOString().slice(0, 10) : '',
+      licensePersonName: sale.licensePersonName || '',
       witnessName1: sale.witnessName1 || '',
       witnessName2: sale.witnessName2 || '',
       exchangeVehicleCost: sale.exchangeVehicleCost?.toString() || '',
@@ -778,6 +780,11 @@ export default function SalesPage() {
                     value={formData.trafficTransferDate}
                     onChange={(e) => !isEdit && setFormData({ ...formData, trafficTransferDate: e.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    disabled={isEdit} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth label={t('licensePersonName')} value={formData.licensePersonName}
+                    onChange={(e) => !isEdit && setFormData({ ...formData, licensePersonName: e.target.value })}
                     disabled={isEdit} />
                 </Grid>
               </Grid>

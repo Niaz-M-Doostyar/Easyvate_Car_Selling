@@ -261,7 +261,12 @@
     "vehiclesSold": "موترهای فروخته شده",
     "vehiclesComing": "موترهای در حال رسیدن",
     "vehiclesUnderRepair": "موترهای در حال تعمیر",
-    "investmentCurrency": "ارز سرمایه‌گذاری"
+    "investmentCurrency": "ارز سرمایه‌گذاری",
+    "labelVehicleId": "ID موتر",
+    "labelTotalCost": "هزینه کل",
+    "lockedLabel": "قفل شده",
+    "yes": "بله",
+    "no": "خیر"
   },
   "Sales": {
     "pageTitle": "مدیریت فروش",
@@ -309,6 +314,7 @@
     "sellerExchanger": "فروشنده (خرخونکي)",
     "licenseDocumentInfo": "لایسنس / اطلاعات اسناد (اسناد)",
     "trafficTransferDate": "تاریخ انتقال ترافیک / د ترافیک تبدیل نیټه",
+    "licensePersonName":"نام شخص لایسنس",
     "paymentInfo": "اطلاعات پرداخت",
     "currencyLabel": "ارز / اسعار",
     "currencyAFN": "؋ AFN (افغانی)",

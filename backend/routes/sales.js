@@ -189,6 +189,7 @@ router.post('/', async (req, res) => {
       priceDifference, priceDifferencePaidBy,
       exchangeVehicleCost,
       trafficTransferDate,
+      licensePersonName,
       witnessName1, witnessName2,
     } = req.body;
     
@@ -312,6 +313,7 @@ router.post('/', async (req, res) => {
       priceDifference: saleType === 'Exchange Car' ? (Number(priceDifference) || 0) : 0,
       priceDifferencePaidBy: priceDifferencePaidBy || 'Buyer',
       trafficTransferDate: trafficTransferDate || null,
+      licensePersonName: licensePersonName || null,
       sellingPrice: sellingPriceNum,
       totalCost: vehicleTotalCostOriginal,
       profit: sharedProfit,

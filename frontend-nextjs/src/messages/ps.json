@@ -261,7 +261,12 @@
     "vehiclesSold": "موټرونه پلورل سوي",
     "vehiclesComing": "موټرونه راتلونکی دي",
     "vehiclesUnderRepair": "موټرونه د ترمیم لاندې دي",
-    "investmentCurrency": "د سرمایه ګیری اسعار"
+    "investmentCurrency": "د سرمایه ګیری اسعار",
+    "labelVehicleId": "ID موټر",
+    "labelTotalCost": "د ټول لګښت",
+    "lockedLabel": "قفل شوی",
+    "yes": "هو",
+    "no": "نه"
   },
   "Sales": {
     "pageTitle": "د پلور مدیریت",
@@ -309,6 +314,7 @@
     "sellerExchanger": "خرڅونکی (خرخونکي)",
     "licenseDocumentInfo": "لایسنس / اسناد معلومات (اسناد)",
     "trafficTransferDate": "د ترافیک د تبدیل نیټه / د ترافیک تبدیل نیټه",
+    "licensePersonName": "جوازسیر په نامه",
     "paymentInfo": "د تادیې معلومات",
     "currencyLabel": "اسعار / اسعار",
     "currencyAFN": "؋ AFN (افغاني)",

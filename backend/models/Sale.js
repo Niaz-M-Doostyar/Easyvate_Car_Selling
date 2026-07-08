@@ -72,6 +72,8 @@ const Sale = sequelize.define('Sale', {
   // ── Licensed Car Fields (اسناد دار) ───────────
   trafficTransferDate: { type: DataTypes.DATE },
 
+  licensePersonName: { type: DataTypes.STRING(255) },
+
   // ── Financial Fields ────────────────────────────
   sellingPrice: {
     type: DataTypes.DECIMAL(15, 2),
