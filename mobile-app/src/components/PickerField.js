@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Modal, FlatList, TouchableOpacity } from 'react-native';
-import { TextInput, Text, Searchbar, Divider, Portal, Surface } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, StyleSheet, Modal, FlatList, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { TextInput, Text, Searchbar, Divider, Surface } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../contexts/ThemeContext';
 
 export default function PickerField({ label, value, options, onSelect, error, displayValue, disabled, style, searchable }) {
   const [visible, setVisible] = useState(false);
   const [search, setSearch] = useState('');
   const { paperTheme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const c = paperTheme.colors;
 
   // options can be: string[] or { label, value }[]
@@ -17,6 +19,10 @@ export default function PickerField({ label, value, options, onSelect, error, di
     : normalizedOptions;
 
   const display = displayValue || (normalizedOptions.find(o => o.value === value)?.label) || '';
+
+  // Bottom padding: respect home indicator on iOS, keyboard spacing on Android
+  const sheetBottomPadding = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) + 8 : 24;
+  const maxListHeight = Dimensions.get('window').height * 0.5;
 
   return (
     <View style={[styles.wrapper, style]}>
@@ -39,10 +45,11 @@ export default function PickerField({ label, value, options, onSelect, error, di
 
       <Modal visible={visible} animationType="slide" transparent onRequestClose={() => setVisible(false)}>
         <View style={styles.modalOverlay}>
-          <Surface style={[styles.modalContent, { backgroundColor: c.surface }]} elevation={5}>
+          <Surface style={[styles.modalContent, { backgroundColor: c.surface, paddingBottom: sheetBottomPadding }]} elevation={5}>
+            {Platform.OS === 'ios' && <View style={styles.dragHandle} />}
             <View style={styles.modalHeader}>
               <Text variant="titleMedium" style={{ fontWeight: '700', flex: 1 }}>{label}</Text>
-              <TouchableOpacity onPress={() => setVisible(false)}>
+              <TouchableOpacity onPress={() => { setVisible(false); setSearch(''); }}>
                 <MaterialCommunityIcons name="close" size={24} color={c.onSurface} />
               </TouchableOpacity>
             </View>
@@ -68,7 +75,8 @@ export default function PickerField({ label, value, options, onSelect, error, di
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <Divider />}
-              style={{ maxHeight: 400 }}
+              style={{ maxHeight: maxListHeight }}
+              keyboardShouldPersistTaps="handled"
             />
           </Surface>
         </View>
@@ -82,7 +90,8 @@ const styles = StyleSheet.create({
   input: { fontSize: 14 },
   error: { fontSize: 12, marginTop: 2, marginLeft: 8 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30, maxHeight: '80%' },
+  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+  dragHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#ccc', alignSelf: 'center', marginTop: 8 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   search: { marginHorizontal: 12, marginBottom: 8, borderRadius: 10, elevation: 0 },
   option: { paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

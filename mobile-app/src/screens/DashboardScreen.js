@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, Platform } from 'react-native';
 import { Card, Text, Button, ProgressBar, Divider, Avatar, TouchableRipple } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import SummaryCard from '../components/SummaryCard';
 import StatusChip from '../components/StatusChip';
@@ -17,6 +18,7 @@ export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
   const { paperTheme, isDark } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ vehicles: [], customers: [], sales: [], loans: [], balance: {}, employees: [] });
@@ -231,7 +233,7 @@ export default function DashboardScreen({ navigation }) {
           <SummaryCard title="Available" value={String(availableVehicles)} icon="car-key" color={c.success} style={styles.gridItem} />
         </View>
 
-        <View style={{ height: 28 }} />
+        <View style={{ height: Platform.OS === 'ios' ? Math.max(insets.bottom, 28) : 28 }} />
       </ScrollView>
     </ScreenWrapper>
   );
@@ -259,7 +261,7 @@ const styles = StyleSheet.create({
 
   // Section styling
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3, marginTop: 4, marginBottom: -2, marginLeft: 4 },
-  sectionCard: { borderRadius: 18, overflow: 'hidden' },
+  sectionCard: { borderRadius: 18, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
   sectionCardTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   viewAllLabel: { fontSize: 12, fontWeight: '700' },
@@ -284,7 +286,7 @@ const styles = StyleSheet.create({
 
   // Quick Actions
   quickGrid: { flexDirection: 'row', gap: 10 },
-  quickBtn: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  quickBtn: { flex: 1, borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   quickInner: { alignItems: 'center', paddingVertical: 16, gap: 8 },
   quickIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   quickLabel: { fontSize: 11, fontWeight: '700', textAlign: 'center' },

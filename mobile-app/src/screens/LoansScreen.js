@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
 import { Searchbar, FAB, Text, IconButton, Menu, Chip, Button, Portal, Dialog, TouchableRipple } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -167,14 +167,14 @@ const styles = StyleSheet.create({
   searchInput: { fontSize: 14, marginLeft: -4 },
   filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
   list: { padding: 16, paddingTop: 6, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 16, overflow: 'hidden' },
+  card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'flex-start' },
   cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
   cardTitle: { fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: -0.2 },
   cardMeta: { fontSize: 12, marginTop: 2, fontWeight: '400' },
   actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2, marginRight: -8 },
   actionBtn: { margin: 0, width: 34, height: 34 },
-  totalCard: { marginHorizontal: 16, marginTop: 12, borderRadius: 16, overflow: 'hidden' },
+  totalCard: { marginHorizontal: 16, marginTop: 12, borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   totalInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
   totalIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   dialog: { borderRadius: 24 },

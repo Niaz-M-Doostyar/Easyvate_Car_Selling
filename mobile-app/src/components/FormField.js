@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { TextInput, HelperText } from 'react-native-paper';
 import { useAppTheme } from '../contexts/ThemeContext';
 
@@ -22,11 +22,12 @@ export default function FormField({ label, value, onChangeText, error, multiline
         left={left}
         placeholder={placeholder}
         mode="outlined"
-        style={[styles.input, multiline && { minHeight: 80 }]}
+        style={[styles.input, multiline && styles.multiline]}
         outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
         outlineColor={c.border}
         activeOutlineColor={c.primary}
         placeholderTextColor={c.onSurfaceVariant + '80'}
+        textAlignVertical={multiline ? 'top' : 'center'}
         dense
       />
       {error ? <HelperText type="error" visible style={styles.helper}>{error}</HelperText> : null}
@@ -37,5 +38,6 @@ export default function FormField({ label, value, onChangeText, error, multiline
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 12 },
   input: { fontSize: 15 },
+  multiline: { minHeight: Platform.OS === 'ios' ? 90 : 80 },
   helper: { marginTop: -2 },
 });

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
 import { Text, Button, Divider, RadioButton, IconButton, TouchableRipple } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   rateRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   rateCard: { flex: 1, borderRadius: 16, alignItems: 'center', paddingVertical: 14 },
   rateIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  card: { borderRadius: 16, padding: 16, overflow: 'hidden' },
+  card: { borderRadius: 16, padding: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12, letterSpacing: -0.2 },
   fieldLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   radioRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   swapBtn: { borderRadius: 12 },
   resultCard: { borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 12 },
   actionButton: { marginTop: 12, borderRadius: 14, height: 48, justifyContent: 'center' },
-  histCard: { borderRadius: 14, marginBottom: 8, overflow: 'hidden' },
+  histCard: { borderRadius: 14, marginBottom: 8, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   histInner: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 },
   histIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Card, Text, Divider, Chip } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import SummaryCard from '../components/SummaryCard';
@@ -12,6 +13,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
   const vehicle = route.params?.vehicle;
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('info');
   const [costs, setCosts] = useState([]);
   const [sharing, setSharing] = useState([]);
@@ -171,7 +173,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
           </Card>
         )}
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: Platform.OS === 'ios' ? Math.max(insets.bottom, 24) : 24 }} />
       </ScrollView>
     </ScreenWrapper>
   );
