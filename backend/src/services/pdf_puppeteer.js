@@ -20,7 +20,9 @@ function toPashtoDate(d) {
 
 function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rightImgB64 = '') {
   const paymentCurrency = safeText(sale.paymentCurrency || 'افغانۍ');
+  const sellingPriceNum = Number(sale.sellingPrice) || 0;
   const price = sale.sellingPrice ? toPashtoNumber(sale.sellingPrice) : '';
+  const halfPrice = sellingPriceNum ? toPashtoNumber(sellingPriceNum / 2) : '';
   const downPayment = sale.downPayment ? toPashtoNumber(sale.downPayment) : '';
   const remaining = sale.remainingAmount ? toPashtoNumber(sale.remainingAmount) : '';
   const priceDiff = sale.priceDifference ? toPashtoNumber(sale.priceDifference) : '';
@@ -121,7 +123,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
   if (typeKey === 'Exchange Car') {
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې دوي عراده موټران سره تبادله سول په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
+        شرعي اقرار کوم چې دوي عراده موټران سره تبادله سول په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( ${halfPrice} ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
       </div>
       <ol class="terms-list">
         <li>د موټر تیر ترافیکي پیښې مسؤلیت د غلا ضمانت او پور له دغه تاریخ سه  ( ${date} ) په متبادله کوونکي اړه لري.</li>
@@ -135,7 +137,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
   } else if (typeKey === 'Container One Key') {
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( ${halfPrice} ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
         <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( ${date} ) وروسته د رانیوونکي په غاړه دي.</li>
@@ -151,7 +153,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
     // Licensed Car
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( ${price/2} ) کیږي په لاندې شرایطو خرڅ سو.
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( ${halfPrice} ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
         <li>د موټر د اسنادو او قبالې په نوم کولو مصارف په رانیونکي پورې اړه لري.</li>
