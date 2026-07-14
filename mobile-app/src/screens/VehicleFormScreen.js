@@ -113,7 +113,7 @@ export default function VehicleFormScreen({ navigation, route }) {
 
   return (
     <ScreenWrapper title={editing ? 'Edit Vehicle' : 'New Vehicle'} navigation={navigation}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {/* Step indicator */}
         <View style={[styles.stepRow, { borderBottomColor: c.border }]}>
           {steps.map((s, i) => (

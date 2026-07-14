@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
-import { Avatar, Title, Caption, Divider, TouchableRipple, Switch, Text } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Avatar, TouchableRipple, Switch, Text } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 
@@ -11,6 +12,7 @@ export default function DrawerContent(props) {
   const { user, logout } = useAuth();
   const { isDark, setIsDark, paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
 
   const initials = (user?.fullName || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -21,7 +23,7 @@ export default function DrawerContent(props) {
         colors={c.gradient || [c.primary, c.primary + 'CC']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 12 }]}
       >
         <View style={styles.avatarRing}>
           <Avatar.Text
@@ -50,7 +52,7 @@ export default function DrawerContent(props) {
       </DrawerContentScrollView>
 
       {/* Premium Footer */}
-      <View style={[styles.footer, { borderTopColor: c.border }]}>
+      <View style={[styles.footer, { borderTopColor: c.border, paddingBottom: Math.max(insets.bottom, 12) + 4 }]}> 
         <TouchableRipple onPress={setIsDark} style={styles.footerRow} borderless>
           <View style={styles.footerInner}>
             <View style={[styles.footerIcon, { backgroundColor: c.primary + '12' }]}>
@@ -81,7 +83,6 @@ export default function DrawerContent(props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 56 : 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   },
   roleText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
   navContent: { paddingTop: 6 },
-  footer: { paddingBottom: Platform.OS === 'ios' ? 28 : 16, borderTopWidth: 1 },
+  footer: { borderTopWidth: 1 },
   footerRow: { paddingHorizontal: 16, paddingVertical: 11 },
   footerInner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   footerIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },

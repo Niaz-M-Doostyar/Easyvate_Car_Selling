@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Button, Divider } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -16,6 +17,7 @@ export default function EmployeeFormScreen({ navigation, route }) {
   const editing = route.params?.employee;
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
 
   const [form, setForm] = useState({
     fullName: '', fatherName: '', phoneNumber: '', nationalIdNumber: '',
@@ -86,8 +88,8 @@ export default function EmployeeFormScreen({ navigation, route }) {
 
   return (
     <ScreenWrapper title={editing ? 'Edit Employee' : 'New Employee'} navigation={navigation} back>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+        <ScrollView contentContainerStyle={[styles.scroll, Platform.OS === 'ios' && { paddingBottom: Math.max(40, insets.bottom + 24) }]} keyboardShouldPersistTaps="handled">
           <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12, color: c.onSurface }}>Personal Information</Text>
           <FormField label="Full Name *" value={form.fullName} onChangeText={v => set('fullName', v)} error={errors.fullName} />
           <FormField label="Father's Name *" value={form.fatherName} onChangeText={v => set('fatherName', v)} error={errors.fatherName} />

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
 import { Searchbar, FAB, Text, IconButton, TouchableRipple } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   searchbar: { borderRadius: 16, elevation: 0, height: 48, borderWidth: 1 },
   searchInput: { fontSize: 14, marginLeft: -4 },
   list: { padding: 16, paddingTop: 6, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 16, overflow: 'hidden' },
+  card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'center' },
   avatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },

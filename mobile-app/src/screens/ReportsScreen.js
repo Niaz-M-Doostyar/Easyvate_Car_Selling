@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, ActivityIndicator, TouchableRipple, IconButton } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -206,11 +206,11 @@ function formatValue(val) {
 
 const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 40 },
-  section: { borderRadius: 16, padding: 16, overflow: 'hidden' },
+  section: { borderRadius: 16, padding: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   sectionIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  reportCard: { width: '47%', borderRadius: 16, overflow: 'hidden' },
+  reportCard: { width: '47%', borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   reportCardInner: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 10 },
   reportIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   headerIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Card, Divider, SegmentedButtons, IconButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -18,6 +19,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
   const customer = route.params?.customer;
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('info');
   const [ledger, setLedger] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -147,7 +149,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 40, gap: 12 },
+  scroll: { padding: 16, paddingBottom: Platform.OS === 'ios' ? 60 : 40, gap: 12 },
   card: { borderRadius: 12, elevation: 1 },
   fieldRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },

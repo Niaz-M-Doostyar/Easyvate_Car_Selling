@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Button, Divider, RadioButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -12,6 +13,7 @@ export default function LoanFormScreen({ navigation, route }) {
   const editing = route.params?.loan;
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
 
   const [form, setForm] = useState({
     personName: '', phoneNumber: '', loanType: 'Given',
@@ -66,8 +68,8 @@ export default function LoanFormScreen({ navigation, route }) {
 
   return (
     <ScreenWrapper title={editing ? 'Edit Loan' : 'New Loan'} navigation={navigation} back>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+        <ScrollView contentContainerStyle={[styles.scroll, Platform.OS === 'ios' && { paddingBottom: Math.max(40, insets.bottom + 24) }]} keyboardShouldPersistTaps="handled">
           <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12, color: c.onSurface }}>Loan Details</Text>
 
           <PickerField label="Loan Type *" value={form.loanType} options={LOAN_TYPES} onSelect={v => set('loanType', v)} error={errors.loanType} />

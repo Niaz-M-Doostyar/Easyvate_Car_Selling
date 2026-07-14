@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { useAppTheme } from '../contexts/ThemeContext';
 
 export default function SummaryCard({ title, value, icon, color, subtitle, style, onPress }) {
@@ -12,28 +12,31 @@ export default function SummaryCard({ title, value, icon, color, subtitle, style
 
   return (
     <View style={[styles.card, { backgroundColor: c.card }, paperTheme.shadows?.md, style]}>
-      <View style={styles.content}>
-        <LinearGradient
-          colors={[iconColor + '20', iconColor + '08']}
-          style={styles.iconBox}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <MaterialCommunityIcons name={icon || 'chart-box'} size={22} color={iconColor} />
-        </LinearGradient>
-        <View style={styles.textBox}>
-          <Text style={[styles.label, { color: c.onSurfaceVariant }]}>{title}</Text>
-          <Text style={[styles.value, { color: c.onSurface }]} numberOfLines={1}>{value}</Text>
-          {subtitle ? <Text style={[styles.subtitle, { color: c.onSurfaceVariant }]}>{subtitle}</Text> : null}
+      <View style={styles.innerClip}>
+        <View style={styles.content}>
+          <LinearGradient
+            colors={[iconColor + '20', iconColor + '08']}
+            style={styles.iconBox}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialCommunityIcons name={icon || 'chart-box'} size={22} color={iconColor} />
+          </LinearGradient>
+          <View style={styles.textBox}>
+            <Text style={[styles.label, { color: c.onSurfaceVariant }]}>{title}</Text>
+            <Text style={[styles.value, { color: c.onSurface }]} numberOfLines={1}>{value}</Text>
+            {subtitle ? <Text style={[styles.subtitle, { color: c.onSurfaceVariant }]}>{subtitle}</Text> : null}
+          </View>
         </View>
+        <View style={[styles.accent, { backgroundColor: iconColor }]} />
       </View>
-      <View style={[styles.accent, { backgroundColor: iconColor }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, overflow: 'hidden', position: 'relative' },
+  card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible', position: 'relative' },
+  innerClip: { borderRadius: 16, overflow: 'hidden' },
   content: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, paddingVertical: 14 },
   iconBox: { width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   textBox: { flex: 1 },

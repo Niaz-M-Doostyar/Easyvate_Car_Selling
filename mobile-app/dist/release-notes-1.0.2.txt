@@ -1,0 +1,9 @@
+Release: Easyvate
+Version: 1.0.2
+versionCode: 3
+Changes:
+- Updated minSdk to 26 (Android 8)
+- Bumped version to 1.0.2
+- Built and signed AAB
+
+Build date: Tue Apr  7 08:54:55 UTC 2026

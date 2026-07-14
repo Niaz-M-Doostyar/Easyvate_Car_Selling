@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Button, Divider, Card, Switch, SegmentedButtons, RadioButton, Chip } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -13,6 +14,7 @@ export default function SaleFormScreen({ navigation, route }) {
   const editing = route.params?.sale;
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const insets = useSafeAreaInsets();
 
   const [vehicles, setVehicles] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -251,7 +253,7 @@ export default function SaleFormScreen({ navigation, route }) {
 
   return (
     <ScreenWrapper title={editing ? 'Edit Sale' : 'New Sale'} navigation={navigation} back>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {/* Step indicator */}
         <View style={[styles.stepRow, { backgroundColor: c.surfaceVariant }]}>
           {STEPS.map((s, i) => (
@@ -268,7 +270,7 @@ export default function SaleFormScreen({ navigation, route }) {
           {getStepContent()}
         </ScrollView>
 
-        <View style={[styles.btnRow, { backgroundColor: c.surface, borderTopColor: c.outlineVariant }]}>
+        <View style={[styles.btnRow, { backgroundColor: c.surface, borderTopColor: c.outlineVariant, paddingBottom: Math.max(insets.bottom, 16) }]}>
           {step > 0 && <Button mode="outlined" onPress={() => setStep(step - 1)} style={{ flex: 1 }}>Back</Button>}
           {!isLastStep && <Button mode="contained" onPress={() => setStep(step + 1)} style={{ flex: 1 }}>Next</Button>}
           {isLastStep && <Button mode="contained" onPress={handleSubmit} loading={saving} disabled={saving} style={{ flex: 1 }} labelStyle={{ fontWeight: '700' }}>

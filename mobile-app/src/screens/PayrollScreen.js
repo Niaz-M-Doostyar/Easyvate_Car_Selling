@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
 import { FAB, Text, IconButton, Menu, Chip, Button, Portal, Dialog, TouchableRipple } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -145,7 +145,7 @@ export default function PayrollScreen({ navigation }) {
 const styles = StyleSheet.create({
   filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
   list: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 90 },
-  card: { borderRadius: 16, overflow: 'hidden' },
+  card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   cardInner: { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'flex-start' },
   cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
   cardTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
