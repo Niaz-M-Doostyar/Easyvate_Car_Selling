@@ -20,7 +20,7 @@ const parseTimeToDate = (timeStr, baseDate) => {
   return d;
 };
 
-router.get('/', verifyToken, authorize(['Super Admin', 'Manager', 'HR', 'Viewer']), async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const employees = await Employee.findAll({ attributes: ['id', 'fullName'], order: [['fullName', 'ASC']] });
@@ -42,31 +42,33 @@ router.get('/', verifyToken, authorize(['Super Admin', 'Manager', 'HR', 'Viewer'
     for (const emp of employees) {
       const times = employeePunches[emp.id] || [];
       const pairs = [];
-      // Pair punches: IN (index 0,2,4...) and OUT (index 1,3,5...)
-      for (let i = 0; i < times.length; i++) {
+
+      let i = 0;
+      while (i < times.length) {
         const checkIn = times[i];
         let checkOut = null;
-        if ((i + 1) < times.length) {
-          // Check if next punch is at least 5 minutes later (to be considered a valid OUT)
-          const nextPunch = times[i+1];
-          const diffMinutes = (nextPunch - checkIn) / (1000 * 60);
-          if (diffMinutes >= 5) {
-            checkOut = nextPunch;
-            i++; // skip the paired out punch
-          } else {
-            // If less than 5 minutes, treat as multiple IN? Actually treat as same IN, ignore next? 
-            // To avoid infinite loop, just skip this one? Simpler: treat the next as ignored and continue.
-            // But we want correct pairing: if second punch within 5 min, it's not a new OUT; so we skip it and continue.
-            // So we don't increment i, and checkOut remains null.
-            // Then later we'll apply default out if needed.
+        let j = i + 1;
+
+        // Find the first punch that is >= 3 minutes after checkIn
+        while (j < times.length) {
+          const diffMinutes = (times[j] - checkIn) / (1000 * 60);
+          if (diffMinutes >= 3) {
+            checkOut = times[j];
+            i = j + 1; // skip past the OUT punch
+            break;
           }
+          j++; // ignore this punch (less than 3 min)
         }
-        if (!checkOut && i === times.length - 1) {
-          // Last punch has no following punch – use default end time
-          checkOut = parseTimeToDate(defaultEndTime, times[i]);
+
+        // If no valid OUT found, use default end time
+        if (!checkOut) {
+          checkOut = parseTimeToDate(defaultEndTime, checkIn);
+          i = times.length; // we're done for this employee
         }
+
         pairs.push({ checkIn, checkOut });
       }
+
       // If there are no punches at all, show empty
       if (pairs.length === 0) {
         pairs.push({ checkIn: null, checkOut: null });

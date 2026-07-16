@@ -39,10 +39,10 @@ app.disable('x-powered-by');
 app.set('etag', 'strong');
 
 app.use(cors({
-  origin: config.CORS.ORIGIN,
-  credentials: config.CORS.CREDENTIALS,
+  origin: '*', // or ['http://localhost:3000', 'https://niazikhpalwak.com']
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
 }));
 
 app.use(compression({
@@ -59,11 +59,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.post('/api/attendance/sync', async (req, res) => {
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey !== process.env.ZK_SYNC_API_KEY) {
-    return res.status(401).json({ success: false, error: 'Invalid API key' });
-  }
-
   try {
     const { empName, ID, date, attendanceCount, checkInTimes } = req.body;
     console.log(`✅ VMS received: ${empName} (${ID}) - ${checkInTimes.length} punches`);
@@ -164,8 +159,18 @@ const ROLE_EMPLOYEE = ['Super Admin', 'Owner', 'Manager', 'Financial', 'Accounta
 
 // 2. For all other /api routes, require JWT
 app.use('/api', (req, res, next) => {
-  // Skip if it's the sync endpoint (already handled, but just in case)
-  if (req.originalUrl === '/api/attendance/sync' || req.originalUrl === '/api/auth/login') return next();
+  // Public endpoints – no JWT required
+  const publicPaths = [
+    '/api/auth/login',
+    '/api/attendance/sync',
+    '/api/attendance/today',
+    '/api/attendance/monthly-summary',
+    '/api/time-settings/work-hours',
+    '/api/leaves'
+  ];
+  if (publicPaths.some(path => req.originalUrl.startsWith(path))) {
+    return next();
+  }
   verifyToken(req, res, next);
 });
 
@@ -185,11 +190,11 @@ app.use('/api/contact', verifyToken, authorize(ROLE_INVENTORY), contactRoutes);
 app.use('/api/carousel', verifyToken, authorize(ROLE_INVENTORY), carouselRoutes);
 app.use('/api/testimonial', verifyToken, authorize(ROLE_INVENTORY), testimonialRoutes);
 app.use('/api/choose-video', verifyToken, authorize(ROLE_INVENTORY), videoRoutes);
-app.use('/api/attendance/today', verifyToken, authorize(ROLE_INVENTORY), todayAttendanceRoutes);
-app.use('/api/attendance/monthly-summary', verifyToken, authorize(ROLE_INVENTORY), monthlySummaryRoutes);
 app.use('/api/settings', verifyToken, authorize(['Super Admin', 'Owner']), settingsRoutes);
-app.use('/api/time-settings', verifyToken, authorize(ROLE_INVENTORY), timeSettingRoutes);
-app.use('/api/leaves', verifyToken, authorize(ROLE_INVENTORY), leaveRoutes);
+app.use('/api/attendance/today', todayAttendanceRoutes);
+app.use('/api/attendance/monthly-summary', monthlySummaryRoutes);
+app.use('/api/time-settings', timeSettingRoutes);
+app.use('/api/leaves', leaveRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

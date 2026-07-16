@@ -6,7 +6,7 @@ const PunchLog = require('../models/PunchLog');
 const { verifyToken, authorize } = require('../src/middleware/auth');
 
 // GET /api/attendance/monthly-summary?month=5&year=2026
-router.get('/', verifyToken, authorize(['Super Admin', 'Manager', 'HR', 'Viewer']), async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     let { month, year } = req.query;
     if (!month || !year) {
