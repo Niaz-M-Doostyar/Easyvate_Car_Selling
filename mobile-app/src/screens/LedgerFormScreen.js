@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, Divider, RadioButton } from 'react-native-paper';
+import { Text, Button, Divider, RadioButton } from '../components/LocalizedPaper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -74,7 +74,7 @@ export default function LedgerFormScreen({ navigation, route }) {
           <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginTop: 8, marginBottom: 4 }}>Currency</Text>
           <RadioButton.Group value={form.currency} onValueChange={v => set('currency', v)}>
             <View style={{ flexDirection: 'row', gap: 16 }}>
-              {['AFN', 'USD', 'PKR'].map(cur => (
+              {['AFN', 'USD', 'PKR', 'AED'].map(cur => (
                 <View key={cur} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <RadioButton value={cur} />
                   <Text variant="bodyMedium" style={{ color: c.onSurface }}>{cur}</Text>

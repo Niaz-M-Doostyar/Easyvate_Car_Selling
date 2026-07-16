@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
-import { Searchbar, FAB, Text, IconButton, Menu, Chip, Button, Portal, Dialog, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, Button, Portal, Dialog, TouchableRipple } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -84,7 +84,7 @@ export default function LoansScreen({ navigation }) {
             <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]} numberOfLines={1}>{item.description || 'No description'}</Text>
             <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.date ? new Date(item.date).toLocaleDateString() : ''}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: isPaid ? c.success : c.error }}>{formatCurrency(item.amount || 0)}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: isPaid ? c.success : c.error }}>{formatCurrency(item.amount || 0, item.currency || 'AFN')}</Text>
               <StatusChip label={item.status || 'Active'} />
             </View>
             <View style={styles.actionsRow}>
@@ -125,7 +125,7 @@ export default function LoansScreen({ navigation }) {
             </LinearGradient>
             <Text style={{ color: c.error, fontWeight: '600', fontSize: 13 }}>Active Loans Total</Text>
           </View>
-          <Text style={{ fontWeight: '800', color: c.error, fontSize: 17 }}>{formatCurrency(totalActive)}</Text>
+          <Text style={{ fontWeight: '800', color: c.error, fontSize: 17 }}>{formatCurrency(totalActive, 'AFN')}</Text>
         </View>
       </View>
 

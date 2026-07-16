@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, TextInput as RNTextInput, Platform } from 'react-native';
-import { Searchbar, FAB, Text, IconButton, Menu, Chip, ProgressBar, Button, Portal, Dialog, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, ProgressBar, Button, Portal, Dialog, TouchableRipple } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -11,11 +11,13 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, SALE_TYPES } from '../utils/constants';
 import apiClient from '../api/client';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function SalesScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
   const { canWrite } = useAuth();
+  const { t, isRTL, fontFamily } = useLanguage();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -51,7 +53,7 @@ export default function SalesScreen({ navigation }) {
     if (!amt || amt <= 0) { alert('Enter a valid amount'); return; }
     setPaying(true);
     try {
-      await apiClient.post(`/sales/${payDialog.id}/payments`, { amount: amt, note: payNote, currency: 'AFN' });
+      await apiClient.post(`/sales/${payDialog.id}/payments`, { amount: amt, note: payNote, currency: payDialog.paymentCurrency || 'AFN' });
       setPayDialog(null); setPayAmount(''); setPayNote('');
       fetch();
     } catch (e) { alert(e.response?.data?.error || 'Payment failed'); }
@@ -95,10 +97,10 @@ export default function SalesScreen({ navigation }) {
             <Text style={[styles.cardTitle, { color: c.onSurface }]} numberOfLines={1}>{veh}</Text>
             <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.customer?.fullName || item.buyerName || 'N/A'} • {item.saleDate ? new Date(item.saleDate).toLocaleDateString() : ''}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-              <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPrice)}</Text>
+              <Text style={[styles.priceText, { color: c.onSurface }]}>{formatCurrency(item.sellingPrice, item.paymentCurrency)}</Text>
               <View style={[styles.payBadge, { backgroundColor: isPaid ? c.success + '12' : c.warning + '12' }]}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: isPaid ? c.success : c.warning }}>
-                  {isPaid ? '✓ Paid' : `${formatCurrency(remaining)} left`}
+                  {isPaid ? '✓ Paid' : `${formatCurrency(remaining, item.paymentCurrency)} left`}
                 </Text>
               </View>
             </View>
@@ -144,7 +146,7 @@ export default function SalesScreen({ navigation }) {
           <Dialog.Content>
             {payDialog && (
               <View style={{ gap: 12 }}>
-                <Text style={{ color: c.onSurfaceVariant, fontSize: 13 }}>Remaining: {formatCurrency(payDialog.remainingAmount)}</Text>
+                <Text style={{ color: c.onSurfaceVariant, fontSize: 13 }}>Remaining: {formatCurrency(payDialog.remainingAmount, payDialog.paymentCurrency || 'AFN')}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Button compact mode="outlined" onPress={() => setPayAmount(String(payDialog.remainingAmount))} style={styles.presetBtn}>Full</Button>
                   <Button compact mode="outlined" onPress={() => setPayAmount(String(Math.round(payDialog.remainingAmount / 2)))} style={styles.presetBtn}>½</Button>
@@ -155,15 +157,15 @@ export default function SalesScreen({ navigation }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: c.onSurface, marginRight: 4 }}>؋</Text>
                     <RNTextInput value={payAmount} onChangeText={setPayAmount} keyboardType="numeric"
-                      style={{ flex: 1, fontSize: 18, fontWeight: '800', color: c.onSurface, padding: 0 }}
+                      style={{ flex: 1, fontSize: 18, fontWeight: '800', color: c.onSurface, padding: 0, fontFamily, textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }}
                       placeholder="0" placeholderTextColor={c.onSurfaceVariant + '60'} />
                   </View>
                 </View>
                 <View style={[styles.inputBox, { borderColor: c.border }]}>
                   <Text style={{ color: c.onSurfaceVariant, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>Note (optional)</Text>
                   <RNTextInput value={payNote} onChangeText={setPayNote}
-                    style={{ fontSize: 14, color: c.onSurface, padding: 0 }}
-                    placeholder="Payment note..." placeholderTextColor={c.onSurfaceVariant + '60'} />
+                    style={{ fontSize: 14, color: c.onSurface, padding: 0, fontFamily, textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }}
+                    placeholder={t('Payment note...')} placeholderTextColor={c.onSurfaceVariant + '60'} />
                 </View>
               </View>
             )}

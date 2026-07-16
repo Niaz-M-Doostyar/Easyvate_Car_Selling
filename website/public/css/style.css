@@ -464,6 +464,8 @@ ol {
 .header__nav__widget {
 	display: inline-flex;
 	gap: 4px;
+	position: relative;
+	top: 8px;
 }
 
 .header__nav__widget .header__nav__widget__btn {

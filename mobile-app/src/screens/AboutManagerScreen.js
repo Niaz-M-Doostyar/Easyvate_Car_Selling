@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Image, Alert, RefreshControl,
 } from 'react-native';
-import { Text, TextInput, Button, Chip, IconButton, ActivityIndicator } from 'react-native-paper';
+import { Text, TextInput, Button, Chip, IconButton, ActivityIndicator } from '../components/LocalizedPaper';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -28,10 +28,14 @@ export default function AboutManagerScreen({ navigation }) {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await apiClient.get(`/about/${lang}`);
-      const abt = data.data || data || null;
+      const [aboutResponse, logosResponse] = await Promise.all([
+        apiClient.get(`/about/${lang}`),
+        apiClient.get(`/about/${lang}/logos`),
+      ]);
+      const abt = aboutResponse.data?.data || aboutResponse.data || null;
+      const loadedLogos = logosResponse.data?.data || logosResponse.data?.logos || [];
       setAbout(abt);
-      setLogos(data.logos || []);
+      setLogos(Array.isArray(loadedLogos) ? loadedLogos : []);
       if (abt) setForm({ title: abt.title || '', subtitle: abt.subtitle || '', description: abt.description || '' });
       else setForm({ title: '', subtitle: '', description: '' });
     } catch (e) {
@@ -46,7 +50,7 @@ export default function AboutManagerScreen({ navigation }) {
     setSaving(true);
     try {
       if (about?.id) {
-        await apiClient.put(`/about/${lang}/${about.id}`, form);
+        await apiClient.put(`/about/${lang}`, form);
       } else {
         await apiClient.post(`/about/${lang}`, form);
       }
@@ -76,7 +80,7 @@ export default function AboutManagerScreen({ navigation }) {
 
   const deleteLogo = async () => {
     try {
-      await apiClient.delete(`/about/${lang}/logos/${deleteLogoId}`);
+      await apiClient.delete(`/about/logos/${deleteLogoId}`);
       setLogos(prev => prev.filter(l => l.id !== deleteLogoId));
     } catch (e) {
       Alert.alert('Error', e.response?.data?.error || e.message);

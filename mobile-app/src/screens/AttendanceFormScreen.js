@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, Divider, Card } from 'react-native-paper';
+import { Text, Button, Divider, Card } from '../components/LocalizedPaper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -17,7 +17,7 @@ export default function AttendanceFormScreen({ navigation, route }) {
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
     employeeId: '',
-    month: MONTHS[new Date().getMonth()],
+    month: String(new Date().getMonth() + 1),
     year: String(new Date().getFullYear()),
     presentDays: '',
     absentDays: '',
@@ -36,7 +36,9 @@ export default function AttendanceFormScreen({ navigation, route }) {
     if (editing) {
       setForm({
         employeeId: String(editing.employeeId || editing.EmployeeId || ''),
-        month: editing.month || MONTHS[new Date().getMonth()],
+        month: Number.isInteger(Number(editing.month))
+          ? String(editing.month)
+          : String(MONTHS.indexOf(editing.month) + 1 || new Date().getMonth() + 1),
         year: String(editing.year || new Date().getFullYear()),
         presentDays: String(editing.presentDays || ''),
         absentDays: String(editing.absentDays || ''),
@@ -64,6 +66,7 @@ export default function AttendanceFormScreen({ navigation, route }) {
       const payload = {
         ...form,
         employeeId: Number(form.employeeId),
+        month: Number(form.month),
         presentDays: Number(form.presentDays),
         absentDays: Number(form.absentDays || 0),
         year: Number(form.year),
@@ -95,7 +98,8 @@ export default function AttendanceFormScreen({ navigation, route }) {
             onSelect={v => { const opt = empOptions.find(o => o.label === v); if (opt) set('employeeId', opt.value); }}
             error={errors.employeeId} />
 
-          <PickerField label="Month *" value={form.month} options={MONTHS} onSelect={v => set('month', v)} error={errors.month} />
+          <PickerField label="Month *" value={MONTHS[Number(form.month) - 1] || ''} options={MONTHS}
+            onSelect={v => set('month', String(MONTHS.indexOf(v) + 1))} error={errors.month} />
           <PickerField label="Year *" value={form.year} options={yearOptions} onSelect={v => set('year', v)} error={errors.year} />
 
           <Divider style={{ marginVertical: 16 }} />

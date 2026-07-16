@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { Button, Text, Card, Switch, IconButton, Divider, HelperText } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
+import { Button, Text, Card, Switch, IconButton, Divider, HelperText } from '../components/LocalizedPaper';
+import * as ImagePicker from 'expo-image-picker';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, VEHICLE_STATUSES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, STEERING_TYPES, MONOLITHIC_CUT, CURRENCIES } from '../utils/constants';
+import { VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, VEHICLE_STATUSES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, STEERING_TYPES, MONOLITHIC_CUT, CURRENCIES, formatCurrency } from '../utils/constants';
+import { convertCurrency } from '../utils/currency';
+import { validateRequired, validatePrice } from '../utils/validation';
 import apiClient from '../api/client';
+import { resolveAssetUrl } from '../api/config';
 
 const emptyVehicle = {
   manufacturer: '', model: '', year: '', category: '', color: '', chassisNumber: '', engineNumber: '',
   engineType: '', fuelType: '', transmission: '', mileage: '', plateNo: '', vehicleLicense: '',
   steering: '', monolithicCut: '', status: 'Available',
   basePurchasePrice: '', baseCurrency: 'USD', transportDubai: '', importAfghanistan: '', repairCost: '',
-  sellingPrice: '',
+  sellingPrice: '', sellingPriceCurrency: 'AFN',
 };
 
-const emptyRef = { refFullName: '', refTazkiraNumber: '', refPhoneNumber: '', refAddress: '' };
+const emptyRef = { fullName: '', tazkiraNumber: '', phoneNumber: '', address: '' };
 
 export default function VehicleFormScreen({ navigation, route }) {
   const editing = route.params?.vehicle;
@@ -28,10 +32,28 @@ export default function VehicleFormScreen({ navigation, route }) {
   const [hasRef, setHasRef] = useState(false);
   const [partners, setPartners] = useState([]);
   const [hasPartners, setHasPartners] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [images, setImages] = useState([]); // { uri, name, type }
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [editReason, setEditReason] = useState('');
+  const [dropdownOptions, setDropdownOptions] = useState({ manufacturer: [], category: [], engineType: [], transmission: [] });
+  const [exchangeRates, setExchangeRates] = useState({});
+
+  useEffect(() => {
+    Promise.all([
+      apiClient.get('/customers').catch(() => ({ data: [] })),
+      apiClient.get('/vehicles/dropdown-options').catch(() => ({ data: { data: {} } })),
+      apiClient.get('/currency/rates').catch(() => ({ data: {} })),
+    ]).then(([customerRes, optionRes, ratesRes]) => {
+      const list = Array.isArray(customerRes.data?.data) ? customerRes.data.data : Array.isArray(customerRes.data) ? customerRes.data : [];
+      setCustomers(list);
+      setDropdownOptions(optionRes.data?.data || {});
+      setExchangeRates(ratesRes.data?.data || ratesRes.data || {});
+    });
+  }, []);
 
   useEffect(() => {
     if (editing) {
@@ -42,14 +64,43 @@ export default function VehicleFormScreen({ navigation, route }) {
         transmission: editing.transmission || '', mileage: String(editing.mileage || ''), plateNo: editing.plateNo || '',
         vehicleLicense: editing.vehicleLicense || '', steering: editing.steering || '', monolithicCut: editing.monolithicCut || '',
         status: editing.status || 'Available', basePurchasePrice: String(editing.basePurchasePrice || ''),
-        baseCurrency: editing.baseCurrency || 'USD', transportDubai: String(editing.transportDubai || ''),
-        importAfghanistan: String(editing.importAfghanistan || ''), repairCost: String(editing.repairCost || ''),
-        sellingPrice: String(editing.sellingPrice || ''),
+        baseCurrency: editing.baseCurrency || 'USD', transportDubai: String(editing.transportCostToDubai || ''),
+        importAfghanistan: String(editing.importCostToAfghanistan || ''), repairCost: String(editing.repairCost || ''),
+        sellingPrice: String(editing.sellingPrice || ''), sellingPriceCurrency: editing.sellingPriceCurrency || 'AFN',
       });
-      if (editing.refFullName) {
+      if (editing.referencePerson?.fullName || editing.refFullName) {
         setHasRef(true);
-        setRef({ refFullName: editing.refFullName || '', refTazkiraNumber: editing.refTazkiraNumber || '', refPhoneNumber: editing.refPhoneNumber || '', refAddress: editing.refAddress || '' });
+        const rp = editing.referencePerson || {};
+        setRef({
+          fullName: rp.fullName || editing.refFullName || '',
+          tazkiraNumber: rp.tazkiraNumber || editing.refTazkiraNumber || '',
+          phoneNumber: rp.phoneNumber || editing.refPhoneNumber || '',
+          address: rp.address || editing.refAddress || '',
+        });
       }
+      if (editing.sharingPersons && editing.sharingPersons.length > 0) {
+        setHasPartners(true);
+        setPartners(editing.sharingPersons.map(p => ({
+          personName: p.personName || p.customer?.fullName || '',
+          sharePercentage: String(p.sharePercentage || p.percentage || ''),
+          investmentAmount: String(p.investmentAmount || ''),
+          investmentCurrency: p.investmentCurrency || editing.baseCurrency || 'USD',
+          phone: p.phoneNumber || p.phone || p.customer?.phoneNumber || '',
+          customerId: p.customerId ? String(p.customerId) : '',
+        })));
+      }
+      // Match webadmin edit behavior: show the vehicle's already-uploaded
+      // gallery while allowing new selections to be added in the same save.
+      apiClient.get(`/vehicles/${editing.id}/images`).then(res => {
+        const existing = Array.isArray(res.data?.data) ? res.data.data : [];
+        setImages(existing.map(img => ({
+          id: img.id,
+          existing: true,
+          uri: resolveAssetUrl(img.imagePath || img.path || img.url || img.imageUrl),
+          name: img.fileName || `image-${img.id}.jpg`,
+          type: img.mimeType || 'image/jpeg',
+        })).filter(img => img.uri));
+      }).catch(() => {});
     }
   }, [editing]);
 
@@ -60,6 +111,8 @@ export default function VehicleFormScreen({ navigation, route }) {
 
   const totalCost = [form.basePurchasePrice, form.transportDubai, form.importAfghanistan, form.repairCost]
     .reduce((s, v) => s + (Number(v) || 0), 0);
+  const sellingPriceInBase = convertCurrency(form.sellingPrice, form.sellingPriceCurrency, form.baseCurrency, exchangeRates);
+  const expectedProfit = sellingPriceInBase - totalCost;
 
   const validate = () => {
     const errs = {};
@@ -72,28 +125,47 @@ export default function VehicleFormScreen({ navigation, route }) {
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    // Validation errors, especially the required edit reason, live on the
+    // first step. Always return the user there so the field message is visible.
+    if (!validate()) {
+      setStep(0);
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         ...form,
         year: Number(form.year) || null,
         mileage: Number(form.mileage) || null,
+        totalCostOriginal: totalCost,
         basePurchasePrice: Number(form.basePurchasePrice) || 0,
-        transportDubai: Number(form.transportDubai) || 0,
-        importAfghanistan: Number(form.importAfghanistan) || 0,
+        transportCostToDubai: Number(form.transportDubai) || 0,
+        importCostToAfghanistan: Number(form.importAfghanistan) || 0,
         repairCost: Number(form.repairCost) || 0,
         sellingPrice: Number(form.sellingPrice) || 0,
-        totalCostPKR: totalCost,
-        ...(hasRef ? ref : {}),
-        sharingPersons: hasPartners ? partners : [],
+        sellingPriceCurrency: form.sellingPriceCurrency || 'AFN',
+        ...(hasRef && ref.fullName ? { referencePerson: ref } : { referencePerson: null }),
+        sharingPersons: hasPartners ? partners.map(p => ({
+          personName: p.personName,
+          percentage: Number(p.investmentAmount) > 0 && totalCost > 0
+            ? (convertCurrency(p.investmentAmount, p.investmentCurrency || form.baseCurrency, form.baseCurrency, exchangeRates) / totalCost) * 100
+            : Number(p.sharePercentage) || 0,
+          investmentAmount: Number(p.investmentAmount) || 0,
+          investmentCurrency: p.investmentCurrency || 'USD',
+          phoneNumber: p.phone,
+          calculationMethod: Number(p.investmentAmount) > 0 ? 'Investment' : 'Percentage',
+          customerId: p.customerId ? Number(p.customerId) : null,
+        })) : [],
       };
 
       if (editing) {
         payload.editReason = editReason;
         await apiClient.put(`/vehicles/${editing.id}`, payload);
+        await uploadImages(editing.id);
       } else {
-        await apiClient.post('/vehicles', payload);
+        const res = await apiClient.post('/vehicles', payload);
+        const newId = res.data?.data?.id || res.data?.id;
+        if (newId) await uploadImages(newId);
       }
       navigation.goBack();
     } catch (e) {
@@ -103,13 +175,51 @@ export default function VehicleFormScreen({ navigation, route }) {
     }
   };
 
-  const addPartner = () => setPartners(p => [...p, { personName: '', sharePercentage: '', investmentAmount: '', phone: '' }]);
+  const addPartner = () => setPartners(p => [...p, { personName: '', sharePercentage: '', investmentAmount: '', investmentCurrency: form.baseCurrency, phone: '', customerId: '' }]);
   const updatePartner = (idx, key, val) => {
     setPartners(p => { const n = [...p]; n[idx] = { ...n[idx], [key]: val }; return n; });
   };
   const removePartner = (idx) => setPartners(p => p.filter((_, i) => i !== idx));
 
-  const steps = ['Vehicle Details', 'Reference Person', 'Partnership'];
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission required', 'Please allow photo library access.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets) {
+      setImages(prev => [
+        ...prev,
+        ...result.assets.map(a => ({ uri: a.uri, name: a.fileName || `photo_${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' }))
+      ]);
+    }
+  };
+
+  const removeImage = async (img, index) => {
+    if (img.existing && img.id) {
+      try { await apiClient.delete(`/vehicles/images/${img.id}`); }
+      catch (e) { Alert.alert('Error', e.response?.data?.error || 'Could not delete image'); return; }
+    }
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (vehicleId) => {
+    const newImages = images.filter(img => !img.existing);
+    if (newImages.length === 0) return;
+    setUploadingImages(true);
+    try {
+      const formData = new FormData();
+      newImages.forEach(img => formData.append('images', { uri: img.uri, name: img.name, type: img.type }));
+      await apiClient.post(`/vehicles/${vehicleId}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    } catch (e) {
+      Alert.alert('Warning', 'Vehicle saved but image upload failed: ' + (e.response?.data?.error || e.message));
+    }
+    setUploadingImages(false);
+  };
+
+  const steps = ['Vehicle Details', 'Reference Person', 'Partnership', 'Images'];
 
   return (
     <ScreenWrapper title={editing ? 'Edit Vehicle' : 'New Vehicle'} navigation={navigation}>
@@ -127,13 +237,13 @@ export default function VehicleFormScreen({ navigation, route }) {
           {step === 0 && (
             <>
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Vehicle Identity</Text>
-              <PickerField label="Manufacturer *" value={form.manufacturer} options={VEHICLE_MANUFACTURERS} onSelect={v => updateForm('manufacturer', v)} error={errors.manufacturer} />
+              <PickerField label="Manufacturer *" value={form.manufacturer} options={[...new Set([...VEHICLE_MANUFACTURERS, ...(dropdownOptions.manufacturer || [])])]} onSelect={v => updateForm('manufacturer', v)} error={errors.manufacturer} />
               <View style={styles.row}>
                 <FormField label="Model" value={form.model} onChangeText={v => updateForm('model', v)} style={styles.half} />
                 <FormField label="Year" value={form.year} onChangeText={v => updateForm('year', v)} keyboardType="numeric" style={styles.half} />
               </View>
               <View style={styles.row}>
-                <PickerField label="Category" value={form.category} options={VEHICLE_CATEGORIES} onSelect={v => updateForm('category', v)} style={styles.half} />
+                <PickerField label="Category" value={form.category} options={[...new Set([...VEHICLE_CATEGORIES, ...(dropdownOptions.category || [])])]} onSelect={v => updateForm('category', v)} style={styles.half} />
                 <FormField label="Color" value={form.color} onChangeText={v => updateForm('color', v)} style={styles.half} />
               </View>
               <FormField label="Chassis / VIN" value={form.chassisNumber} onChangeText={v => updateForm('chassisNumber', v)} />
@@ -141,11 +251,11 @@ export default function VehicleFormScreen({ navigation, route }) {
 
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Specifications</Text>
               <View style={styles.row}>
-                <PickerField label="Engine Type" value={form.engineType} options={ENGINE_TYPES} onSelect={v => updateForm('engineType', v)} style={styles.half} />
+                <PickerField label="Engine Type" value={form.engineType} options={[...new Set([...ENGINE_TYPES, ...(dropdownOptions.engineType || [])])]} onSelect={v => updateForm('engineType', v)} style={styles.half} />
                 <PickerField label="Fuel Type" value={form.fuelType} options={FUEL_TYPES} onSelect={v => updateForm('fuelType', v)} style={styles.half} />
               </View>
               <View style={styles.row}>
-                <PickerField label="Transmission" value={form.transmission} options={TRANSMISSION_TYPES} onSelect={v => updateForm('transmission', v)} style={styles.half} />
+                <PickerField label="Transmission" value={form.transmission} options={[...new Set([...TRANSMISSION_TYPES, ...(dropdownOptions.transmission || [])])]} onSelect={v => updateForm('transmission', v)} style={styles.half} />
                 <FormField label="Mileage (km)" value={form.mileage} onChangeText={v => updateForm('mileage', v)} keyboardType="numeric" style={styles.half} />
               </View>
               <View style={styles.row}>
@@ -161,15 +271,22 @@ export default function VehicleFormScreen({ navigation, route }) {
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Buying Stages & Costs</Text>
               <View style={styles.row}>
                 <FormField label="Base Purchase Price *" value={form.basePurchasePrice} onChangeText={v => updateForm('basePurchasePrice', v)} keyboardType="numeric" error={errors.basePurchasePrice} style={styles.half} />
-                <PickerField label="Base Currency" value={form.baseCurrency} options={CURRENCIES} onSelect={v => updateForm('baseCurrency', v)} style={styles.half} />
+                <PickerField label="Base Currency" value={form.baseCurrency} options={CURRENCIES} onSelect={v => {
+                  updateForm('baseCurrency', v);
+                  setPartners(list => list.map(partner => ({ ...partner, investmentCurrency: v })));
+                }} style={styles.half} />
               </View>
               <View style={styles.row}>
                 <FormField label="Transport to Dubai" value={form.transportDubai} onChangeText={v => updateForm('transportDubai', v)} keyboardType="numeric" style={styles.half} />
                 <FormField label="Import to Afghanistan" value={form.importAfghanistan} onChangeText={v => updateForm('importAfghanistan', v)} keyboardType="numeric" style={styles.half} />
               </View>
               <FormField label="Repair Cost" value={form.repairCost} onChangeText={v => updateForm('repairCost', v)} keyboardType="numeric" />
-              <FormField label="Total Cost (auto)" value={String(totalCost)} disabled />
-              <FormField label="Selling Price *" value={form.sellingPrice} onChangeText={v => updateForm('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} />
+              <FormField label="Total Cost (auto)" value={formatCurrency(totalCost, form.baseCurrency)} disabled />
+              <View style={styles.row}>
+                <FormField label="Selling Price *" value={form.sellingPrice} onChangeText={v => updateForm('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} style={styles.half} />
+                <PickerField label="Selling Currency" value={form.sellingPriceCurrency} options={CURRENCIES} onSelect={v => updateForm('sellingPriceCurrency', v)} style={styles.half} />
+              </View>
+              <FormField label="Expected Profit" value={formatCurrency(expectedProfit, form.baseCurrency)} disabled />
 
               {editing && (
                 <>
@@ -188,10 +305,10 @@ export default function VehicleFormScreen({ navigation, route }) {
               </View>
               {hasRef && (
                 <>
-                  <FormField label="Full Name" value={ref.refFullName} onChangeText={v => setRef(p => ({ ...p, refFullName: v }))} />
-                  <FormField label="Tazkira Number" value={ref.refTazkiraNumber} onChangeText={v => setRef(p => ({ ...p, refTazkiraNumber: v }))} />
-                  <FormField label="Phone Number" value={ref.refPhoneNumber} onChangeText={v => setRef(p => ({ ...p, refPhoneNumber: v }))} keyboardType="phone-pad" />
-                  <FormField label="Address" value={ref.refAddress} onChangeText={v => setRef(p => ({ ...p, refAddress: v }))} multiline />
+                  <FormField label="Full Name" value={ref.fullName} onChangeText={v => setRef(p => ({ ...p, fullName: v }))} />
+                  <FormField label="Tazkira Number" value={ref.tazkiraNumber} onChangeText={v => setRef(p => ({ ...p, tazkiraNumber: v }))} />
+                  <FormField label="Phone Number" value={ref.phoneNumber} onChangeText={v => setRef(p => ({ ...p, phoneNumber: v }))} keyboardType="phone-pad" />
+                  <FormField label="Address" value={ref.address} onChangeText={v => setRef(p => ({ ...p, address: v }))} multiline />
                 </>
               )}
             </>
@@ -212,11 +329,30 @@ export default function VehicleFormScreen({ navigation, route }) {
                           <Text variant="titleSmall" style={{ fontWeight: '700', color: c.primary }}>Partner {idx + 1}</Text>
                           <IconButton icon="close" size={20} onPress={() => removePartner(idx)} iconColor={c.error} />
                         </View>
+                        <PickerField
+                          label="Linked Customer (Optional)"
+                          value={p.customerId ? (customers.find(c => String(c.id) === String(p.customerId))?.fullName || '') : ''}
+                          options={customers.map(c => c.fullName)}
+                          onSelect={v => {
+                            const found = customers.find(c => c.fullName === v);
+                            if (found) {
+                              updatePartner(idx, 'customerId', String(found.id));
+                              updatePartner(idx, 'personName', found.fullName);
+                              if (found.phoneNumber) updatePartner(idx, 'phone', found.phoneNumber);
+                            }
+                          }}
+                        />
                         <FormField label="Person Name" value={p.personName} onChangeText={v => updatePartner(idx, 'personName', v)} />
                         <View style={styles.row}>
                           <FormField label="Share %" value={p.sharePercentage} onChangeText={v => updatePartner(idx, 'sharePercentage', v)} keyboardType="numeric" style={styles.half} />
                           <FormField label="Investment" value={p.investmentAmount} onChangeText={v => updatePartner(idx, 'investmentAmount', v)} keyboardType="numeric" style={styles.half} />
                         </View>
+                        <PickerField
+                          label="Investment Currency"
+                          value={p.investmentCurrency || form.baseCurrency}
+                          options={CURRENCIES}
+                          onSelect={v => updatePartner(idx, 'investmentCurrency', v)}
+                        />
                         <FormField label="Phone" value={p.phone} onChangeText={v => updatePartner(idx, 'phone', v)} keyboardType="phone-pad" />
                       </Card.Content>
                     </Card>
@@ -237,14 +373,38 @@ export default function VehicleFormScreen({ navigation, route }) {
             </>
           )}
 
+          {step === 3 && (
+            <>
+              <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Vehicle Images</Text>
+              <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginBottom: 12 }}>Select photos from your gallery. Max 500KB each recommended.</Text>
+              <Button icon="image-plus" mode="outlined" onPress={pickImages} style={{ borderRadius: 10, marginBottom: 12 }}>Pick Images</Button>
+              {images.length > 0 && (
+                <View style={styles.imageGrid}>
+                  {images.map((img, i) => (
+                    <View key={i} style={styles.imageThumb}>
+                      <Image source={{ uri: img.uri }} style={styles.thumbImg} />
+                      <IconButton icon="close-circle" size={18} iconColor={c.error}
+                        style={styles.thumbRemove} onPress={() => removeImage(img, i)} />
+                    </View>
+                  ))}
+                </View>
+              )}
+              {images.length === 0 && (
+                <View style={[styles.emptyImages, { backgroundColor: c.surfaceVariant }]}>
+                  <Text style={{ color: c.onSurfaceVariant, fontSize: 13 }}>No images selected</Text>
+                </View>
+              )}
+            </>
+          )}
+
           {/* Navigation buttons */}
           <View style={styles.navRow}>
             {step > 0 && <Button mode="outlined" onPress={() => setStep(step - 1)} style={styles.navBtn}>Previous</Button>}
             <View style={{ flex: 1 }} />
-            {step < 2 ? (
+            {step < 3 ? (
               <Button mode="contained" onPress={() => setStep(step + 1)} style={styles.navBtn}>Next</Button>
             ) : (
-              <Button mode="contained" onPress={handleSave} loading={saving} disabled={saving} style={styles.navBtn}>
+              <Button mode="contained" onPress={handleSave} loading={saving || uploadingImages} disabled={saving || uploadingImages} style={styles.navBtn}>
                 {editing ? 'Update Vehicle' : 'Create Vehicle'}
               </Button>
             )}
@@ -268,4 +428,9 @@ const styles = StyleSheet.create({
   summaryCard: { borderRadius: 10, marginTop: 8 },
   navRow: { flexDirection: 'row', marginTop: 24, gap: 12 },
   navBtn: { borderRadius: 10 },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  imageThumb: { width: 90, height: 90, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  thumbImg: { width: 90, height: 90 },
+  thumbRemove: { position: 'absolute', top: -4, right: -4, margin: 0 },
+  emptyImages: { borderRadius: 12, padding: 24, alignItems: 'center' },
 });

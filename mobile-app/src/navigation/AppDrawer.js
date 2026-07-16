@@ -6,6 +6,7 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLE_ACCESS } from '../utils/constants';
 import DrawerContent from './DrawerContent';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Screens
 import DashboardScreen from '../screens/DashboardScreen';
@@ -27,8 +28,6 @@ import PayrollFormScreen from '../screens/PayrollFormScreen';
 import LedgerScreen from '../screens/LedgerScreen';
 import LedgerFormScreen from '../screens/LedgerFormScreen';
 import CurrencyScreen from '../screens/CurrencyScreen';
-import LoansScreen from '../screens/LoansScreen';
-import LoanFormScreen from '../screens/LoanFormScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserFormScreen from '../screens/UserFormScreen';
@@ -126,15 +125,6 @@ function CurrencyStack() {
   );
 }
 
-function LoansStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="LoansList" component={LoansScreen} />
-      <Stack.Screen name="LoanForm" component={LoanFormScreen} />
-    </Stack.Navigator>
-  );
-}
-
 function ReportsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -218,21 +208,21 @@ const NAV_ITEMS = [
   { name: 'Payroll', component: PayrollStack, icon: 'cash-multiple', access: 'Payroll' },
   { name: 'ShowroomLedger', component: LedgerStack, icon: 'book-open-variant', access: 'Showroom Ledger' },
   { name: 'Currency', component: CurrencyStack, icon: 'currency-usd', access: 'Currency Exchange' },
-  { name: 'Loans', component: LoansStack, icon: 'bank-transfer', access: 'Loans & Debts' },
   { name: 'Reports', component: ReportsStack, icon: 'chart-bar', access: 'Reports' },
   { name: 'Users', component: UsersStack, icon: 'shield-account', access: 'Users & Roles' },
   { name: 'Settings', component: SettingsStack, icon: 'cog', access: null },
-  { name: 'CarouselCMS', component: CarouselStack, icon: 'view-carousel-outline', access: 'Vehicles', label: 'Carousel CMS' },
-  { name: 'AboutCMS', component: AboutCMSStack, icon: 'information-outline', access: 'Vehicles', label: 'About CMS' },
-  { name: 'TeamCMS', component: TeamCMSStack, icon: 'account-group-outline', access: 'Vehicles', label: 'Team CMS' },
-  { name: 'TestimonialsCMS', component: TestimonialsStack, icon: 'star-outline', access: 'Vehicles', label: 'Testimonials' },
-  { name: 'ContactCMS', component: ContactCMSStack, icon: 'phone-settings-outline', access: 'Vehicles', label: 'Contact CMS' },
-  { name: 'ChooseVideoCMS', component: ChooseVideoStack, icon: 'video-outline', access: 'Vehicles', label: 'Choose Video' },
+  { name: 'CarouselCMS', component: CarouselStack, icon: 'view-carousel-outline', access: 'CMS', label: 'Carousel CMS' },
+  { name: 'AboutCMS', component: AboutCMSStack, icon: 'information-outline', access: 'CMS', label: 'About CMS' },
+  { name: 'TeamCMS', component: TeamCMSStack, icon: 'account-group-outline', access: 'CMS', label: 'Team CMS' },
+  { name: 'TestimonialsCMS', component: TestimonialsStack, icon: 'star-outline', access: 'CMS', label: 'Testimonials' },
+  { name: 'ContactCMS', component: ContactCMSStack, icon: 'phone-settings-outline', access: 'CMS', label: 'Contact CMS' },
+  { name: 'ChooseVideoCMS', component: ChooseVideoStack, icon: 'video-outline', access: 'CMS', label: 'Choose Video' },
 ];
 
 export default function AppDrawer() {
   const { paperTheme } = useAppTheme();
   const { user } = useAuth();
+  const { t, fontFamily, isRTL } = useLanguage();
 
   const role = user?.role || 'Viewer';
   const allowed = ROLE_ACCESS[role] || ROLE_ACCESS['Viewer'];
@@ -242,6 +232,7 @@ export default function AppDrawer() {
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
+        drawerPosition: isRTL ? 'right' : 'left',
         drawerType: 'front',
         drawerStyle: { backgroundColor: paperTheme.colors.surface, width: 300 },
         drawerActiveTintColor: paperTheme.colors.primary,
@@ -254,11 +245,9 @@ export default function AppDrawer() {
           key={item.name}
           name={item.name}
           component={item.component}
-          options={{ drawerIcon: ({ color, size }) => <Icon name={item.icon} color={color} size={size} />, title: item.label || (item.name === 'ShowroomLedger' ? 'Showroom Ledger' : item.name) }}
+          options={{ drawerIcon: ({ color, size }) => <Icon name={item.icon} color={color} size={size} />, title: t(item.label || (item.name === 'ShowroomLedger' ? 'Showroom Ledger' : item.name)), drawerLabelStyle: { fontFamily, textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' } }}
         />
       ))}
     </Drawer.Navigator>
   );
 }
-
-

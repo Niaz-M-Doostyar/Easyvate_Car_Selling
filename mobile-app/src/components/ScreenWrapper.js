@@ -1,20 +1,22 @@
 import React from 'react';
 import { View, StyleSheet, StatusBar, Platform } from 'react-native';
-import { Appbar, Text } from 'react-native-paper';
-import LinearGradient from 'react-native-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Appbar, Text } from './LocalizedPaper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function ScreenWrapper({ title, navigation, children, actions, fab, back }) {
   const { paperTheme, isDark } = useAppTheme();
   const c = paperTheme.colors;
+  const { t, fontFamily, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
 
   return (
-    <View style={[styles.root, { backgroundColor: c.background }]}>
+    <View style={[styles.root, { backgroundColor: c.background, direction: isRTL ? 'rtl' : 'ltr' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={c.background} />
-      <View style={[styles.headerShell, { paddingTop: insets.top, backgroundColor: c.background, borderBottomColor: c.border }]}> 
+      <SafeAreaView edges={['top']} style={[styles.headerShell, { backgroundColor: c.background, borderBottomColor: c.border }]}>
         <LinearGradient
           colors={isDark ? [c.surface, c.surface] : [c.primary + '08', c.background]}
           style={styles.headerGradient}
@@ -24,21 +26,21 @@ export default function ScreenWrapper({ title, navigation, children, actions, fa
             statusBarHeight={0}
           >
             {back && navigation?.goBack ? (
-              <Appbar.BackAction onPress={() => navigation.goBack()} iconColor={c.onSurface} />
+              <Appbar.BackAction onPress={() => navigation.goBack()} icon={isRTL ? 'arrow-right' : 'arrow-left'} iconColor={c.onSurface} />
             ) : navigation?.openDrawer ? (
               <Appbar.Action icon="menu" onPress={() => navigation.openDrawer()} iconColor={c.onSurface} />
             ) : navigation?.goBack ? (
               <Appbar.BackAction onPress={() => navigation.goBack()} iconColor={c.onSurface} />
             ) : null}
             <Appbar.Content
-              title={title}
-              titleStyle={[styles.title, { color: c.onSurface }]}
+              title={t(title)}
+              titleStyle={[styles.title, { color: c.onSurface, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }]}
             />
             {actions}
           </Appbar.Header>
         </LinearGradient>
-      </View>
-      <View style={[styles.content, { paddingBottom: bottomInset }]}>{children}</View>
+      </SafeAreaView>
+      <View style={[styles.content, { paddingBottom: bottomInset, direction: isRTL ? 'rtl' : 'ltr' }]}>{children}</View>
       {fab && React.cloneElement(fab, {
         style: [fab.props.style, { bottom: 16 + (Platform.OS === 'ios' ? insets.bottom : 0) }],
       })}

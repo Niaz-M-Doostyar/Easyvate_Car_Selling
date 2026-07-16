@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, StatusBar, RefreshControl, Pressable } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
+import { Text, ActivityIndicator } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import publicApiClient from '../api/publicClient';
 import { resolveAssetUrl } from '../api/config';
+import { extractAboutPayload, extractTeamMembers, mergeAboutWithFallback } from '../data/publicContent';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PRIMARY = '#1b4965';
 const ACCENT = '#c8963e';
 
 export default function PublicAboutScreen() {
+  const { t, isRTL, fontFamily, textStyle, publicLocale } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [about, setAbout] = useState(null);
   const [logos, setLogos] = useState([]);
   const [members, setMembers] = useState([]);
@@ -20,22 +25,28 @@ export default function PublicAboutScreen() {
   const fetchData = async () => {
     setError(false);
     try {
-      const [aboutRes, teamRes] = await Promise.all([
-        publicApiClient.get('/about?locale=en'),
-        publicApiClient.get('/team?locale=en'),
+      const [aboutResult, teamResult] = await Promise.allSettled([
+        publicApiClient.get(`/about?locale=${publicLocale}`),
+        publicApiClient.get(`/team?locale=${publicLocale}`),
       ]);
-      setAbout(aboutRes.data?.about || null);
-      setLogos(aboutRes.data?.logos || []);
-      setMembers(teamRes.data?.members || []);
+      const aboutPayload = aboutResult.status === 'fulfilled' ? extractAboutPayload(aboutResult.value.data) : { about: null, logos: [] };
+      const teamPayload = teamResult.status === 'fulfilled' ? extractTeamMembers(teamResult.value.data) : [];
+      setAbout(mergeAboutWithFallback(aboutPayload.about));
+      setLogos(aboutPayload.logos);
+      setMembers(teamPayload);
+      setError(false);
     } catch (e) {
-      setError(true);
+      setAbout(mergeAboutWithFallback(null));
+      setLogos([]);
+      setMembers([]);
+      setError(false);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [publicLocale]);
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f7fb' }}>
@@ -46,9 +57,9 @@ export default function PublicAboutScreen() {
   if (error) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#f5f7fb' }}>
       <MaterialCommunityIcons name="wifi-off" size={48} color="#ccc" />
-      <Text style={{ color: '#999', marginTop: 12, textAlign: 'center' }}>Could not load content. Check your connection.</Text>
+      <Text style={{ color: '#999', marginTop: 12, textAlign: 'center', fontFamily }}>{t('Could not load content. Check your connection.')}</Text>
       <Pressable onPress={() => { setLoading(true); fetchData(); }} style={{ marginTop: 16, backgroundColor: PRIMARY, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 }}>
-        <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+        <Text style={{ color: '#fff', fontWeight: '700', fontFamily }}>{t('Retry')}</Text>
       </Pressable>
     </View>
   );
@@ -56,8 +67,8 @@ export default function PublicAboutScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f7fb' }}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#0d1b2a', PRIMARY]} style={styles.header}>
-        <Text style={styles.headerTitle}>About Us</Text>
+      <LinearGradient colors={['#0d1b2a', PRIMARY]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <Text style={[styles.headerTitle, { fontFamily, ...textStyle }]}>{t('About Us')}</Text>
         <Text style={styles.headerSub}>Niazi Khpalwak Motor Puranchi</Text>
       </LinearGradient>
 
@@ -68,18 +79,18 @@ export default function PublicAboutScreen() {
       >
         {/* About text */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{about?.title || 'About Niazi Khpalwak'}</Text>
-          {about?.subtitle ? <Text style={styles.cardSubtitle}>{about.subtitle}</Text> : null}
+          <Text style={[styles.cardTitle, { fontFamily, ...textStyle }]}>{about?.title || t('About Niazi Khpalwak')}</Text>
+          {about?.subtitle ? <Text style={[styles.cardSubtitle, { fontFamily, ...textStyle }]}>{about.subtitle}</Text> : null}
           <View style={styles.divider} />
-          <Text style={styles.cardDesc}>
-            {about?.description || 'Your trusted destination for buying, selling, and exchanging quality vehicles in Afghanistan.'}
+          <Text style={[styles.cardDesc, { fontFamily, ...textStyle }]}>
+            {about?.description || t('Your trusted destination for buying, selling, and exchanging quality vehicles in Afghanistan.')}
           </Text>
         </View>
 
         {/* Brand logos */}
         {logos.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Our Brands</Text>
+            <Text style={[styles.sectionTitle, { fontFamily, ...textStyle }]}>{t('Our Brands')}</Text>
             <View style={styles.logosGrid}>
               {logos.map(logo => (
                 <View key={logo.id} style={styles.logoBox}>
@@ -96,7 +107,7 @@ export default function PublicAboutScreen() {
 
         {/* Why choose us */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Why Choose Us?</Text>
+          <Text style={[styles.sectionTitle, { fontFamily, ...textStyle }]}>{t('Why Choose Us?')}</Text>
           {[
             { icon: 'shield-check', title: 'Trusted & Licensed', color: '#10b981', desc: 'All vehicles with proper documentation and legal verification.' },
             { icon: 'cash-multiple', title: 'Transparent Pricing', color: '#3b82f6', desc: 'Clear pricing in AFN, USD, and PKR — no hidden fees.' },
@@ -104,13 +115,13 @@ export default function PublicAboutScreen() {
             { icon: 'handshake-outline', title: 'Easy Financing', color: '#8b5cf6', desc: 'Flexible installment plans and loan options available.' },
             { icon: 'wrench', title: 'After-Sale Support', color: '#ec4899', desc: 'Ongoing support and maintenance guidance after purchase.' },
           ].map((item, i) => (
-            <View key={i} style={styles.featureRow}>
+            <View key={i} style={[styles.featureRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <LinearGradient colors={[item.color + '22', item.color + '08']} style={styles.featureIcon}>
                 <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
               </LinearGradient>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.featureTitle}>{item.title}</Text>
-                <Text style={styles.featureDesc}>{item.desc}</Text>
+              <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                <Text style={[styles.featureTitle, { fontFamily, ...textStyle }]}>{t(item.title)}</Text>
+                <Text style={[styles.featureDesc, { fontFamily, ...textStyle }]}>{t(item.desc)}</Text>
               </View>
             </View>
           ))}
@@ -119,7 +130,7 @@ export default function PublicAboutScreen() {
         {/* Team */}
         {members.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Our Team</Text>
+            <Text style={[styles.sectionTitle, { fontFamily, ...textStyle }]}>{t('Our Team')}</Text>
             <View style={styles.teamGrid}>
               {members.map(m => (
                 <View key={m.id} style={styles.memberCard}>
@@ -130,8 +141,8 @@ export default function PublicAboutScreen() {
                       <Text style={styles.memberInitial}>{(m.name || '?')[0].toUpperCase()}</Text>
                     </View>
                   )}
-                  <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
-                  <Text style={styles.memberPosition} numberOfLines={2}>{m.position}</Text>
+                  <Text style={[styles.memberName, { fontFamily, ...textStyle }]} numberOfLines={1}>{m.name}</Text>
+                  <Text style={[styles.memberPosition, { fontFamily, ...textStyle }]} numberOfLines={2}>{m.position}</Text>
                 </View>
               ))}
             </View>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { Text, Switch, TouchableRipple, ActivityIndicator } from 'react-native-paper';
+import { Text, Switch, TouchableRipple, ActivityIndicator } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
@@ -10,11 +10,14 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useAppTheme, ACCENT_PRESETS } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
+import { useLanguage } from '../contexts/LanguageContext';
+import LanguageSelector from '../components/LanguageSelector';
 
 export default function SettingsScreen({ navigation }) {
   const { paperTheme, isDark, setIsDark, accentKey, setAccentKey } = useAppTheme();
   const { user, logout } = useAuth();
   const c = paperTheme.colors;
+  const { t, fontFamily } = useLanguage();
   const [backupLoading, setBackupLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
 
@@ -82,7 +85,7 @@ export default function SettingsScreen({ navigation }) {
   );
 
   return (
-    <ScreenWrapper title="Settings" navigation={navigation}>
+    <ScreenWrapper title={t('Settings')} navigation={navigation}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* User Header */}
         <LinearGradient colors={[c.primary, c.primary + 'cc']} style={[styles.headerCard, paperTheme.shadows?.md]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -100,22 +103,22 @@ export default function SettingsScreen({ navigation }) {
 
         {/* Appearance */}
         <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
-          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Appearance</Text>
+          <Text style={[styles.sectionTitle, { color: c.onSurface, fontFamily }]}>{t('Appearance')}</Text>
 
           <View style={styles.toggleRow}>
             <LinearGradient colors={[c.primary + '18', c.primary + '06']} style={styles.toggleIcon}>
               <MaterialCommunityIcons name={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'} size={20} color={c.primary} />
             </LinearGradient>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface }}>Dark Mode</Text>
-              <Text style={{ fontSize: 12, color: c.onSurfaceVariant, marginTop: 1 }}>Switch between light and dark</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface, fontFamily }}>{t('Dark Mode')}</Text>
+              <Text style={{ fontSize: 12, color: c.onSurfaceVariant, marginTop: 1, fontFamily }}>{t('Switch between light and dark')}</Text>
             </View>
             <Switch value={isDark} onValueChange={setIsDark} trackColor={{ false: c.border, true: c.primary + '60' }} thumbColor={isDark ? c.primary : '#f4f4f5'} />
           </View>
 
           <View style={[styles.divider, { backgroundColor: c.border, marginVertical: 14 }]} />
 
-          <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface, marginBottom: 10 }}>Accent Color</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: c.onSurface, marginBottom: 10, fontFamily }}>{t('Accent Color')}</Text>
           <View style={styles.colorRow}>
             {Object.entries(ACCENT_PRESETS).map(([key, preset]) => (
               <Pressable key={key} style={{ alignItems: 'center' }} onPress={() => setAccentKey(key)}>
@@ -132,7 +135,7 @@ export default function SettingsScreen({ navigation }) {
 
         {/* App Info */}
         <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
-          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>About</Text>
+          <Text style={[styles.sectionTitle, { color: c.onSurface, fontFamily }]}>{t('About')}</Text>
           <InfoRow icon="car-sports" label="App Name" value="Niazi Khpalwak Motor Puranchi" />
           <InfoRow icon="information-outline" label="Version" value="1.0.0" />
           <InfoRow icon="cellphone" label="Platform" value="React Native (Expo)" />
@@ -142,7 +145,7 @@ export default function SettingsScreen({ navigation }) {
         {/* Database (Super Admin / Owner only) */}
         {isSuperAdmin && (
           <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
-            <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Database</Text>
+            <Text style={[styles.sectionTitle, { color: c.onSurface, fontFamily }]}>{t('Database')}</Text>
             <TouchableRipple onPress={handleBackup} disabled={backupLoading} borderless style={[styles.dbRow, { backgroundColor: c.primary + '10' }]}>
               <View style={styles.dbRowInner}>
                 <LinearGradient colors={[c.primary + '22', c.primary + '08']} style={styles.dbIcon}>
@@ -175,9 +178,10 @@ export default function SettingsScreen({ navigation }) {
             <LinearGradient colors={[c.error + '25', c.error + '08']} style={styles.logoutIcon}>
               <MaterialCommunityIcons name="logout" size={20} color={c.error} />
             </LinearGradient>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: c.error }}>Sign Out</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: c.error, fontFamily }}>{t('Sign Out')}</Text>
           </View>
         </TouchableRipple>
+        <LanguageSelector dark={false} />
       </ScrollView>
     </ScreenWrapper>
   );

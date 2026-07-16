@@ -9,7 +9,12 @@ const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 const joinUrl = (base, path = '') => {
   if (!path) return base;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+  // API payloads can contain a URL-like object on some endpoints. Normalize
+  // before calling string methods so a malformed optional asset cannot crash
+  // the native bundle during initial render.
+  const normalizedPath = String(path);
+  if (/^https?:\/\//i.test(normalizedPath)) return normalizedPath;
+  return `${base}${normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`}`;
 };
 
 export const WEB_BASE_URL = trimTrailingSlash(

@@ -181,6 +181,9 @@ app.use('/api/sales', verifyToken, authorize(ROLE_INVENTORY), saleRoutes);
 app.use('/api/ledger', verifyToken, authorize(ROLE_FINANCIAL), ledgerRoutes);
 app.use('/api/employees', verifyToken, authorize(ROLE_EMPLOYEE), employeeRoutes);
 app.use('/api/currency', verifyToken, authorize(ROLE_FINANCIAL), currencyRoutes);
+// Keep specific attendance paths ahead of the generic /:id route in attendanceRoutes.
+app.use('/api/attendance/today', verifyToken, authorize(ROLE_INVENTORY), todayAttendanceRoutes);
+app.use('/api/attendance/monthly-summary', verifyToken, authorize(ROLE_INVENTORY), monthlySummaryRoutes);
 app.use('/api/attendance', verifyToken, authorize(ROLE_EMPLOYEE), attendanceRoutes);
 app.use('/api/payroll', verifyToken, authorize(ROLE_FINANCIAL), payrollRoutes);
 app.use('/api/reports', verifyToken, authorize([...ROLE_FINANCIAL, ...ROLE_INVENTORY]), reportsRoutes);

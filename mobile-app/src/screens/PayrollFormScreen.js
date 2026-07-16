@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, Divider, Card } from 'react-native-paper';
+import { Text, Button, Divider, Card } from '../components/LocalizedPaper';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
@@ -90,7 +90,7 @@ export default function PayrollFormScreen({ navigation, route }) {
     setSaving(false);
   };
 
-  const empOptions = employees.map(e => ({ label: `${e.fullName} - ${formatCurrency(e.salary || 0)}/mo`, value: String(e.id) }));
+  const empOptions = employees.map(e => ({ label: `${e.fullName} - ${formatCurrency(e.salary || 0, 'AFN')}/mo`, value: String(e.id) }));
   const yearOptions = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i));
 
   return (
@@ -117,7 +117,7 @@ export default function PayrollFormScreen({ navigation, route }) {
           <Card style={[styles.summaryCard, { backgroundColor: c.primary + '15' }]}>
             <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text variant="titleSmall" style={{ fontWeight: '700', color: c.primary }}>Net Salary</Text>
-              <Text variant="headlineSmall" style={{ fontWeight: '800', color: c.primary }}>{formatCurrency(netSalary)}</Text>
+              <Text variant="headlineSmall" style={{ fontWeight: '800', color: c.primary }}>{formatCurrency(netSalary, 'AFN')}</Text>
             </Card.Content>
           </Card>
 

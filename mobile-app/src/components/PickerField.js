@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Modal, FlatList, TouchableOpacity, Platform, Dimensions } from 'react-native';
-import { TextInput, Text, Searchbar, Divider, Surface } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { TextInput, Text, Searchbar, Divider, Surface } from './LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function PickerField({ label, value, options, onSelect, error, displayValue, disabled, style, searchable }) {
   const [visible, setVisible] = useState(false);
@@ -11,6 +12,7 @@ export default function PickerField({ label, value, options, onSelect, error, di
   const { paperTheme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const c = paperTheme.colors;
+  const { t, isRTL, fontFamily } = useLanguage();
 
   // options can be: string[] or { label, value }[]
   const normalizedOptions = options.map(o => typeof o === 'string' ? { label: o, value: o } : o);
@@ -28,27 +30,29 @@ export default function PickerField({ label, value, options, onSelect, error, di
     <View style={[styles.wrapper, style]}>
       <TouchableOpacity onPress={() => !disabled && setVisible(true)} activeOpacity={0.7}>
         <TextInput
-          label={label}
-          value={display}
+          label={t(label)}
+          value={t(display)}
           error={!!error}
           mode="outlined"
           dense
           editable={false}
           disabled={disabled}
-          right={<TextInput.Icon icon="chevron-down" />}
+          {...(isRTL
+            ? { left: <TextInput.Icon icon="chevron-down" /> }
+            : { right: <TextInput.Icon icon="chevron-down" /> })}
           outlineStyle={{ borderRadius: 10 }}
-          style={styles.input}
+          style={[styles.input, { fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }]}
           pointerEvents="none"
         />
       </TouchableOpacity>
-      {error ? <Text style={[styles.error, { color: c.error }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: c.error, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }]}>{t(error)}</Text> : null}
 
       <Modal visible={visible} animationType="slide" transparent onRequestClose={() => setVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <Surface style={[styles.modalContent, { backgroundColor: c.surface, paddingBottom: sheetBottomPadding }]} elevation={5}>
+        <View style={[styles.modalOverlay, { direction: isRTL ? 'rtl' : 'ltr' }]}>
+          <Surface style={[styles.modalContent, { backgroundColor: c.surface, paddingBottom: sheetBottomPadding, direction: isRTL ? 'rtl' : 'ltr' }]} elevation={5}>
             {Platform.OS === 'ios' && <View style={styles.dragHandle} />}
-            <View style={styles.modalHeader}>
-              <Text variant="titleMedium" style={{ fontWeight: '700', flex: 1 }}>{label}</Text>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text variant="titleMedium" style={{ fontWeight: '700', flex: 1, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}>{t(label)}</Text>
               <TouchableOpacity onPress={() => { setVisible(false); setSearch(''); }}>
                 <MaterialCommunityIcons name="close" size={24} color={c.onSurface} />
               </TouchableOpacity>
@@ -57,9 +61,9 @@ export default function PickerField({ label, value, options, onSelect, error, di
               <Searchbar
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search..."
+                placeholder={t('Search...')}
                 style={[styles.search, { backgroundColor: c.surfaceVariant }]}
-                inputStyle={{ fontSize: 14 }}
+                inputStyle={{ fontSize: 14, fontFamily, textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }}
               />
             )}
             <FlatList
@@ -67,10 +71,10 @@ export default function PickerField({ label, value, options, onSelect, error, di
               keyExtractor={(item, idx) => String(item.value ?? idx)}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.option, item.value === value && { backgroundColor: c.primaryContainer }]}
+                  style={[styles.option, isRTL && { flexDirection: 'row-reverse' }, item.value === value && { backgroundColor: c.primaryContainer }]}
                   onPress={() => { onSelect(item.value); setVisible(false); setSearch(''); }}
                 >
-                  <Text style={[styles.optionText, { color: c.onSurface }, item.value === value && { color: c.primary, fontWeight: '700' }]}>{item.label}</Text>
+                  <Text style={[styles.optionText, { color: c.onSurface, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }, item.value === value && { color: c.primary, fontWeight: '700' }]}>{t(item.label)}</Text>
                   {item.value === value && <MaterialCommunityIcons name="check" size={20} color={c.primary} />}
                 </TouchableOpacity>
               )}

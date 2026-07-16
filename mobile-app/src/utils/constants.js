@@ -1,13 +1,21 @@
-export const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨' };
-export const CURRENCIES = ['AFN', 'USD', 'PKR'];
+export const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
+export const CURRENCIES = ['AFN', 'USD', 'PKR', 'AED'];
 
 export const formatCurrency = (amount, currency = 'AFN') => {
-  const num = Number(amount) || 0;
-  const symbol = CURRENCY_SYMBOLS[currency] || currency;
-  return `${symbol} ${num.toLocaleString()}`;
+  const raw = Number(amount) || 0;
+  const negative = raw < 0;
+  const num = Math.abs(raw);
+  const code = String(currency || 'AFN').trim().toUpperCase();
+  const symbol = CURRENCY_SYMBOLS[code] || code;
+  const formatted = num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  if (code === 'USD') return `${negative ? '-' : ''}$ ${formatted}`;
+  return `${negative ? '-' : ''}${formatted} ${symbol}`;
 };
 
-export const getCurrencySymbol = (currency) => CURRENCY_SYMBOLS[currency] || currency;
+export const getCurrencySymbol = (currency) => {
+  const code = String(currency || 'AFN').trim().toUpperCase();
+  return CURRENCY_SYMBOLS[code] || code;
+};
 
 export const AFGHAN_PROVINCES = [
   'Kabul', 'Kandahar', 'Herat', 'Balkh', 'Nangarhar', 'Kunduz', 'Baghlan',
@@ -20,6 +28,8 @@ export const AFGHAN_PROVINCES = [
 export const VEHICLE_MANUFACTURERS = [
   'Toyota', 'Honda', 'BMW', 'Mercedes-Benz', 'Audi', 'Volkswagen', 'Ford',
   'Chevrolet', 'KIA', 'Hyundai', 'Mazda', 'Nissan', 'Suzuki', 'Daihatsu', 'FAW', 'Changan',
+  'Lexus', 'Mitsubishi', 'Subaru', 'Jeep', 'Land Rover', 'Porsche', 'Ferrari',
+  'Lamborghini', 'Bentley', 'Rolls-Royce', 'Jaguar', 'Volvo', 'MG', 'BYD', 'Geely',
 ];
 
 export const VEHICLE_CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
@@ -29,6 +39,14 @@ export const TRANSMISSION_TYPES = ['Manual', 'Automatic', 'CVT', 'Semi-Automatic
 export const ENGINE_TYPES = ['Inline-3', 'Inline-4', 'Inline-5', 'Inline-6', 'V4', 'V6', 'V8', 'V10', 'V12', 'Rotary', 'Turbo'];
 export const STEERING_TYPES = ['Left', 'Right'];
 export const MONOLITHIC_CUT = ['Monolithic', 'Cut'];
+export const EMPLOYEE_ROLES = ['Salesperson', 'Mechanic', 'Accountant', 'Manager', 'Driver', 'Cleaner', 'Security', 'Other'];
+export const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
+export const LEAVE_TYPES = ['Casual', 'Sick', 'Annual'];
+export const LEDGER_TYPES = [
+  'Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary',
+  'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission',
+  'Owner Withdrawal', 'Showroom Balance',
+];
 
 export const CUSTOMER_TYPES = ['Buyer', 'Investor', 'Capital Provider', 'Borrower'];
 export const SALE_TYPES = [
@@ -39,7 +57,6 @@ export const SALE_TYPES = [
 export const LOAN_TYPES = ['Given', 'Received', 'Owner Loan'];
 export const LOAN_STATUSES = ['Active', 'Paid', 'Overdue'];
 export const PAYROLL_STATUSES = ['Pending', 'Partial', 'Paid'];
-export const LEDGER_TYPES = ['Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary', 'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission'];
 
 export const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -52,8 +69,8 @@ export const USER_ROLES = [
 ];
 
 export const ROLE_ACCESS = {
-  'Super Admin': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports', 'Users & Roles'],
-  'Owner': ['Dashboard', 'Vehicles', 'Sales', 'Employees', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports', 'Users & Roles'],
+  'Super Admin': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports', 'Users & Roles', 'CMS'],
+  'Owner': ['Dashboard', 'Vehicles', 'Sales', 'Employees', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports', 'Users & Roles', 'CMS'],
   'Manager': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Currency Exchange', 'Loans & Debts', 'Reports'],
   'Accountant': ['Dashboard', 'Vehicles', 'Sales', 'Customers', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Reports'],
   'Financial': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Loans & Debts', 'Reports'],

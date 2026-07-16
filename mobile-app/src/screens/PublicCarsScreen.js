@@ -4,12 +4,14 @@ import {
   RefreshControl, StatusBar, TextInput, Modal, ScrollView,
   Platform, ActivityIndicator,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import publicApiClient from '../api/publicClient';
 import { resolveAssetUrl } from '../api/config';
 import { formatCurrency } from '../utils/constants';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PRIMARY = '#1b4965';
 const DARK = '#0d1b2a';
@@ -24,6 +26,8 @@ const SORT_OPTIONS = [
 ];
 
 export default function PublicCarsScreen({ navigation, route }) {
+  const { t, isRTL, fontFamily, textStyle } = useLanguage();
+  const insets = useSafeAreaInsets();
   const initialSearch = route?.params?.initialSearch || '';
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +130,7 @@ export default function PublicCarsScreen({ navigation, route }) {
         )}
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.48)']} style={styles.cardImgOverlay}>
           <View style={[styles.statusBadge, { backgroundColor: item.status === 'Available' ? '#22c55e' : '#f59e0b' }]}>
-            <Text style={styles.statusBadgeText}>{item.status}</Text>
+            <Text style={[styles.statusBadgeText, { fontFamily, writingDirection: textStyle.writingDirection }]}>{t(item.status)}</Text>
           </View>
         </LinearGradient>
         <View style={styles.cardBody}>
@@ -135,11 +139,11 @@ export default function PublicCarsScreen({ navigation, route }) {
           <View style={styles.cardSpecRow}>
             <View style={styles.cardSpec}>
               <MaterialCommunityIcons name="speedometer" size={11} color="#888" />
-              <Text style={styles.cardSpecText}>{item.transmission || 'Auto'}</Text>
+              <Text style={[styles.cardSpecText, { fontFamily }]}>{t(item.transmission || 'Auto')}</Text>
             </View>
             <View style={styles.cardSpec}>
               <MaterialCommunityIcons name="gas-station" size={11} color="#888" />
-              <Text style={styles.cardSpecText}>{item.fuelType || 'Petrol'}</Text>
+              <Text style={[styles.cardSpecText, { fontFamily }]}>{t(item.fuelType || 'Petrol')}</Text>
             </View>
           </View>
           <View style={styles.cardSpecRow}>
@@ -152,7 +156,7 @@ export default function PublicCarsScreen({ navigation, route }) {
               <Text style={styles.cardSpecText}>{item.steering || '–'}</Text>
             </View>
           </View>
-          <Text style={styles.cardPrice}>{formatCurrency(item.sellingPrice)} AFN</Text>
+          <Text style={styles.cardPrice}>{formatCurrency(item.sellingPrice, item.sellingPriceCurrency || item.baseCurrency)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -160,13 +164,13 @@ export default function PublicCarsScreen({ navigation, route }) {
 
   const FilterChip = ({ label, options, field }) => (
     <View style={styles.filterGroup}>
-      <Text style={styles.filterGroupLabel}>{label}</Text>
+      <Text style={[styles.filterGroupLabel, { fontFamily, ...textStyle }]}>{t(label)}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         <TouchableOpacity
           style={[styles.filterChip, !filters[field] && styles.filterChipActive]}
           onPress={() => setFilters(p => ({ ...p, [field]: '' }))}
         >
-          <Text style={[styles.filterChipText, !filters[field] && styles.filterChipTextActive]}>All</Text>
+          <Text style={[styles.filterChipText, { fontFamily }, !filters[field] && styles.filterChipTextActive]}>{t('All')}</Text>
         </TouchableOpacity>
         {options.map(opt => (
           <TouchableOpacity
@@ -174,7 +178,7 @@ export default function PublicCarsScreen({ navigation, route }) {
             style={[styles.filterChip, filters[field] === opt && styles.filterChipActive]}
             onPress={() => setFilters(p => ({ ...p, [field]: p[field] === opt ? '' : opt }))}
           >
-            <Text style={[styles.filterChipText, filters[field] === opt && styles.filterChipTextActive]}>{opt}</Text>
+            <Text style={[styles.filterChipText, { fontFamily }, filters[field] === opt && styles.filterChipTextActive]}>{t(opt)}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -186,20 +190,20 @@ export default function PublicCarsScreen({ navigation, route }) {
       <StatusBar barStyle="light-content" backgroundColor={DARK} />
 
       {/* HEADER */}
-      <LinearGradient colors={[DARK, PRIMARY]} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-        <View style={styles.headerTop}>
+      <LinearGradient colors={[DARK, PRIMARY]} style={[styles.header, { paddingTop: insets.top + 12 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+        <View style={[styles.headerTop, isRTL && { flexDirection: 'row-reverse' }]}>
           <View>
-            <Text style={styles.headerTitle}>Car Inventory</Text>
-            <Text style={styles.headerSub}>{filteredAndSorted.length} of {vehicles.length} vehicles</Text>
+            <Text style={[styles.headerTitle, { fontFamily, ...textStyle }]}>{t('Car Inventory')}</Text>
+            <Text style={[styles.headerSub, { fontFamily, ...textStyle }]}>{filteredAndSorted.length} {t('of')} {vehicles.length} {t('vehicles')}</Text>
           </View>
         </View>
         {/* SEARCH */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchBar}>
+        <View style={[styles.searchRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.searchBar, isRTL && { flexDirection: 'row-reverse' }]}>
             <MaterialCommunityIcons name="magnify" size={20} color="#888" style={{ marginRight: 6 }} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search brand, model, ID..."
+              style={[styles.searchInput, { fontFamily, ...textStyle }]}
+              placeholder={t('Search brand, model, ID...')}
               placeholderTextColor="#aaa"
               value={search}
               onChangeText={setSearch}
@@ -237,7 +241,7 @@ export default function PublicCarsScreen({ navigation, route }) {
               style={[styles.catChip, activeCategory === cat && styles.catChipActive]}
               onPress={() => setActiveCategory(cat)}
             >
-              <Text style={[styles.catChipText, activeCategory === cat && styles.catChipTextActive]}>{cat}</Text>
+              <Text style={[styles.catChipText, { fontFamily }, activeCategory === cat && styles.catChipTextActive]}>{t(cat)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -262,7 +266,7 @@ export default function PublicCarsScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={resetFilters} style={styles.clearFiltersBtn}>
-              <Text style={styles.clearFiltersBtnText}>Clear All</Text>
+              <Text style={[styles.clearFiltersBtnText, { fontFamily }]}>{t('Clear All')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -271,14 +275,14 @@ export default function PublicCarsScreen({ navigation, route }) {
       {loading ? (
         <View style={styles.loadingView}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={styles.loadingText}>Loading vehicles...</Text>
+          <Text style={[styles.loadingText, { fontFamily }]}>{t('Loading vehicles...')}</Text>
         </View>
       ) : error ? (
         <View style={styles.errorView}>
           <MaterialCommunityIcons name="wifi-off" size={52} color="#ccc" />
-          <Text style={styles.errorText}>Could not load vehicles.</Text>
+          <Text style={[styles.errorText, { fontFamily }]}>{t('Could not load vehicles.')}</Text>
           <TouchableOpacity onPress={() => { setLoading(true); fetchVehicles(); }} style={styles.retryBtn}>
-            <Text style={styles.retryBtnText}>Retry</Text>
+            <Text style={[styles.retryBtnText, { fontFamily }]}>{t('Retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -295,8 +299,8 @@ export default function PublicCarsScreen({ navigation, route }) {
           ListEmptyComponent={
             <View style={styles.emptyView}>
               <MaterialCommunityIcons name="car-off" size={52} color="#ccc" />
-              <Text style={styles.emptyText}>No vehicles found</Text>
-              <Text style={styles.emptySubText}>Try adjusting your search or filters</Text>
+              <Text style={[styles.emptyText, { fontFamily }]}>{t('No vehicles found')}</Text>
+              <Text style={[styles.emptySubText, { fontFamily }]}>{t('Try adjusting your search or filters')}</Text>
             </View>
           }
           showsVerticalScrollIndicator={false}
@@ -306,8 +310,8 @@ export default function PublicCarsScreen({ navigation, route }) {
       {/* FILTER MODAL */}
       <Modal visible={filterVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFilterVisible(false)}>
         <View style={styles.modalRoot}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filter Vehicles</Text>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.modalTitle, { fontFamily, ...textStyle }]}>{t('Filter Vehicles')}</Text>
             <TouchableOpacity onPress={() => setFilterVisible(false)}>
               <MaterialCommunityIcons name="close" size={24} color="#333" />
             </TouchableOpacity>
@@ -315,10 +319,10 @@ export default function PublicCarsScreen({ navigation, route }) {
           <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
             <FilterChip label="Brand" options={brands} field="brand" />
             <View style={styles.filterGroup}>
-              <Text style={styles.filterGroupLabel}>Model</Text>
+              <Text style={[styles.filterGroupLabel, { fontFamily, ...textStyle }]}>{t('Model')}</Text>
               <TextInput
-                style={styles.filterTextInput}
-                placeholder="e.g. Corolla, Civic..."
+                style={[styles.filterTextInput, { fontFamily, ...textStyle }]}
+                placeholder={t('e.g. Corolla, Civic...')}
                 value={filters.model}
                 onChangeText={v => setFilters(p => ({ ...p, model: v }))}
               />
@@ -329,11 +333,11 @@ export default function PublicCarsScreen({ navigation, route }) {
             <FilterChip label="Color" options={colors} field="color" />
             <FilterChip label="Steering" options={['Left', 'Right']} field="steering" />
             <View style={styles.filterGroup}>
-              <Text style={styles.filterGroupLabel}>Price Range (AFN)</Text>
+              <Text style={[styles.filterGroupLabel, { fontFamily, ...textStyle }]}>{t('Price Range (AFN)')}</Text>
               <View style={styles.priceRow}>
                 <TextInput
                   style={[styles.filterTextInput, { flex: 1 }]}
-                  placeholder="Min price"
+                  placeholder={t('Min price')}
                   value={filters.minPrice}
                   onChangeText={v => setFilters(p => ({ ...p, minPrice: v }))}
                   keyboardType="numeric"
@@ -341,7 +345,7 @@ export default function PublicCarsScreen({ navigation, route }) {
                 <Text style={{ color: '#aaa', marginHorizontal: 8 }}>–</Text>
                 <TextInput
                   style={[styles.filterTextInput, { flex: 1 }]}
-                  placeholder="Max price"
+                  placeholder={t('Max price')}
                   value={filters.maxPrice}
                   onChangeText={v => setFilters(p => ({ ...p, maxPrice: v }))}
                   keyboardType="numeric"
@@ -351,11 +355,11 @@ export default function PublicCarsScreen({ navigation, route }) {
           </ScrollView>
           <View style={styles.modalFooter}>
             <TouchableOpacity onPress={resetFilters} style={styles.resetBtn}>
-              <Text style={styles.resetBtnText}>Reset</Text>
+              <Text style={[styles.resetBtnText, { fontFamily }]}>{t('Reset')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={applyFilters} style={styles.applyBtn}>
               <LinearGradient colors={[PRIMARY, DARK]} style={styles.applyBtnInner}>
-                <Text style={styles.applyBtnText}>Apply Filters</Text>
+                <Text style={[styles.applyBtnText, { fontFamily }]}>{t('Apply Filters')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -365,14 +369,14 @@ export default function PublicCarsScreen({ navigation, route }) {
       {/* SORT MODAL */}
       <Modal visible={sortVisible} animationType="slide" presentationStyle="formSheet" onRequestClose={() => setSortVisible(false)}>
         <View style={styles.sortModalRoot}>
-          <Text style={styles.modalTitle}>Sort By</Text>
+          <Text style={[styles.modalTitle, { fontFamily, ...textStyle }]}>{t('Sort By')}</Text>
           {SORT_OPTIONS.map(opt => (
             <TouchableOpacity
               key={opt.key}
               style={[styles.sortOption, activeSort === opt.key && styles.sortOptionActive]}
               onPress={() => { setActiveSort(opt.key); setSortVisible(false); }}
             >
-              <Text style={[styles.sortOptionText, activeSort === opt.key && styles.sortOptionTextActive]}>{opt.label}</Text>
+              <Text style={[styles.sortOptionText, { fontFamily, ...textStyle }, activeSort === opt.key && styles.sortOptionTextActive]}>{t(opt.label)}</Text>
               {activeSort === opt.key && <MaterialCommunityIcons name="check" size={20} color={PRIMARY} />}
             </TouchableOpacity>
           ))}
