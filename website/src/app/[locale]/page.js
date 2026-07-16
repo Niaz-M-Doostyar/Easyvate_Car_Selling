@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -14,8 +15,6 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-const CURRENCY_SYMBOLS = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
-
 const getImageUrl = (path) => {
   if (!path) return '/img/cars/car-1.jpg';
   if (path.startsWith('http')) return path;
@@ -160,7 +159,7 @@ export default function HomePage() {
                         <div className="hero__text__price">
                           <div className="car-model">{t('model_label')}: {slide.model}</div>
                           <h2>
-                            {t('price_label')}: {CURRENCY_SYMBOLS[slide.currency] || '؋'}
+                            {t('price_label')}: {getCurrencySymbol(slide.currency)}
                             {parseInt(slide.price, 10).toLocaleString()}
                           </h2>
                         </div>
@@ -486,7 +485,7 @@ export default function HomePage() {
                         </div>
                         <div className="car__item__price d-flex justify-content-between align-items-center">
                           <span className="car-option">
-                            {CURRENCY_SYMBOLS[car.baseCurrency] || '؋'} {car.sellingPrice ? parseInt(car.sellingPrice, 10).toLocaleString() : 'N/A'}
+                            {car.sellingPrice ? formatCurrency(car.sellingPrice, car.sellingPriceCurrency || car.baseCurrency) : 'N/A'}
                           </span>
                           <Link href={`/${locale}/carDetails?id=${car.id}`} className="primary-btn">
                             <i className="fa fa-eye"></i>

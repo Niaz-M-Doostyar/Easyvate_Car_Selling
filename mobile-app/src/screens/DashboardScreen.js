@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, Platform } from 'react-native';
-import { Card, Text, Button, ProgressBar, Divider, Avatar, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { Card, Text, Button, ProgressBar, Divider, TouchableRipple, Chip } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import SummaryCard from '../components/SummaryCard';
+import ResponsiveAmount from '../components/ResponsiveAmount';
 import StatusChip from '../components/StatusChip';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -16,24 +17,44 @@ const W = Dimensions.get('window').width;
 
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
-  const { paperTheme, isDark } = useAppTheme();
+  const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ vehicles: [], customers: [], sales: [], loans: [], balance: {}, employees: [] });
+  const [data, setData] = useState({
+    vehicles: [],
+    customers: [],
+    sales: [],
+    loans: [],
+    balance: {},
+    employees: [],
+    rates: {}
+  });
+
+  const toAFN = (amount, fromCurrency, ratesMap) => {
+    if (!amount) return 0;
+    if (!fromCurrency || fromCurrency === 'AFN') return Number(amount);
+    const rate = ratesMap[`${fromCurrency}-AFN`];
+    if (rate && rate !== 0) return Number(amount) * rate;
+    const invRate = ratesMap[`AFN-${fromCurrency}`];
+    if (invRate && invRate !== 0) return Number(amount) / invRate;
+    return Number(amount);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [vRes, cRes, sRes, lRes, bRes, eRes] = await Promise.all([
+      const [vRes, cRes, sRes, lRes, bRes, eRes, rRes] = await Promise.all([
         apiClient.get('/vehicles').catch(() => ({ data: { vehicles: [] } })),
         apiClient.get('/customers').catch(() => ({ data: [] })),
         apiClient.get('/sales').catch(() => ({ data: { sales: [] } })),
         apiClient.get('/loans').catch(() => ({ data: { loans: [] } })),
         apiClient.get('/ledger/showroom/balance').catch(() => ({ data: {} })),
         apiClient.get('/employees').catch(() => ({ data: [] })),
+        apiClient.get('/currency/rates').catch(() => ({ data: { data: {} } })),
       ]);
+      
       setData({
         vehicles: Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [],
         customers: Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : [],
@@ -41,8 +62,10 @@ export default function DashboardScreen({ navigation }) {
         loans: Array.isArray(lRes.data?.data) ? lRes.data.data : Array.isArray(lRes.data) ? lRes.data : [],
         balance: bRes.data || {},
         employees: Array.isArray(eRes.data?.data) ? eRes.data.data : Array.isArray(eRes.data) ? eRes.data : [],
+        rates: rRes.data?.data || rRes.data || {},
       });
     } catch (e) {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -50,17 +73,49 @@ export default function DashboardScreen({ navigation }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const { vehicles, customers, sales, loans, balance, employees } = data;
-  const totalRevenue = sales.reduce((s, x) => s + Number(x.sellingPrice || 0), 0);
-  const totalProfit = sales.reduce((s, x) => s + Number(x.profit || 0), 0);
-  const totalCommission = Number(balance?.sharedTotal || sales.reduce((s, x) => s + Number(x.commission || 0), 0));
+  const { vehicles, customers, sales, loans, balance, employees, rates } = data;
+
+  // Match the admin dashboard: revenue is the ledger's recorded income.
+  const totalRevenue = Number(balance.totalIncome ?? 0);
+  const totalProfit = sales.reduce((sum, x) => sum + toAFN(Number(x.profit || 0), x.paymentCurrency, rates), 0);
+  const totalCommission = balance.totalCommission ?? sales.reduce((sum, x) => sum + toAFN(Number(x.commission || 0), x.paymentCurrency, rates), 0);
+  
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
-  const openLoans = loans.filter(l => l.status === 'Active').length;
+  const openLoans = loans.filter(l => l.status === 'Active' || l.status === 'Open').length;
   const soldVehicles = vehicles.filter(v => v.status === 'Sold').length;
+
+  // Monthly stats calculations
+  const now = new Date();
+  const thisMonthSalesList = sales.filter((sale) => {
+    const d = new Date(sale.saleDate || sale.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  
+  const lastMonthSalesList = sales.filter((sale) => {
+    const d = new Date(sale.saleDate || sale.createdAt);
+    const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return d.getMonth() === pm.getMonth() && d.getFullYear() === pm.getFullYear();
+  });
+
+  const revThisMonth = thisMonthSalesList.reduce((sum, sale) => {
+    return sum + toAFN(parseFloat(sale.sellingPrice) || 0, sale.paymentCurrency, rates);
+  }, 0);
+
+  const revLastMonth = lastMonthSalesList.reduce((sum, sale) => {
+    return sum + toAFN(parseFloat(sale.sellingPrice) || 0, sale.paymentCurrency, rates);
+  }, 0);
+
+  const salesTrend = lastMonthSalesList.length > 0
+    ? (((thisMonthSalesList.length - lastMonthSalesList.length) / lastMonthSalesList.length) * 100).toFixed(1)
+    : thisMonthSalesList.length > 0 ? 100 : 0;
+
+  const revTrend = revLastMonth > 0
+    ? (((revThisMonth - revLastMonth) / revLastMonth) * 100).toFixed(1)
+    : revThisMonth > 0 ? 100 : 0;
 
   const statusCounts = {};
   vehicles.forEach(v => { statusCounts[v.status] = (statusCounts[v.status] || 0) + 1; });
-  const recentSales = [...sales].sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate)).slice(0, 5);
+  const recentSales = [...sales].sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt)).slice(0, 5);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -114,21 +169,53 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </LinearGradient>
 
+        {/* Monthly Trend Card */}
+        <Card style={[styles.trendCard, { backgroundColor: c.card }]} mode="contained">
+          <Card.Content>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: c.onSurfaceVariant, marginBottom: 8 }}>This Month Overview</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View>
+                <Text style={{ fontSize: 12, color: c.onSurfaceVariant }}>Monthly Sales</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: c.onSurface }}>{thisMonthSalesList.length}</Text>
+                  <Chip compact style={{ backgroundColor: Number(salesTrend) >= 0 ? c.success + '15' : c.error + '15' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Number(salesTrend) >= 0 ? c.success : c.error }}>
+                      {Number(salesTrend) >= 0 ? `+${salesTrend}%` : `${salesTrend}%`}
+                    </Text>
+                  </Chip>
+                </View>
+              </View>
+              <View style={{ width: 1, height: 40, backgroundColor: c.border }} />
+              <View>
+                <Text style={{ fontSize: 12, color: c.onSurfaceVariant }}>Monthly Revenue</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <ResponsiveAmount style={{ maxWidth: 132, fontSize: 16, fontWeight: '800', color: c.onSurface }}>{formatCurrency(revThisMonth, 'AFN')}</ResponsiveAmount>
+                  <Chip compact style={{ backgroundColor: Number(revTrend) >= 0 ? c.success + '15' : c.error + '15' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Number(revTrend) >= 0 ? c.success : c.error }}>
+                      {Number(revTrend) >= 0 ? `+${revTrend}%` : `${revTrend}%`}
+                    </Text>
+                  </Chip>
+                </View>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
         {/* KPI Cards */}
         <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Financial Overview</Text>
         <View style={styles.grid2}>
-          <SummaryCard title="Revenue" value={formatCurrency(totalRevenue)} icon="trending-up" color={c.success} style={styles.gridItem} />
-          <SummaryCard title="Profit" value={formatCurrency(totalProfit)} icon="chart-line" color="#8b5cf6" style={styles.gridItem} />
+          <SummaryCard title="Revenue (AFN)" value={formatCurrency(totalRevenue, 'AFN')} icon="trending-up" color={c.success} style={styles.gridItem} />
+          <SummaryCard title="Profit (AFN)" value={formatCurrency(totalProfit, 'AFN')} icon="chart-line" color="#8b5cf6" style={styles.gridItem} />
         </View>
         <View style={styles.grid2}>
-          <SummaryCard title="Showroom" value={formatCurrency(balance.showroomBalance ?? balance.balance ?? 0)} icon="bank" color={c.primary} style={styles.gridItem} />
-          <SummaryCard title="Owner" value={formatCurrency(balance.ownerBalance ?? balance.balance ?? 0)} icon="account-cash" color={c.gold || '#d4a843'} style={styles.gridItem} />
+          <SummaryCard title="Showroom Bal" value={formatCurrency(balance.showroomBalance ?? 0, 'AFN')} icon="bank" color={c.primary} style={styles.gridItem} />
+          <SummaryCard title="Owner Profit" value={formatCurrency(balance.ownerProfit ?? 0, 'AFN')} icon="account-cash" color={c.gold || '#d4a843'} style={styles.gridItem} />
         </View>
 
         <Text style={[styles.sectionTitle, { color: c.onSurface }]}>Inventory</Text>
         <View style={styles.grid2}>
           <SummaryCard title="Available" value={String(availableVehicles)} icon="car-key" color={c.success} style={styles.gridItem} />
-          <SummaryCard title="Commissions" value={formatCurrency(totalCommission)} icon="handshake" color="#e65100" style={styles.gridItem} />
+          <SummaryCard title="Commissions" value={formatCurrency(totalCommission, 'AFN')} icon="handshake" color="#e65100" style={styles.gridItem} />
         </View>
 
         {/* Recent Sales */}
@@ -161,7 +248,7 @@ export default function DashboardScreen({ navigation }) {
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={[styles.salePrice, { color: c.success }]}>{formatCurrency(sale.sellingPrice)}</Text>
+                    <ResponsiveAmount style={[styles.salePrice, { color: c.success, maxWidth: 120 }]}>{formatCurrency(sale.sellingPrice, sale.paymentCurrency)}</ResponsiveAmount>
                     <StatusChip label={Number(sale.remainingAmount || 0) > 0 ? 'Partial' : 'Paid'} />
                   </View>
                 </View>
@@ -258,6 +345,9 @@ const styles = StyleSheet.create({
   quickStatVal: { fontSize: 20, fontWeight: '800', color: '#fff' },
   quickStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontWeight: '500' },
   quickStatDivider: { width: 1, height: '80%', alignSelf: 'center' },
+
+  // Trend Card
+  trendCard: { borderRadius: 16, borderWidth: 1, borderColor: '#e2e5f0' },
 
   // Section styling
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3, marginTop: 4, marginBottom: -2, marginLeft: 4 },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, FlatList, Image, Alert, RefreshControl,
 } from 'react-native';
-import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, ActivityIndicator } from 'react-native-paper';
+import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, ActivityIndicator } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,9 +11,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppTheme } from '../contexts/ThemeContext';
 import apiClient from '../api/client';
 import { resolveAssetUrl } from '../api/config';
-import { formatCurrency } from '../utils/constants';
+import { CURRENCIES, formatCurrency } from '../utils/constants';
 
-const EMPTY_FORM = { title: '', model: '', price: '' };
+const EMPTY_FORM = { title: '', model: '', price: '', currency: 'AFN' };
 
 export default function CarouselManagerScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
@@ -44,7 +44,7 @@ export default function CarouselManagerScreen({ navigation }) {
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setImageAsset(null); setDialogVisible(true); };
   const openEdit = (item) => {
     setEditing(item);
-    setForm({ title: item.title || '', model: item.model || '', price: String(item.price || '') });
+    setForm({ title: item.title || '', model: item.model || '', price: String(item.price || ''), currency: item.currency || 'AFN' });
     setImageAsset(null);
     setDialogVisible(true);
   };
@@ -69,6 +69,7 @@ export default function CarouselManagerScreen({ navigation }) {
       fd.append('title', form.title.trim());
       fd.append('model', form.model.trim());
       fd.append('price', String(form.price));
+      fd.append('currency', form.currency || 'AFN');
       if (imageAsset) {
         fd.append('image', { uri: imageAsset.uri, name: imageAsset.name || `carousel-${Date.now()}.jpg`, type: imageAsset.mimeType || 'image/jpeg' });
       }
@@ -108,7 +109,7 @@ export default function CarouselManagerScreen({ navigation }) {
       <View style={styles.cardBody}>
         <Text style={[styles.cardTitle, { color: c.onSurface }]}>{item.title}</Text>
         <Text style={{ color: c.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>{item.model}</Text>
-        <Text style={{ color: c.primary, fontWeight: '700', fontSize: 13, marginTop: 4 }}>{formatCurrency(item.price)} AFN</Text>
+        <Text style={{ color: c.primary, fontWeight: '700', fontSize: 13, marginTop: 4 }}>{formatCurrency(item.price, item.currency || 'AFN')}</Text>
       </View>
       <View style={styles.actions}>
         <IconButton icon="pencil-outline" size={18} iconColor={c.primary} onPress={() => openEdit(item)} />
@@ -143,7 +144,13 @@ export default function CarouselManagerScreen({ navigation }) {
           <Dialog.Content style={{ gap: 10 }}>
             <TextInput label="Title *" value={form.title} onChangeText={v => setForm(p => ({ ...p, title: v }))} mode="outlined" dense />
             <TextInput label="Vehicle Model *" value={form.model} onChangeText={v => setForm(p => ({ ...p, model: v }))} mode="outlined" dense />
-            <TextInput label="Price (AFN) *" value={form.price} onChangeText={v => setForm(p => ({ ...p, price: v }))} mode="outlined" dense keyboardType="numeric" />
+            <TextInput label={`Price (${form.currency || 'AFN'}) *`} value={form.price} onChangeText={v => setForm(p => ({ ...p, price: v }))} mode="outlined" dense keyboardType="numeric" />
+            <Text style={{ color: c.onSurfaceVariant, fontSize: 12, marginTop: 2 }}>Currency</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {CURRENCIES.map(currency => (
+                <Button key={currency} compact mode={form.currency === currency ? 'contained' : 'outlined'} onPress={() => setForm(p => ({ ...p, currency }))}>{currency}</Button>
+              ))}
+            </View>
             <Button mode="outlined" icon="image" onPress={pickImage}>
               {imageAsset ? imageAsset.name : 'Select Image'}
             </Button>

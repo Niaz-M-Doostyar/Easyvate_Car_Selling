@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
-import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, Chip, ActivityIndicator } from 'react-native-paper';
+import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, Chip, ActivityIndicator } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import ConfirmDialog from '../components/ConfirmDialog';

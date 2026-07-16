@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { ActivityIndicator, Text } from './LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function EmptyState({ loading, message, icon }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const { t, isRTL, fontFamily } = useLanguage();
 
   if (loading) {
     return (
@@ -14,7 +16,7 @@ export default function EmptyState({ loading, message, icon }) {
         <View style={[styles.loaderBox, { backgroundColor: c.primary + '10' }]}>
           <ActivityIndicator size="large" color={c.primary} />
         </View>
-        <Text style={[styles.loadingText, { color: c.onSurfaceVariant }]}>Loading...</Text>
+        <Text style={[styles.loadingText, { color: c.onSurfaceVariant, fontFamily }]}>{t('Loading')}</Text>
       </View>
     );
   }
@@ -24,8 +26,8 @@ export default function EmptyState({ loading, message, icon }) {
       <View style={[styles.iconCircle, { backgroundColor: c.surfaceVariant }]}>
         <Text style={styles.emoji}>{icon || '📋'}</Text>
       </View>
-      <Text style={[styles.message, { color: c.onSurface }]}>{message || 'No data found'}</Text>
-      <Text style={[styles.hint, { color: c.onSurfaceVariant }]}>Pull down to refresh</Text>
+      <Text style={[styles.message, { color: c.onSurface, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t(message || 'No data found')}</Text>
+      <Text style={[styles.hint, { color: c.onSurfaceVariant, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t('Pull down to refresh')}</Text>
     </View>
   );
 }

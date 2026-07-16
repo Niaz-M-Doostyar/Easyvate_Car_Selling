@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
-import { Searchbar, FAB, Text, IconButton, Menu, Chip, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { View, StyleSheet, FlatList, RefreshControl, Platform, Alert } from 'react-native';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, TouchableRipple } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
@@ -11,11 +11,15 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, VEHICLE_STATUSES } from '../utils/constants';
 import apiClient from '../api/client';
+import { downloadAndSharePdf } from '../utils/pdf';
+import ResponsiveAmount from '../components/ResponsiveAmount';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function VehiclesScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
   const { canWrite } = useAuth();
+  const { isRTL } = useLanguage();
 
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +55,15 @@ export default function VehiclesScreen({ navigation }) {
     setDeleteId(null);
   };
 
+  const handleDownloadPDF = async (vehicle) => {
+    try {
+      await downloadAndSharePdf(`/vehicles/${vehicle.id}/pdf`, `vehicle-${vehicle.vehicleId || vehicle.id}.pdf`, 'Vehicle PDF');
+      Alert.alert('Saved', 'Vehicle PDF is ready to share.');
+    } catch (e) {
+      Alert.alert('PDF unavailable', e.response?.data?.error || 'Failed to download the vehicle PDF.');
+    }
+  };
+
   const filtered = vehicles.filter(v => {
     const matchSearch = !search || [v.vehicleId, v.manufacturer, v.model, v.category, v.chassisNumber]
       .filter(Boolean).some(f => f.toLowerCase().includes(search.toLowerCase()));
@@ -84,13 +97,14 @@ export default function VehiclesScreen({ navigation }) {
             {item.vehicleId} • {item.year} • {item.category} • {item.color}
           </Text>
           <View style={styles.priceRow}>
-            <Text style={[styles.costText, { color: c.onSurfaceVariant }]}>Cost: {formatCurrency(item.totalCostPKR || item.totalCost)}</Text>
-            <Text style={[styles.priceText, { color: c.success }]}>{formatCurrency(item.sellingPrice)}</Text>
+            <ResponsiveAmount style={[styles.costText, { color: c.onSurfaceVariant, textAlign: isRTL ? 'right' : 'left' }]}>Cost: {formatCurrency(item.totalCostPKR ?? item.totalCostOriginal ?? item.totalCost, item.totalCostPKR != null ? 'AFN' : item.baseCurrency)}</ResponsiveAmount>
+            <ResponsiveAmount style={[styles.priceText, { color: c.success, maxWidth: '48%' }]}>{formatCurrency(item.sellingPrice, item.sellingPriceCurrency || item.baseCurrency)}</ResponsiveAmount>
           </View>
         </View>
         {/* Actions */}
         <View style={styles.actions}>
           <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })} style={styles.actionBtn} />
+          <IconButton icon="file-pdf-box" size={18} iconColor={c.error} onPress={() => handleDownloadPDF(item)} style={styles.actionBtn} />
           {item.status !== 'Sold' && canWrite('Vehicles') && (
             <>
               <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('VehicleForm', { vehicle: item })} style={styles.actionBtn} />

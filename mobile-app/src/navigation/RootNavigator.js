@@ -6,14 +6,17 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { ActivityIndicator, View } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
 import PublicCarDetailScreen from '../screens/PublicCarDetailScreen';
+import PublicPrivacyScreen from '../screens/PublicPrivacyScreen';
 import PublicTabNavigator from './PublicTabNavigator';
 import AppDrawer from './AppDrawer';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Stack = createStackNavigator();
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
   const { paperTheme, isDark } = useAppTheme();
+  const { language } = useLanguage();
 
   if (loading) {
     return (
@@ -40,14 +43,19 @@ export default function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer key={language} theme={navTheme} direction="ltr">
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={AppDrawer} />
+          // User is logged in - show admin section
+          <>
+            <Stack.Screen name="Main" component={AppDrawer} />
+          </>
         ) : (
+          // User is not logged in - show public section
           <>
             <Stack.Screen name="PublicTabs" component={PublicTabNavigator} />
             <Stack.Screen name="CarDetail" component={PublicCarDetailScreen} options={{ animationTypeForReplace: 'push' }} />
+            <Stack.Screen name="PrivacyPolicy" component={PublicPrivacyScreen} options={{ animationTypeForReplace: 'push' }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ animationTypeForReplace: 'push' }} />
           </>
         )}

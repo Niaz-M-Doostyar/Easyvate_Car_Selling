@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text } from './LocalizedPaper';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const STATUS_COLORS = {
   Available: 'success', Sold: 'error', Reserved: 'warning', Coming: 'info', 'Under Repair': 'warning',
@@ -23,6 +24,7 @@ const TYPE_COLORS = {
 export default function StatusChip({ label, type, style }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
+  const { t, isRTL, fontFamily } = useLanguage();
 
   const statusKey = STATUS_COLORS[label];
   let bgColor, textColor, dotColor;
@@ -42,9 +44,9 @@ export default function StatusChip({ label, type, style }) {
   }
 
   return (
-    <View style={[styles.chip, { backgroundColor: bgColor }, style]}>
+    <View style={[styles.chip, { backgroundColor: bgColor }, isRTL && styles.chipRTL, style]}>
       <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      <Text style={[styles.text, { color: textColor }]}>{label}</Text>
+      <Text style={[styles.text, { color: textColor, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t(label)}</Text>
     </View>
   );
 }
@@ -59,6 +61,7 @@ const styles = StyleSheet.create({
     gap: 5,
     alignSelf: 'flex-start',
   },
+  chipRTL: { flexDirection: 'row-reverse', alignSelf: 'flex-end' },
   dot: { width: 6, height: 6, borderRadius: 3 },
   text: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 });

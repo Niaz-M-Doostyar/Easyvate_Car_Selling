@@ -6,15 +6,15 @@ buildscript {
     compileSdkVersion = 36
     targetSdkVersion = 36
     ndkVersion = "27.2.12479018"
-    kotlinVersion = "1.9.23"
+    kotlinVersion = "2.1.0"
   }
   repositories {
     google()
     mavenCentral()
   }
   dependencies {
-    classpath('com.android.tools.build:gradle:8.1.1')
-    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23')
+    classpath('com.android.tools.build:gradle:8.8.2')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0')
   }
 }
 

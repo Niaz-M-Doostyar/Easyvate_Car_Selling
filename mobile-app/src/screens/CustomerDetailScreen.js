@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, Card, Divider, SegmentedButtons, IconButton } from 'react-native-paper';
+import { Text, Card, Divider, SegmentedButtons, IconButton } from '../components/LocalizedPaper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import StatusChip from '../components/StatusChip';
@@ -21,6 +21,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
   const c = paperTheme.colors;
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('info');
+  const [custData, setCustData] = useState(customer || {});
   const [ledger, setLedger] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,12 +31,14 @@ export default function CustomerDetailScreen({ navigation, route }) {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [ledRes, purRes] = await Promise.all([
-          apiClient.get(`/ledger/customer/${customer.id}`).catch(() => ({ data: [] })),
-          apiClient.get(`/sales?customerId=${customer.id}`).catch(() => ({ data: [] })),
+        const [cRes, ledRes, purRes] = await Promise.all([
+          apiClient.get(`/customers/${customer.id}`).catch(() => ({ data: customer })),
+          apiClient.get(`/customers/${customer.id}/ledger`).catch(() => ({ data: [] })),
+          apiClient.get(`/customers/${customer.id}/history`).catch(() => ({ data: [] })),
         ]);
+        setCustData(cRes.data?.data || cRes.data || customer);
         setLedger(Array.isArray(ledRes.data?.data) ? ledRes.data.data : Array.isArray(ledRes.data) ? ledRes.data : []);
-        setPurchases(Array.isArray(purRes.data?.data) ? purRes.data.data : Array.isArray(purRes.data) ? purRes.data : []);
+        setPurchases(Array.isArray(purRes.data?.sales) ? purRes.data.sales : Array.isArray(purRes.data?.data) ? purRes.data.data : Array.isArray(purRes.data) ? purRes.data : []);
       } catch (e) {
         // ignore
       } finally {
@@ -47,20 +50,18 @@ export default function CustomerDetailScreen({ navigation, route }) {
 
   if (!customer) return <EmptyState message="No customer data" />;
 
-  const bal = Number(customer.balance || 0);
-
   const infoFields = [
-    { l: 'Full Name', v: customer.fullName },
-    { l: "Father's Name", v: customer.fatherName },
-    { l: 'Phone', v: customer.phoneNumber },
-    { l: 'National ID', v: customer.nationalIdNumber },
-    { l: 'Type', v: customer.customerType },
-    { l: 'Province', v: customer.province },
-    { l: 'District', v: customer.district },
-    { l: 'Village', v: customer.village },
-    { l: 'Address', v: customer.address },
-    { l: 'Notes', v: customer.notes },
-    { l: 'Balance', v: formatCurrency(bal), color: bal >= 0 ? '#4caf50' : '#f44336' },
+    { l: 'Full Name', v: custData.fullName },
+    { l: "Father's Name", v: custData.fatherName },
+    { l: 'Phone', v: custData.phoneNumber },
+    { l: 'National ID', v: custData.nationalIdNumber },
+    { l: 'Type', v: custData.customerType },
+    { l: 'Province', v: custData.province },
+    { l: 'District', v: custData.district },
+    { l: 'Village', v: custData.village },
+    { l: 'Current Address', v: custData.currentAddress || custData.address },
+    { l: 'Original Address', v: custData.originalAddress },
+    { l: 'Notes', v: custData.notes },
   ].filter(f => f.v);
 
   const renderInfo = () => (
@@ -70,7 +71,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
           <View key={i}>
             <View style={styles.fieldRow}>
               <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, width: 110 }}>{f.l}</Text>
-              <Text variant="bodyMedium" style={{ color: f.color || c.onSurface, fontWeight: '600', flex: 1 }}>{f.v}</Text>
+              <Text variant="bodyMedium" style={{ color: c.onSurface, fontWeight: '600', flex: 1 }}>{f.v}</Text>
             </View>
             {i < infoFields.length - 1 && <Divider style={{ marginVertical: 4 }} />}
           </View>
@@ -82,18 +83,32 @@ export default function CustomerDetailScreen({ navigation, route }) {
   const renderLedger = () => (
     ledger.length === 0 ? <EmptyState loading={loading} message="No ledger entries" icon="📒" /> :
     <View style={{ gap: 8 }}>
-      {ledger.map((e, i) => (
-        <Card key={i} style={[styles.card, { backgroundColor: c.surface }]}>
-          <Card.Content>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{e.type || e.description || 'Entry'}</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: '700', color: e.amount >= 0 ? '#4caf50' : '#f44336' }}>{formatCurrency(Math.abs(e.amount || 0))}</Text>
-            </View>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{e.notes || e.description || ''}</Text>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{e.date || e.createdAt ? new Date(e.date || e.createdAt).toLocaleDateString() : ''}</Text>
-          </Card.Content>
-        </Card>
-      ))}
+      {ledger.map((e, i) => {
+        const amt = Number(e.amount || 0);
+        return (
+          <Card key={i} style={[styles.card, { backgroundColor: c.surface }]}>
+            <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{e.type || e.purpose || 'Entry'}</Text>
+                <Text variant="bodyMedium" style={{ fontWeight: '700', color: amt >= 0 ? '#4caf50' : '#f44336' }}>
+                  {formatCurrency(Math.abs(amt), e.currency || 'AFN')}
+                </Text>
+              </View>
+              {e.purpose && <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginTop: 4 }}>{e.purpose}</Text>}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>
+                  {e.date ? new Date(e.date).toLocaleDateString() : ''}
+                </Text>
+                {e.balance !== undefined && (
+                  <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>
+                    Bal: {formatCurrency(e.balance, e.currency || 'AFN')}
+                  </Text>
+                )}
+              </View>
+            </Card.Content>
+          </Card>
+        );
+      })}
     </View>
   );
 
@@ -107,7 +122,9 @@ export default function CustomerDetailScreen({ navigation, route }) {
               <Text variant="bodyMedium" style={{ fontWeight: '700', color: c.onSurface }}>{s.vehicle?.manufacturer} {s.vehicle?.model}</Text>
               <StatusChip label={s.saleType || 'Sale'} />
             </View>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>{formatCurrency(s.sellingPrice)} • {s.saleDate ? new Date(s.saleDate).toLocaleDateString() : ''}</Text>
+            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginTop: 4 }}>
+              {formatCurrency(s.sellingPrice, s.paymentCurrency)} • {s.saleDate ? new Date(s.saleDate).toLocaleDateString() : ''}
+            </Text>
           </Card.Content>
         </Card>
       ))}
@@ -116,7 +133,7 @@ export default function CustomerDetailScreen({ navigation, route }) {
 
   return (
     <ScreenWrapper title="Customer Details" navigation={navigation} back
-      actions={<IconButton icon="pencil" onPress={() => navigation.navigate('CustomerForm', { customer })} />}>
+      actions={<IconButton icon="pencil" onPress={() => navigation.navigate('CustomerForm', { customer: custData })} />}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Header */}
         <Card style={[styles.card, { backgroundColor: c.primary }]}>
@@ -124,17 +141,31 @@ export default function CustomerDetailScreen({ navigation, route }) {
             <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
               <Text style={{ fontSize: 24, color: '#fff' }}>👤</Text>
             </View>
-            <Text variant="titleLarge" style={{ fontWeight: '700', color: '#fff', marginTop: 8 }}>{customer.fullName}</Text>
-            <Text variant="bodyMedium" style={{ color: 'rgba(255,255,255,0.8)' }}>{customer.phoneNumber}</Text>
-            <StatusChip label={customer.customerType || 'Buyer'} style={{ marginTop: 6 }} />
+            <Text variant="titleLarge" style={{ fontWeight: '700', color: '#fff', marginTop: 8 }}>{custData.fullName}</Text>
+            <Text variant="bodyMedium" style={{ color: 'rgba(255,255,255,0.8)' }}>{custData.phoneNumber}</Text>
+            <StatusChip label={custData.customerType || 'Buyer'} style={{ marginTop: 6 }} />
           </Card.Content>
         </Card>
 
-        {/* Balance */}
+        {/* Multi-Currency Balances */}
         <Card style={[styles.card, { backgroundColor: c.surface }]}>
-          <Card.Content style={{ alignItems: 'center', paddingVertical: 12 }}>
-            <Text variant="bodySmall" style={{ color: c.onSurfaceVariant }}>Balance</Text>
-            <Text variant="headlineSmall" style={{ fontWeight: '800', color: bal >= 0 ? '#4caf50' : '#f44336' }}>{formatCurrency(Math.abs(bal))}</Text>
+          <Card.Content style={{ paddingVertical: 12 }}>
+            <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface, marginBottom: 8, textAlign: 'center' }}>Account Balances</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {[
+                { label: 'AFN', val: Number(custData.balanceAFN || custData.balance || 0), cur: 'AFN' },
+                { label: 'USD', val: Number(custData.balanceUSD || 0), cur: 'USD' },
+                { label: 'PKR', val: Number(custData.balancePKR || 0), cur: 'PKR' },
+                { label: 'AED', val: Number(custData.balanceAED || 0), cur: 'AED' },
+              ].map((b, i) => (
+                <View key={i} style={{ flex: 1, minWidth: '45%', alignItems: 'center', backgroundColor: c.surfaceVariant, padding: 8, borderRadius: 10 }}>
+                  <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, fontSize: 10 }}>{b.label}</Text>
+                  <Text variant="titleMedium" style={{ fontWeight: '800', color: b.val >= 0 ? '#4caf50' : '#f44336' }}>
+                    {formatCurrency(Math.abs(b.val), b.cur)}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </Card.Content>
         </Card>
 

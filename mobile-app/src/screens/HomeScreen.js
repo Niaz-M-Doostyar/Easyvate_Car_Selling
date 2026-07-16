@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, FlatList, Image,
   Dimensions, Pressable, RefreshControl, StatusBar, TextInput,
-  TouchableOpacity, Platform, Modal, ActivityIndicator, SafeAreaView,
+  TouchableOpacity, Platform, Modal, ActivityIndicator,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -12,6 +12,10 @@ import publicApiClient from '../api/publicClient';
 import { resolveAssetUrl } from '../api/config';
 import { formatCurrency } from '../utils/constants';
 import { openLink } from '../utils/linking';
+import { extractContacts, mergeLocalizedContact, phoneUrl, whatsappUrl, selectPrimaryContact, socialUrl } from '../data/publicContent';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../contexts/LanguageContext';
+import LanguageMenuButton from '../components/LanguageMenuButton';
 
 const { width: W } = Dimensions.get('window');
 const ACCENT = '#c8963e';
@@ -32,6 +36,8 @@ const WHY_CHOOSE = [
 ];
 
 export default function HomeScreen({ navigation }) {
+  const { t, isRTL, fontFamily, textStyle, publicLocale } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -53,22 +59,28 @@ export default function HomeScreen({ navigation }) {
   const fetchData = useCallback(async () => {
     setError(false);
     try {
-      const [homeRes, aboutRes, contactRes] = await Promise.all([
-        publicApiClient.get('/home-cars?locale=en').catch(() => ({ data: {} })),
-        publicApiClient.get('/about?locale=en').catch(() => ({ data: {} })),
-        publicApiClient.get('/contact?locale=en').catch(() => ({ data: {} })),
+      const [homeRes, aboutRes, contactRes, englishContactRes] = await Promise.all([
+        publicApiClient.get(`/home-cars?locale=${publicLocale}`).catch(() => ({ data: {} })),
+        publicApiClient.get(`/about?locale=${publicLocale}`).catch(() => ({ data: {} })),
+        publicApiClient.get(`/contact?locale=${publicLocale}`).catch(() => ({ data: {} })),
+        publicLocale === 'en'
+          ? Promise.resolve({ data: {} })
+          : publicApiClient.get('/contact?locale=en').catch(() => ({ data: {} })),
       ]);
       setHomeData(homeRes.data || {});
       setAbout(homeRes.data?.about != null ? homeRes.data.about : (aboutRes.data?.about || null));
-      const cl = contactRes.data?.contacts || contactRes.data || [];
-      setContact(Array.isArray(cl) ? cl[0] : cl);
+      const localizedContact = selectPrimaryContact(extractContacts(contactRes.data));
+      const englishContact = publicLocale === 'en'
+        ? localizedContact
+        : selectPrimaryContact(extractContacts(englishContactRes.data));
+      setContact(mergeLocalizedContact(localizedContact, englishContact));
     } catch (e) {
       setError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [publicLocale]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -82,7 +94,7 @@ export default function HomeScreen({ navigation }) {
   const testimonials = homeData.testimonials || [];
   const chooseVideo = homeData.chooseVideo;
   const videoUri = chooseVideo?.videoPath ? resolveAssetUrl(chooseVideo.videoPath) : null;
-  const totalCars = (carsByTab.all.length) + (carsByTab.container.length) + (carsByTab.licensed.length);
+  const totalCars = carsByTab.all.length;
 
   // Video player — muted loop for inline preview; unmuted when modal opens
   const videoPlayer = useVideoPlayer(videoUri, (player) => {
@@ -159,7 +171,7 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.loadingView}>
         <StatusBar barStyle="light-content" />
         <MaterialCommunityIcons name="car-sports" size={64} color={ACCENT} />
-        <Text style={styles.loadingText}>Loading Showroom...</Text>
+        <Text style={[styles.loadingText, { fontFamily }]}>{t('Loading Showroom...')}</Text>
         <ActivityIndicator color={ACCENT} style={{ marginTop: 16 }} />
       </View>
     );
@@ -170,10 +182,10 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.errorView}>
         <StatusBar barStyle="light-content" />
         <MaterialCommunityIcons name="wifi-off" size={64} color={ACCENT} />
-        <Text style={styles.errorTitle}>Connection Error</Text>
-        <Text style={styles.errorSub}>Could not connect to the server.{'\n'}Please check your internet connection.</Text>
+        <Text style={[styles.errorTitle, { fontFamily }]}>{t('Connection Error')}</Text>
+        <Text style={[styles.errorSub, { fontFamily }]}>{t('Could not connect to the server.')}{'\n'}{t('Please check your internet connection.')}</Text>
         <TouchableOpacity onPress={() => { setLoading(true); fetchData(); }} style={styles.retryBtn}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={[styles.retryText, { fontFamily }]}>{t('Retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -181,28 +193,29 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={DARK} />
+      <StatusBar barStyle="light-content" backgroundColor={PRIMARY} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
         stickyHeaderIndices={[0]}
       >
         {/* TOP BAR (modern standard) */}
-        <SafeAreaView style={styles.topBarStandard}>
-          
-
-          <View style={styles.headerRight}>
-            <View style={styles.headerCenter} >
-            <MaterialCommunityIcons name="car-sports" size={22} color={ACCENT} />
-            <Text style={styles.brandNameStandard}>Niazi Khpalwak</Text>
+        <View style={[styles.topBarStandard, { height: insets.top + 58 }]}>
+          <View style={[styles.headerSideSlot, { top: insets.top + 8, left: 16 }]}>
+            <LanguageMenuButton light />
           </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.adminIconBtn} accessibilityLabel="Admin">
+          <View style={[styles.headerCenter, { top: insets.top + 8, left: 88, right: 88 }]}>
+            <MaterialCommunityIcons name="car-sports" size={22} color={ACCENT} />
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.brandNameStandard, { fontFamily }]}>Niazi Khpalwak</Text>
+          </View>
+          <View style={[styles.headerSideSlot, styles.headerRightSlot, { top: insets.top + 8, right: 16 }]}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.adminIconBtn} accessibilityLabel={t('Login')}>
               <View style={styles.adminAvatarAlt}>
                 <MaterialCommunityIcons name="account" size={18} color="#fff" />
               </View>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
 
         {/* HERO CAROUSEL */}
         {carousel.length > 0 ? (
@@ -227,13 +240,13 @@ export default function HomeScreen({ navigation }) {
                     style={styles.carouselOverlay}
                   >
                     <View style={styles.carouselBadge}>
-                      <Text style={styles.carouselBadgeText}>PREMIUM</Text>
+                      <Text style={[styles.carouselBadgeText, { fontFamily }]}>{t('Premium')}</Text>
                     </View>
                     <Text style={styles.carouselTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.carouselModel}>{item.model}</Text>
                     <View style={styles.carouselPriceRow}>
                       <MaterialCommunityIcons name="tag" size={14} color={ACCENT} />
-                      <Text style={styles.carouselPrice}>{formatCurrency(item.price)} AFN</Text>
+                      <Text style={styles.carouselPrice}>{formatCurrency(item.price, item.currency || item.sellingPriceCurrency || 'AFN')}</Text>
                     </View>
                   </LinearGradient>
                 </View>
@@ -253,17 +266,17 @@ export default function HomeScreen({ navigation }) {
           <LinearGradient colors={[DARK, PRIMARY + 'dd']} style={styles.heroBanner}>
             <MaterialCommunityIcons name="car-sports" size={72} color={ACCENT} />
             <Text style={styles.heroBannerTitle}>Niazi Khpalwak</Text>
-            <Text style={styles.heroBannerSub}>Premium Car Showroom & Dealership</Text>
+            <Text style={[styles.heroBannerSub, { fontFamily }]}>{t('Premium Car Showroom & Dealership')}</Text>
           </LinearGradient>
         )}
 
         {/* SEARCH BAR */}
-        <View style={styles.searchWrap}>
-          <View style={styles.searchBar}>
+        <View style={[styles.searchWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.searchBar, isRTL && { flexDirection: 'row-reverse' }]}>
             <MaterialCommunityIcons name="magnify" size={22} color="#888" style={{ marginRight: 8 }} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search brand, model, year..."
+              style={[styles.searchInput, { fontFamily, ...textStyle }]}
+              placeholder={t('Search brand, model, year...')}
               placeholderTextColor="#aaa"
               value={searchQuery}
               onChangeText={onChangeSearch}
@@ -290,7 +303,7 @@ export default function HomeScreen({ navigation }) {
             {loadingSuggestions ? (
               <View style={styles.suggestionLoading}><ActivityIndicator color={ACCENT} /></View>
             ) : suggestions.length === 0 ? (
-              <View style={styles.suggestionEmpty}><Text style={{ color: '#777' }}>No matches</Text></View>
+              <View style={styles.suggestionEmpty}><Text style={{ color: '#777', fontFamily }}>{t('No matches')}</Text></View>
             ) : (
               suggestions.map(item => {
                 const img = resolveAssetUrl(item.mainImage || item.images?.[0]);
@@ -331,9 +344,9 @@ export default function HomeScreen({ navigation }) {
         {/* VEHICLES BY CATEGORY */}
         <View style={styles.section}>
           <View style={styles.secHead}>
-            <Text style={styles.secTitle}>Our Vehicles</Text>
+            <Text style={[styles.secTitle, { fontFamily, ...textStyle }]}>{t('Our Vehicles')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Cars')}>
-              <Text style={styles.viewAllLink}>View All →</Text>
+              <Text style={[styles.viewAllLink, { fontFamily }]}>{t('View All')} {isRTL ? '←' : '→'}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.tabBar}>
@@ -344,7 +357,7 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => setActiveTab(tab.key)}
               >
                 <MaterialCommunityIcons name={tab.icon} size={14} color={activeTab === tab.key ? '#fff' : '#555'} />
-                <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+                <Text style={[styles.tabText, { fontFamily }, activeTab === tab.key && styles.tabTextActive]}>{t(tab.label)}</Text>
                 {carsByTab[tab.key].length > 0 && (
                   <View style={[styles.tabBadge, activeTab === tab.key && { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
                     <Text style={[styles.tabBadgeText, activeTab === tab.key && { color: '#fff' }]}>
@@ -358,7 +371,7 @@ export default function HomeScreen({ navigation }) {
           {activeCars.length === 0 ? (
             <View style={styles.emptySection}>
               <MaterialCommunityIcons name="car-off" size={44} color="#ccc" />
-              <Text style={styles.emptyText}>No vehicles in this category</Text>
+              <Text style={[styles.emptyText, { fontFamily }]}>{t('No vehicles in this category')}</Text>
             </View>
           ) : (
             <FlatList
@@ -407,7 +420,7 @@ export default function HomeScreen({ navigation }) {
                         <MaterialCommunityIcons name="palette" size={11} color="#888" />
                         <Text style={styles.carCardMetaText}>{item.color || ''}</Text>
                       </View>
-                      <Text style={styles.carCardPrice}>{formatCurrency(item.sellingPrice)} AFN</Text>
+                      <Text style={styles.carCardPrice}>{formatCurrency(item.sellingPrice, item.sellingPriceCurrency || item.baseCurrency)}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -415,9 +428,9 @@ export default function HomeScreen({ navigation }) {
             />
           )}
           {activeCars.length > 6 && (
-            <TouchableOpacity onPress={() => navigation.navigate('Cars')} style={styles.viewAllBtn}>
-              <Text style={styles.viewAllBtnText}>See All {activeCars.length} Vehicles</Text>
-              <MaterialCommunityIcons name="arrow-right" size={16} color={PRIMARY} />
+            <TouchableOpacity onPress={() => navigation.navigate('Cars')} style={[styles.viewAllBtn, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.viewAllBtnText, { fontFamily }]}>{t('View All')} {activeCars.length} {t('Vehicles')}</Text>
+              <MaterialCommunityIcons name={isRTL ? 'arrow-left' : 'arrow-right'} size={16} color={PRIMARY} />
             </TouchableOpacity>
           )}
         </View>
@@ -425,8 +438,8 @@ export default function HomeScreen({ navigation }) {
         {/* VIDEO SECTION */}
         {chooseVideo && chooseVideo.videoPath && (
           <LinearGradient colors={[DARK, PRIMARY + 'cc']} style={styles.videoSection}>
-            <Text style={styles.videoTitle}>See Our Showroom</Text>
-            <Text style={styles.videoSub}>Take a virtual tour of our premium fleet</Text>
+            <Text style={[styles.videoTitle, { fontFamily }]}>{t('See Our Showroom')}</Text>
+            <Text style={[styles.videoSub, { fontFamily }]}>{t('Take a virtual tour of our premium fleet')}</Text>
             <TouchableOpacity onPress={() => setVideoVisible(true)} activeOpacity={0.88} style={styles.videoPlayWrap}>
               <VideoView
                 player={videoPlayer}
@@ -437,7 +450,7 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.videoPlayCircle}>
                   <MaterialCommunityIcons name="play" size={28} color="#fff" />
                 </View>
-                <Text style={styles.videoPlayLabel}>Tap to Watch</Text>
+                <Text style={[styles.videoPlayLabel, { fontFamily }]}>{t('Tap to Watch')}</Text>
               </View>
             </TouchableOpacity>
           </LinearGradient>
@@ -446,7 +459,7 @@ export default function HomeScreen({ navigation }) {
         {/* WHY CHOOSE US */}
         <View style={styles.section}>
           <View style={styles.secHead}>
-            <Text style={styles.secTitle}>Why Choose Us</Text>
+            <Text style={[styles.secTitle, { fontFamily, ...textStyle }]}>{t('Why Choose Us')}</Text>
           </View>
           <View style={styles.whyGrid}>
             {WHY_CHOOSE.map((item, idx) => (
@@ -454,8 +467,8 @@ export default function HomeScreen({ navigation }) {
                 <View style={[styles.whyIconWrap, { backgroundColor: item.color + '18' }]}>
                   <MaterialCommunityIcons name={item.icon} size={26} color={item.color} />
                 </View>
-                <Text style={styles.whyTitle}>{item.title}</Text>
-                <Text style={styles.whyDesc}>{item.desc}</Text>
+                <Text style={[styles.whyTitle, { fontFamily, ...textStyle }]}>{t(item.title)}</Text>
+                <Text style={[styles.whyDesc, { fontFamily, ...textStyle }]}>{t(item.desc)}</Text>
               </View>
             ))}
           </View>
@@ -463,7 +476,7 @@ export default function HomeScreen({ navigation }) {
 
         {/* SERVICES */}
         <LinearGradient colors={[DARK, PRIMARY]} style={styles.servicesSection}>
-          <Text style={[styles.secTitle, { color: '#fff', marginBottom: 18 }]}>Our Services</Text>
+          <Text style={[styles.secTitle, { color: '#fff', marginBottom: 18, fontFamily, ...textStyle }]}>{t('Our Services')}</Text>
           <View style={styles.servicesGrid}>
             {[
               { icon: 'magnify', label: 'Inspection', color: '#60a5fa' },
@@ -477,7 +490,7 @@ export default function HomeScreen({ navigation }) {
                 <View style={[styles.serviceIconWrap, { backgroundColor: s.color + '22' }]}>
                   <MaterialCommunityIcons name={s.icon} size={22} color={s.color} />
                 </View>
-                <Text style={styles.serviceLabel}>{s.label}</Text>
+                <Text style={[styles.serviceLabel, { fontFamily }]}>{t(s.label)}</Text>
               </View>
             ))}
           </View>
@@ -487,7 +500,7 @@ export default function HomeScreen({ navigation }) {
         {about && (
           <View style={[styles.section, { backgroundColor: '#fff' }]}>
             <View style={styles.secHead}>
-              <Text style={styles.secTitle}>About Us</Text>
+              <Text style={[styles.secTitle, { fontFamily, ...textStyle }]}>{t('About Us')}</Text>
             </View>
             <View style={styles.aboutCard}>
               <View style={styles.aboutIconRow}>
@@ -500,11 +513,11 @@ export default function HomeScreen({ navigation }) {
                 </View>
               </View>
               <Text style={styles.aboutDesc} numberOfLines={4}>
-                {about.description || 'Your trusted car showroom in Afghanistan, offering premium vehicles at competitive prices.'}
+                {about.description || t('Your trusted car showroom in Afghanistan, offering premium vehicles at competitive prices.')}
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.aboutReadMore}>
-                <Text style={styles.aboutReadMoreText}>Read More</Text>
-                <MaterialCommunityIcons name="arrow-right" size={16} color={PRIMARY} />
+              <TouchableOpacity onPress={() => navigation.navigate('About')} style={[styles.aboutReadMore, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.aboutReadMoreText, { fontFamily }]}>{t('Read More')}</Text>
+                <MaterialCommunityIcons name={isRTL ? 'arrow-left' : 'arrow-right'} size={16} color={PRIMARY} />
               </TouchableOpacity>
             </View>
           </View>
@@ -514,7 +527,7 @@ export default function HomeScreen({ navigation }) {
         {testimonials.length > 0 && (
           <View style={[styles.section, { backgroundColor: '#f8f9fb' }]}>
             <View style={styles.secHead}>
-              <Text style={styles.secTitle}>Client Reviews</Text>
+              <Text style={[styles.secTitle, { fontFamily, ...textStyle }]}>{t('Client Reviews')}</Text>
             </View>
             <FlatList
               data={testimonials}
@@ -552,24 +565,24 @@ export default function HomeScreen({ navigation }) {
         {/* CONTACT CTA */}
         <LinearGradient colors={[PRIMARY, DARK]} style={styles.contactSection}>
           <MaterialCommunityIcons name="phone-in-talk" size={36} color={ACCENT} />
-          <Text style={styles.contactTitle}>Ready to Find Your Car?</Text>
-          <Text style={styles.contactSub}>Contact our experts for the best deal</Text>
+          <Text style={[styles.contactTitle, { fontFamily }]}>{t('Ready to Find Your Car?')}</Text>
+          <Text style={[styles.contactSub, { fontFamily }]}>{t('Contact our experts for the best deal')}</Text>
           <View style={styles.contactBtns}>
             {contact?.phone ? (
               <>
                 <TouchableOpacity
-              onChangeText={onChangeSearch}
-                  onPress={() => openLink(`tel:${contact.phone}`)}
+                  style={styles.contactBtn}
+                  onPress={() => openLink(phoneUrl(contact.phone))}
                 >
                   <MaterialCommunityIcons name="phone" size={18} color="#fff" />
-                  <Text style={styles.contactBtnText}>Call Now</Text>
+                  <Text style={[styles.contactBtnText, { fontFamily }]}>{t('Call Now')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.contactBtn, { backgroundColor: '#25D366' }]}
-                  onPress={() => openLink(`https://wa.me/${String(contact.phone).replace(/[^0-9]/g, '')}`)}
+                  onPress={() => openLink(whatsappUrl(contact.phone))}
                 >
                   <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
-                  <Text style={styles.contactBtnText}>WhatsApp</Text>
+                  <Text style={[styles.contactBtnText, { fontFamily }]}>{t('WhatsApp')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -578,10 +591,28 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => navigation.navigate('Contact')}
               >
                 <MaterialCommunityIcons name="map-marker" size={18} color="#fff" />
-                <Text style={styles.contactBtnText}>Find Us</Text>
+                <Text style={[styles.contactBtnText, { fontFamily }]}>{t('Find Us')}</Text>
               </TouchableOpacity>
             )}
           </View>
+          {(contact?.facebook || contact?.x || contact?.tiktok || contact?.tikTok || contact?.instagram || contact?.youtube) && (
+            <View style={styles.socialIconsRow}>
+              {[
+                contact.facebook && { icon: 'facebook', color: '#1877f2', url: socialUrl(contact.facebook), label: 'Facebook' },
+                contact.x && { icon: 'alpha-x-box', color: '#111', url: socialUrl(contact.x), label: 'X' },
+                (contact.tiktok || contact.tikTok) && { icon: 'music-note', color: '#111', url: socialUrl(contact.tiktok || contact.tikTok), label: 'TikTok' },
+                contact.instagram && { icon: 'instagram', color: '#c13584', url: socialUrl(contact.instagram), label: 'Instagram' },
+                contact.youtube && { icon: 'youtube', color: '#ff0000', url: socialUrl(contact.youtube), label: 'YouTube' },
+              ].filter(Boolean).map((s, i) => (
+                <TouchableOpacity key={i} style={styles.socialIconBtn} onPress={() => openLink(s.url)}>
+                  <View style={[styles.socialIconCircle, { backgroundColor: s.color }]}>
+                    <MaterialCommunityIcons name={s.icon} size={22} color="#fff" />
+                  </View>
+                  <Text style={styles.socialIconLabel}>{s.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </LinearGradient>
 
         <View style={{ height: 24 }} />
@@ -619,17 +650,18 @@ const styles = StyleSheet.create({
   retryBtn: { marginTop: 28, backgroundColor: ACCENT, paddingHorizontal: 36, paddingVertical: 14, borderRadius: 28 },
   retryText: { color: '#fff', fontWeight: '800', fontSize: 16 },
   topBar: { paddingTop: Platform.OS === 'ios' ? 52 : 36, paddingBottom: 12, paddingHorizontal: 16 },
-  topBarStandard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: PRIMARY, paddingTop: 0, paddingBottom: 12, paddingHorizontal: 16, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
-  headerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 10 },
-  brandNameStandard: { color: '#fff', fontSize: 18, fontWeight: '900', marginLeft: 8 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', minWidth: 80 },
+  topBarStandard: { position: 'relative', direction: 'ltr', backgroundColor: PRIMARY, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  headerSideSlot: { position: 'absolute', width: 64, height: 42, justifyContent: 'center', alignItems: 'flex-start' },
+  headerRightSlot: { alignItems: 'flex-end' },
+  headerCenter: { position: 'absolute', height: 42, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 6, gap: 8 },
+  brandNameStandard: { flexShrink: 1, color: '#fff', fontSize: 18, fontWeight: '900', textAlign: 'center', writingDirection: 'ltr' },
   profileBtn: { marginLeft: 8 },
   adminButton: { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderColor: 'rgba(255,255,255,0.3)', borderWidth: 1 },
   adminButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   /* avatar-style admin button (standard placement) */
-  adminIconBtn: { padding: 4, alignItems: 'center', justifyContent: 'center' },
+  adminIconBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   adminAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-  adminAvatarAlt: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  adminAvatarAlt: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
   iconBtnNeutral: { padding: 8, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.15)' },
   profileBtnNeutral: { marginLeft: 8, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
   profileAvatarStandard: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
@@ -733,6 +765,10 @@ const styles = StyleSheet.create({
   contactBtns: { flexDirection: 'row', gap: 12 },
   contactBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 24 },
   contactBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  socialIconsRow: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 20 },
+  socialIconBtn: { alignItems: 'center', gap: 6 },
+  socialIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  socialIconLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '600' },
   videoModal: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
   videoModalClose: { position: 'absolute', top: Platform.OS === 'ios' ? 52 : 28, right: 20, zIndex: 10 },
   videoPlayer: { width: W, aspectRatio: 16 / 9 },

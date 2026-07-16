@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Portal, Dialog, Button, Text } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Portal, Dialog, Button, Text } from './LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function ConfirmDialog({ visible, title, message, onConfirm, onDismiss, confirmLabel, destructive }) {
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
   const iconColor = destructive ? c.error : c.primary;
+  const { t, isRTL, fontFamily } = useLanguage();
 
   return (
     <Portal>
@@ -21,9 +23,9 @@ export default function ConfirmDialog({ visible, title, message, onConfirm, onDi
             />
           </View>
         </View>
-        <Dialog.Title style={styles.title}>{title || 'Confirm'}</Dialog.Title>
+        <Dialog.Title style={[styles.title, { fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t(title || 'Confirm')}</Dialog.Title>
         <Dialog.Content>
-          <Text variant="bodyMedium" style={[styles.message, { color: c.onSurfaceVariant }]}>{message || 'Are you sure?'}</Text>
+          <Text variant="bodyMedium" style={[styles.message, { color: c.onSurfaceVariant, fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t(message || 'Are you sure?')}</Text>
         </Dialog.Content>
         <Dialog.Actions style={styles.actions}>
           <Button
@@ -32,7 +34,7 @@ export default function ConfirmDialog({ visible, title, message, onConfirm, onDi
             style={styles.cancelBtn}
             labelStyle={styles.btnLabel}
           >
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button
             mode="contained"
@@ -42,7 +44,7 @@ export default function ConfirmDialog({ visible, title, message, onConfirm, onDi
             style={styles.confirmBtn}
             labelStyle={styles.btnLabel}
           >
-            {confirmLabel || 'Confirm'}
+            {t(confirmLabel || 'Confirm')}
           </Button>
         </Dialog.Actions>
       </Dialog>

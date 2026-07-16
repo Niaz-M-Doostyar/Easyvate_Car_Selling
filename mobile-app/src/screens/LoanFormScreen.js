@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, Divider, RadioButton } from 'react-native-paper';
+import { Text, Button, Divider, RadioButton } from '../components/LocalizedPaper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
@@ -20,6 +20,7 @@ export default function LoanFormScreen({ navigation, route }) {
     amount: '', currency: 'AFN',
     date: new Date().toISOString().split('T')[0],
     dueDate: '', description: '', notes: '',
+    status: 'Active',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -36,6 +37,7 @@ export default function LoanFormScreen({ navigation, route }) {
         dueDate: editing.dueDate ? editing.dueDate.split('T')[0] : '',
         description: editing.description || '',
         notes: editing.notes || '',
+        status: editing.status || 'Active',
       });
     }
   }, [editing]);
@@ -79,8 +81,8 @@ export default function LoanFormScreen({ navigation, route }) {
 
           <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginTop: 8, marginBottom: 4 }}>Currency</Text>
           <RadioButton.Group value={form.currency} onValueChange={v => set('currency', v)}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              {['AFN', 'USD', 'PKR'].map(cur => (
+            <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
+              {['AFN', 'USD', 'PKR', 'AED'].map(cur => (
                 <View key={cur} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <RadioButton value={cur} />
                   <Text variant="bodyMedium" style={{ color: c.onSurface }}>{cur}</Text>
@@ -88,6 +90,8 @@ export default function LoanFormScreen({ navigation, route }) {
               ))}
             </View>
           </RadioButton.Group>
+
+          <PickerField label="Status" value={form.status} options={['Active', 'Paid', 'Overdue']} onSelect={v => set('status', v)} />
 
           <FormField label="Date" value={form.date} onChangeText={v => set('date', v)} placeholder="YYYY-MM-DD" />
           <FormField label="Due Date" value={form.dueDate} onChangeText={v => set('dueDate', v)} placeholder="YYYY-MM-DD" />

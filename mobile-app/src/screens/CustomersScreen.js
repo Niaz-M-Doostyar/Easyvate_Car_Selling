@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
-import { Searchbar, FAB, Text, IconButton, Menu, Chip, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { Searchbar, FAB, Text, IconButton, Menu, Chip, TouchableRipple, Portal, Dialog, Button } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
+import FormField from '../components/FormField';
+import PickerField from '../components/PickerField';
 import StatusChip from '../components/StatusChip';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { formatCurrency, CUSTOMER_TYPES } from '../utils/constants';
+import { formatCurrency, CUSTOMER_TYPES, CURRENCIES } from '../utils/constants';
 import apiClient from '../api/client';
+
+const LEDGER_TYPES = ['Received', 'Paid', 'Loan Given', 'Loan Received'];
 
 export default function CustomersScreen({ navigation }) {
   const { paperTheme } = useAppTheme();
@@ -20,6 +24,9 @@ export default function CustomersScreen({ navigation }) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [ledgerDialog, setLedgerDialog] = useState(null); // customer object
+  const [ledgerForm, setLedgerForm] = useState({ type: 'Received', amount: '', currency: 'AFN', purpose: '', date: new Date().toISOString().split('T')[0] });
+  const [ledgerSaving, setLedgerSaving] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -40,6 +47,18 @@ export default function CustomersScreen({ navigation }) {
     setDeleteId(null);
   };
 
+  const handleAddLedger = async () => {
+    if (!ledgerForm.amount || Number(ledgerForm.amount) <= 0) { alert('Enter a valid amount'); return; }
+    setLedgerSaving(true);
+    try {
+      await apiClient.post(`/customers/${ledgerDialog.id}/ledger`, { ...ledgerForm, amount: Number(ledgerForm.amount) });
+      setLedgerDialog(null);
+      setLedgerForm({ type: 'Received', amount: '', currency: 'AFN', purpose: '', date: new Date().toISOString().split('T')[0] });
+      fetch();
+    } catch (e) { alert(e.response?.data?.error || 'Failed to add entry'); }
+    setLedgerSaving(false);
+  };
+
   const filtered = customers.filter(x => {
     const q = search.toLowerCase();
     const m = !search || [x.fullName, x.fatherName, x.phoneNumber, x.nationalIdNumber, x.province, x.district].filter(Boolean).some(f => f.toLowerCase().includes(q));
@@ -47,8 +66,11 @@ export default function CustomersScreen({ navigation }) {
   });
 
   const renderItem = ({ item }) => {
-    const bal = Number(item.balance || 0);
-    const balColor = bal >= 0 ? c.success : c.error;
+    const balAFN = Number(item.balanceAFN || 0);
+    const balUSD = Number(item.balanceUSD || 0);
+    const balPKR = Number(item.balancePKR || 0);
+    const balAED = Number(item.balanceAED || 0);
+    const hasBalance = balAFN !== 0 || balUSD !== 0 || balPKR !== 0 || balAED !== 0;
     return (
       <TouchableRipple
         onPress={() => navigation.navigate('CustomerDetail', { customer: item })}
@@ -65,17 +87,20 @@ export default function CustomersScreen({ navigation }) {
               <StatusChip label={item.customerType || 'Buyer'} />
             </View>
             <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.fatherName} • {item.phoneNumber}</Text>
-            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.province}, {item.district}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <View style={[styles.balBadge, { backgroundColor: balColor + '12' }]}>
-                <MaterialCommunityIcons name={bal >= 0 ? 'arrow-up-circle' : 'arrow-down-circle'} size={13} color={balColor} />
-                <Text style={{ fontSize: 13, fontWeight: '800', color: balColor }}>{formatCurrency(Math.abs(bal))}</Text>
+            <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.province}{item.district ? `, ${item.district}` : ''}</Text>
+            {hasBalance && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {balAFN !== 0 && <View style={[styles.balBadge, { backgroundColor: (balAFN >= 0 ? c.success : c.error) + '12' }]}><Text style={{ fontSize: 11, fontWeight: '700', color: balAFN >= 0 ? c.success : c.error }}>{formatCurrency(Math.abs(balAFN), 'AFN')}</Text></View>}
+                {balUSD !== 0 && <View style={[styles.balBadge, { backgroundColor: (balUSD >= 0 ? c.success : c.error) + '12' }]}><Text style={{ fontSize: 11, fontWeight: '700', color: balUSD >= 0 ? c.success : c.error }}>{formatCurrency(Math.abs(balUSD), 'USD')}</Text></View>}
+                {balPKR !== 0 && <View style={[styles.balBadge, { backgroundColor: (balPKR >= 0 ? c.success : c.error) + '12' }]}><Text style={{ fontSize: 11, fontWeight: '700', color: balPKR >= 0 ? c.success : c.error }}>{formatCurrency(Math.abs(balPKR), 'PKR')}</Text></View>}
+                {balAED !== 0 && <View style={[styles.balBadge, { backgroundColor: (balAED >= 0 ? c.success : c.error) + '12' }]}><Text style={{ fontSize: 11, fontWeight: '700', color: balAED >= 0 ? c.success : c.error }}>{formatCurrency(Math.abs(balAED), 'AED')}</Text></View>}
               </View>
-              <View style={styles.actionsRow}>
-                <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('CustomerDetail', { customer: item })} style={styles.actionBtn} />
-                <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('CustomerForm', { customer: item })} style={styles.actionBtn} />
-                <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
-              </View>
+            )}
+            <View style={[styles.actionsRow, { marginTop: 8 }]}>
+              <IconButton icon="eye-outline" size={18} iconColor={c.primary} onPress={() => navigation.navigate('CustomerDetail', { customer: item })} style={styles.actionBtn} />
+              <IconButton icon="cash-plus" size={18} iconColor={c.success} onPress={() => setLedgerDialog(item)} style={styles.actionBtn} />
+              <IconButton icon="pencil-outline" size={18} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('CustomerForm', { customer: item })} style={styles.actionBtn} />
+              <IconButton icon="trash-can-outline" size={18} iconColor={c.error} onPress={() => setDeleteId(item.id)} style={styles.actionBtn} />
             </View>
           </View>
         </View>
@@ -102,6 +127,24 @@ export default function CustomersScreen({ navigation }) {
         ListEmptyComponent={<EmptyState loading={loading} message="No customers found" icon="👤" />}
         showsVerticalScrollIndicator={false} />
       <ConfirmDialog visible={!!deleteId} title="Delete Customer" message="Delete this customer and all related records?" onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
+
+      <Portal>
+        <Dialog visible={!!ledgerDialog} onDismiss={() => setLedgerDialog(null)} style={[styles.dialog, { backgroundColor: c.card }]}>
+          <Dialog.Title style={styles.dialogTitle}>Add Ledger Entry</Dialog.Title>
+          <Dialog.Content>
+            {ledgerDialog && <Text style={{ color: c.onSurfaceVariant, fontSize: 13, marginBottom: 8 }}>{ledgerDialog.fullName}</Text>}
+            <PickerField label="Type" value={ledgerForm.type} options={LEDGER_TYPES} onSelect={v => setLedgerForm(p => ({ ...p, type: v }))} />
+            <PickerField label="Currency" value={ledgerForm.currency} options={CURRENCIES} onSelect={v => setLedgerForm(p => ({ ...p, currency: v }))} />
+            <FormField label="Amount *" value={ledgerForm.amount} onChangeText={v => setLedgerForm(p => ({ ...p, amount: v }))} keyboardType="numeric" />
+            <FormField label="Purpose" value={ledgerForm.purpose} onChangeText={v => setLedgerForm(p => ({ ...p, purpose: v }))} />
+            <FormField label="Date" value={ledgerForm.date} onChangeText={v => setLedgerForm(p => ({ ...p, date: v }))} placeholder="YYYY-MM-DD" />
+          </Dialog.Content>
+          <Dialog.Actions style={styles.dialogActions}>
+            <Button onPress={() => setLedgerDialog(null)}>Cancel</Button>
+            <Button mode="contained" onPress={handleAddLedger} loading={ledgerSaving}>Add Entry</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScreenWrapper>
   );
 }
@@ -117,8 +160,11 @@ const styles = StyleSheet.create({
   cardIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
   cardTitle: { fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: -0.2 },
   cardMeta: { fontSize: 12, marginTop: 2, fontWeight: '400' },
-  balBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  balBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   actionsRow: { flexDirection: 'row', marginRight: -8 },
   actionBtn: { margin: 0, width: 34, height: 34 },
   fab: { position: 'absolute', right: 16, bottom: 16, borderRadius: 16, elevation: 4 },
+  dialog: { borderRadius: 24 },
+  dialogTitle: { fontWeight: '700', fontSize: 18 },
+  dialogActions: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
 });

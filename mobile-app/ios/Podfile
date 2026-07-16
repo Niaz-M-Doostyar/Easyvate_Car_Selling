@@ -59,5 +59,15 @@ target 'NiaziKhpalwakMotorPuranchi' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # RNWorklets enables Hermes inspector glue for Debug by default, but the
+    # simulator Hermes artifact bundled with RN 0.81 does not export those
+    # optional inspector symbols.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'RNWorklets'
+      target.build_configurations.each do |configuration|
+        configuration.build_settings.delete('GCC_PREPROCESSOR_DEFINITIONS[config=*Debug*]')
+      end
+    end
   end
 end

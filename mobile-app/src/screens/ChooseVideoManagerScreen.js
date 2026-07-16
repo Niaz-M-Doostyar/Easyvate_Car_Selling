@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Alert, RefreshControl, Modal } from 'react-native';
-import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, ActivityIndicator, TouchableRipple } from 'react-native-paper';
+import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, ActivityIndicator, TouchableRipple } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as DocumentPicker from 'expo-document-picker';

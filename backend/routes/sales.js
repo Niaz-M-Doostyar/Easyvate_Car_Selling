@@ -390,8 +390,8 @@ router.post('/', async (req, res) => {
       transactionId: `TR${Date.now()}`,
       transactionType: 'Vehicle Sale',
       amount: sellingPriceNum,
-      currency: 'AFN',
-      amountPKR: await toAFN(sellingPriceNum, 'AFN'),
+      currency: pCurrency,
+      amountPKR: await toAFN(sellingPriceNum, pCurrency),
       relatedEntityType: 'Sale',
       relatedEntityId: sale.id,
       description: `Vehicle ${vehicle.vehicleId} sold to customer`,
@@ -609,14 +609,15 @@ router.post('/', async (req, res) => {
       order: [['id', 'DESC']],
     });
     const prevCustBalance = lastCustEntry ? Number(lastCustEntry.balance || 0) : 0;
-    const balanceAfterSale = prevCustBalance - sellingPriceNum;
+    const sellingPriceAFNForCustomer = await toAFN(sellingPriceNum, pCurrency);
+    const balanceAfterSale = prevCustBalance - sellingPriceAFNForCustomer;
 
     await CustomerLedger.create({
       customerId,
       type: 'Sale',
       amount: sellingPriceNum,
-      currency: 'AFN',
-      amountInPKR: await toAFN(sellingPriceNum, 'AFN'),
+      currency: pCurrency,
+      amountInPKR: sellingPriceAFNForCustomer,
       purpose: `Purchase of ${vehicle.vehicleId} — total price`,
       date: saleDate,
       balance: balanceAfterSale,
@@ -626,13 +627,14 @@ router.post('/', async (req, res) => {
 
     let finalCustBalance = balanceAfterSale;
     if (downPaymentNum > 0) {
-      finalCustBalance = balanceAfterSale + downPaymentNum;
+      const downPaymentAFNForCustomer = await toAFN(downPaymentNum, pCurrency);
+      finalCustBalance = balanceAfterSale + downPaymentAFNForCustomer;
       await CustomerLedger.create({
         customerId,
         type: 'Received',
         amount: downPaymentNum,
-        currency: 'AFN',
-        amountInPKR: await toAFN(downPaymentNum, 'AFN'),
+        currency: pCurrency,
+        amountInPKR: downPaymentAFNForCustomer,
         purpose: `Down payment for ${vehicle.vehicleId}`,
         date: saleDate,
         balance: finalCustBalance,

@@ -174,6 +174,8 @@
 
 .header__nav__widget {
     display: inline-block;
+    position: relative;
+    top: 8px;
 
     .header__nav__widget__btn {
         display: inline-block;

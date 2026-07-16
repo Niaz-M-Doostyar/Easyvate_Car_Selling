@@ -6,15 +6,25 @@ import PublicCarsScreen from '../screens/PublicCarsScreen';
 import PublicAboutScreen from '../screens/PublicAboutScreen';
 import PublicContactScreen from '../screens/PublicContactScreen';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function PublicTabNavigator() {
   const { paperTheme, isDark } = useAppTheme();
   const c = paperTheme.colors;
+  const { t, fontFamily, isRTL } = useLanguage();
+  const screens = [
+    { name: 'Home', component: HomeScreen },
+    { name: 'Cars', component: PublicCarsScreen },
+    { name: 'About', component: PublicAboutScreen },
+    { name: 'Contact', component: PublicContactScreen },
+  ];
+  const orderedScreens = isRTL ? [...screens].reverse() : screens;
 
   return (
     <Tab.Navigator
+      initialRouteName="Home"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: '#c8963e',
@@ -27,7 +37,8 @@ export default function PublicTabNavigator() {
           paddingTop: 4,
           height: 60,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr' },
+        tabBarLabel: t(route.name),
         tabBarIcon: ({ color, size, focused }) => {
           const icons = {
             Home: focused ? 'home' : 'home-outline',
@@ -39,10 +50,7 @@ export default function PublicTabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Cars" component={PublicCarsScreen} />
-      <Tab.Screen name="About" component={PublicAboutScreen} />
-      <Tab.Screen name="Contact" component={PublicContactScreen} />
+      {orderedScreens.map(screen => <Tab.Screen key={screen.name} name={screen.name} component={screen.component} />)}
     </Tab.Navigator>
   );
 }

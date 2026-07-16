@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, Divider, Card, Switch, SegmentedButtons, RadioButton, Chip } from 'react-native-paper';
+import { Text, Button, Divider, Chip, Card } from '../components/LocalizedPaper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { SALE_TYPES, VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, AFGHAN_PROVINCES } from '../utils/constants';
-import { validateRequired, validatePrice } from '../utils/validation';
+import { SALE_TYPES, VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, AFGHAN_PROVINCES, CURRENCIES } from '../utils/constants';
+import { validatePrice } from '../utils/validation';
 import apiClient from '../api/client';
 
 export default function SaleFormScreen({ navigation, route }) {
   const editing = route.params?.sale;
+  const readOnly = Boolean(editing);
   const { paperTheme } = useAppTheme();
   const c = paperTheme.colors;
   const insets = useSafeAreaInsets();
 
   const [vehicles, setVehicles] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -25,14 +25,17 @@ export default function SaleFormScreen({ navigation, route }) {
   const [form, setForm] = useState({
     saleType: 'Container One Key',
     vehicleId: '',
-    customerId: '',
     saleDate: new Date().toISOString().split('T')[0],
     sellingPrice: '',
     downPayment: '',
+    remainingAmount: '',
     notes: '',
-    note2: '',
     witnessName1: '',
     witnessName2: '',
+    paymentCurrency: 'AFN',
+    // Buyer info
+    buyerName: '', buyerFatherName: '', buyerProvince: '', buyerDistrict: '',
+    buyerVillage: '', buyerAddress: '', buyerIdNumber: '', buyerPhone: '',
     // Seller info
     sellerName: '', sellerFatherName: '', sellerProvince: '', sellerDistrict: '',
     sellerVillage: '', sellerAddress: '', sellerIdNumber: '', sellerPhone: '',
@@ -43,20 +46,18 @@ export default function SaleFormScreen({ navigation, route }) {
     exchVehicleEngine: '', exchVehicleEngineType: '', exchVehicleFuelType: '',
     exchVehicleTransmission: '', exchVehicleSteering: 'Left', exchVehicleMonolithicCut: 'Monolithic',
     priceDifference: '', priceDifferencePaidBy: 'Buyer',
+    exchangeVehicleCost: '', exchangeVehicleCostCurrency: 'AFN',
     // Licensed car fields
     trafficTransferDate: '',
+    licensePersonName: '',
   });
 
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        const [vRes, cRes] = await Promise.all([
-          apiClient.get('/vehicles'),
-          apiClient.get('/customers'),
-        ]);
+        const vRes = await apiClient.get('/vehicles');
         const vList = Array.isArray(vRes.data?.data) ? vRes.data.data : Array.isArray(vRes.data) ? vRes.data : [];
         setVehicles(vList.filter(v => ['Available', 'Reserved'].includes(v.status) || (editing && v.id === editing.vehicleId)));
-        setCustomers(Array.isArray(cRes.data?.data) ? cRes.data.data : Array.isArray(cRes.data) ? cRes.data : []);
       } catch (e) {
         // ignore — dropdowns may be empty
       }
@@ -77,10 +78,13 @@ export default function SaleFormScreen({ navigation, route }) {
   const set = (k, v) => {
     setForm(p => {
       const next = { ...p, [k]: v };
-      // Auto-fill selling price when vehicle selected
+      // Auto-fill selling price and total cost when vehicle selected
       if (k === 'vehicleId') {
         const veh = vehicles.find(x => String(x.id) === String(v));
-        if (veh && veh.sellingPrice) next.sellingPrice = String(veh.sellingPrice);
+        if (veh) {
+          if (veh.sellingPrice) next.sellingPrice = String(veh.sellingPrice);
+          if (veh.sellingPriceCurrency) next.paymentCurrency = veh.sellingPriceCurrency;
+        }
       }
       return next;
     });
@@ -88,13 +92,12 @@ export default function SaleFormScreen({ navigation, route }) {
   };
 
   const remaining = Math.max(0, (Number(form.sellingPrice) || 0) - (Number(form.downPayment) || 0));
-
   const validate = () => {
     const e = {};
     if (!form.vehicleId) e.vehicleId = 'Vehicle is required';
-    if (!form.customerId) e.customerId = 'Customer is required';
+    if (!form.buyerName.trim()) e.buyerName = 'Buyer name is required';
     if (!form.sellingPrice || Number(form.sellingPrice) <= 0) e.sellingPrice = 'Valid price required';
-    if (form.downPayment && validatePrice(form.downPayment)) e.downPayment = 'Valid price required';
+    if (!form.downPayment || validatePrice(form.downPayment)) e.downPayment = 'Valid down payment required';
     if (form.saleType === 'Exchange Car') {
       if (!form.exchVehicleManufacturer) e.exchVehicleManufacturer = 'Required';
       if (!form.exchVehicleModel) e.exchVehicleModel = 'Required';
@@ -106,19 +109,32 @@ export default function SaleFormScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!validate()) { setStep(0); return; }
+    if (editing) {
+      setSaving(true);
+      try {
+        await apiClient.put(`/sales/${editing.id}`, { notes: form.notes });
+        navigation.goBack();
+      } catch (e) {
+        alert(e.response?.data?.error || 'Failed to update note');
+      } finally { setSaving(false); }
+      return;
+    }
+    if (!validate()) {
+      if (!form.buyerName.trim()) setStep(2);
+      else if (form.saleType === 'Exchange Car' && (!form.exchVehicleManufacturer || !form.exchVehicleModel || !form.exchVehicleYear || !form.exchVehicleChassis)) setStep(3);
+      else setStep(0);
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form };
       // Convert numeric fields
-      ['vehicleId', 'customerId', 'sellingPrice', 'downPayment', 'exchVehicleYear', 'exchVehicleMileage', 'priceDifference'].forEach(k => {
+      ['vehicleId', 'sellingPrice', 'downPayment', 'exchVehicleYear', 'exchVehicleMileage', 'priceDifference'].forEach(k => {
         if (payload[k]) payload[k] = Number(payload[k]);
       });
-      if (editing) {
-        await apiClient.put(`/sales/${editing.id}`, payload);
-      } else {
-        await apiClient.post('/sales', payload);
-      }
+      payload.remainingAmount = remaining;
+      if (payload.exchangeVehicleCost) payload.exchangeVehicleCost = Number(payload.exchangeVehicleCost);
+      await apiClient.post('/sales', payload);
       navigation.goBack();
     } catch (e) {
       alert(e.response?.data?.error || 'Failed to save');
@@ -126,19 +142,34 @@ export default function SaleFormScreen({ navigation, route }) {
   };
 
   const vehicleOptions = vehicles.map(v => ({ label: `${v.manufacturer} ${v.model} (${v.year}) - ${v.status}`, value: String(v.id) }));
-  const customerOptions = customers.map(cust => ({ label: cust.fullName, value: String(cust.id) }));
+  const selectedVehicle = vehicles.find(v => String(v.id) === String(form.vehicleId));
+  // Keep the same section order as webadmin: transaction, seller, buyer,
+  // conditional exchange/license details, then notes and witnesses.
+  const STEPS = ['Sale Form'];
 
-  const STEPS = form.saleType === 'Exchange Car' ? ['Sale Info', 'Seller', 'Exchange Vehicle', 'Notes'] :
-    form.saleType === 'Licensed Car' ? ['Sale Info', 'Seller', 'License', 'Notes'] :
-    ['Sale Info', 'Seller', 'Notes'];
-
-  const renderStep0 = () => (
+  const renderBuyerInfo = () => (
     <View style={{ gap: 4 }}>
-      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Sale Type</Text>
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Buyer Information</Text>
+      <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginBottom: 8 }}>Details of the person buying the vehicle.</Text>
+      <FormField label="Full Name *" value={form.buyerName} onChangeText={v => set('buyerName', v)} error={errors.buyerName} disabled={readOnly} />
+      <FormField label="Father's Name" value={form.buyerFatherName} onChangeText={v => set('buyerFatherName', v)} disabled={readOnly} />
+      <PickerField label="Province" value={form.buyerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('buyerProvince', v)} disabled={readOnly} />
+      <FormField label="District" value={form.buyerDistrict} onChangeText={v => set('buyerDistrict', v)} disabled={readOnly} />
+      <FormField label="Village" value={form.buyerVillage} onChangeText={v => set('buyerVillage', v)} disabled={readOnly} />
+      <FormField label="Address" value={form.buyerAddress} onChangeText={v => set('buyerAddress', v)} multiline disabled={readOnly} />
+      <FormField label="ID Number (Tazkira)" value={form.buyerIdNumber} onChangeText={v => set('buyerIdNumber', v)} disabled={readOnly} />
+      <FormField label="Phone Number" value={form.buyerPhone} onChangeText={v => set('buyerPhone', v)} keyboardType="phone-pad" disabled={readOnly} />
+    </View>
+  );
+
+  const renderSaleInfo = () => (
+    <View style={{ gap: 4 }}>
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Sale Information</Text>
+      <Text variant="titleSmall" style={{ fontWeight: '600', marginBottom: 6, color: c.primary }}>Sale Type</Text>
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {SALE_TYPES.map(t => (
           <Chip key={t.value} selected={form.saleType === t.value} showSelectedCheck
-            onPress={() => set('saleType', t.value)}
+            onPress={() => !readOnly && set('saleType', t.value)}
             style={{ backgroundColor: form.saleType === t.value ? t.color + '20' : c.surfaceVariant }}
             textStyle={{ color: form.saleType === t.value ? t.color : c.onSurface }}>
             {t.label}
@@ -150,41 +181,44 @@ export default function SaleFormScreen({ navigation, route }) {
         onSelect={(v) => {
           const opt = vehicleOptions.find(o => o.label === v);
           if (opt) set('vehicleId', opt.value);
-        }} error={errors.vehicleId} />
+        }} error={errors.vehicleId} disabled={readOnly} />
 
-      <PickerField label="Customer *" value={form.customerId ? customerOptions.find(o => o.value === form.customerId)?.label : ''}
-        options={customerOptions.map(o => o.label)}
-        onSelect={(v) => {
-          const opt = customerOptions.find(o => o.label === v);
-          if (opt) set('customerId', opt.value);
-        }} error={errors.customerId} />
+      {selectedVehicle && (
+        <Card mode="outlined" style={{ marginVertical: 8 }}>
+          <Card.Content>
+            <Text variant="labelSmall" style={{ color: c.onSurfaceVariant, marginBottom: 8 }}>Selected Vehicle</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[['Type', selectedVehicle.category], ['Color', selectedVehicle.color], ['Engine', selectedVehicle.engineNumber], ['Chassis', selectedVehicle.chassisNumber], ['Plate', selectedVehicle.plateNo]].map(([label, value]) => (
+                <View key={label} style={{ width: '30%' }}><Text variant="labelSmall" style={{ color: c.onSurfaceVariant }}>{label}</Text><Text variant="bodySmall">{value || '-'}</Text></View>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+      )}
 
-      <FormField label="Sale Date" value={form.saleDate} onChangeText={v => set('saleDate', v)} placeholder="YYYY-MM-DD" />
-      <FormField label="Selling Price (AFN) *" value={form.sellingPrice} onChangeText={v => set('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} />
-      <FormField label="Down Payment (AFN) *" value={form.downPayment} onChangeText={v => set('downPayment', v)} keyboardType="numeric" error={errors.downPayment} />
-
-      <Card style={[styles.infoCard, { backgroundColor: c.surfaceVariant }]}>
-        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text variant="bodyMedium" style={{ color: c.onSurfaceVariant }}>Remaining Amount</Text>
-          <Text variant="bodyMedium" style={{ fontWeight: '700', color: remaining > 0 ? '#ff9800' : '#4caf50' }}>
-            ؋ {remaining.toLocaleString()}
-          </Text>
-        </Card.Content>
-      </Card>
+      <FormField label="Sale Date" value={form.saleDate} onChangeText={v => set('saleDate', v)} placeholder="YYYY-MM-DD" disabled={readOnly} />
     </View>
   );
 
   const renderStep1 = () => (
     <View style={{ gap: 4 }}>
-      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Seller Information</Text>
-      <FormField label="Seller Name" value={form.sellerName} onChangeText={v => set('sellerName', v)} />
-      <FormField label="Father's Name" value={form.sellerFatherName} onChangeText={v => set('sellerFatherName', v)} />
-      <PickerField label="Province" value={form.sellerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('sellerProvince', v)} />
-      <FormField label="District" value={form.sellerDistrict} onChangeText={v => set('sellerDistrict', v)} />
-      <FormField label="Village" value={form.sellerVillage} onChangeText={v => set('sellerVillage', v)} />
-      <FormField label="Address" value={form.sellerAddress} onChangeText={v => set('sellerAddress', v)} multiline />
-      <FormField label="ID Number (Tazkira)" value={form.sellerIdNumber} onChangeText={v => set('sellerIdNumber', v)} />
-      <FormField label="Phone" value={form.sellerPhone} onChangeText={v => set('sellerPhone', v)} keyboardType="phone-pad" />
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Seller / Exchanger Information</Text>
+      <FormField label="Seller Name" value={form.sellerName} onChangeText={v => set('sellerName', v)} disabled={readOnly} />
+      <FormField label="Father's Name" value={form.sellerFatherName} onChangeText={v => set('sellerFatherName', v)} disabled={readOnly} />
+      <PickerField label="Province" value={form.sellerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('sellerProvince', v)} disabled={readOnly} />
+      <FormField label="District" value={form.sellerDistrict} onChangeText={v => set('sellerDistrict', v)} disabled={readOnly} />
+      <FormField label="Village" value={form.sellerVillage} onChangeText={v => set('sellerVillage', v)} disabled={readOnly} />
+      <FormField label="Address" value={form.sellerAddress} onChangeText={v => set('sellerAddress', v)} multiline disabled={readOnly} />
+      <FormField label="ID Number (Tazkira)" value={form.sellerIdNumber} onChangeText={v => set('sellerIdNumber', v)} disabled={readOnly} />
+      <FormField label="Phone" value={form.sellerPhone} onChangeText={v => set('sellerPhone', v)} keyboardType="phone-pad" disabled={readOnly} />
+    </View>
+  );
+  const renderLicensed = () => (
+    <View style={{ gap: 4 }}>
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Licensed Car Details</Text>
+      <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginBottom: 8 }}>Traffic transfer and license information.</Text>
+      <FormField label="Traffic Transfer Date" value={form.trafficTransferDate} onChangeText={v => set('trafficTransferDate', v)} placeholder="YYYY-MM-DD" disabled={readOnly} />
+      <FormField label="License Person Name" value={form.licensePersonName} onChangeText={v => set('licensePersonName', v)} disabled={readOnly} />
     </View>
   );
 
@@ -193,60 +227,62 @@ export default function SaleFormScreen({ navigation, route }) {
       <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Exchange Vehicle</Text>
       <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginBottom: 8 }}>This vehicle will be added to your inventory automatically.</Text>
 
-      <PickerField label="Manufacturer *" value={form.exchVehicleManufacturer} options={VEHICLE_MANUFACTURERS} onSelect={v => set('exchVehicleManufacturer', v)} error={errors.exchVehicleManufacturer} />
-      <FormField label="Model *" value={form.exchVehicleModel} onChangeText={v => set('exchVehicleModel', v)} error={errors.exchVehicleModel} />
-      <FormField label="Year *" value={form.exchVehicleYear} onChangeText={v => set('exchVehicleYear', v)} keyboardType="numeric" error={errors.exchVehicleYear} />
-      <PickerField label="Category" value={form.exchVehicleCategory} options={VEHICLE_CATEGORIES} onSelect={v => set('exchVehicleCategory', v)} />
-      <FormField label="Color" value={form.exchVehicleColor} onChangeText={v => set('exchVehicleColor', v)} />
-      <FormField label="Chassis No. *" value={form.exchVehicleChassis} onChangeText={v => set('exchVehicleChassis', v)} error={errors.exchVehicleChassis} />
-      <FormField label="Engine No." value={form.exchVehicleEngine} onChangeText={v => set('exchVehicleEngine', v)} />
-      <PickerField label="Engine Type" value={form.exchVehicleEngineType} options={ENGINE_TYPES} onSelect={v => set('exchVehicleEngineType', v)} />
-      <PickerField label="Fuel Type" value={form.exchVehicleFuelType} options={FUEL_TYPES} onSelect={v => set('exchVehicleFuelType', v)} />
-      <PickerField label="Transmission" value={form.exchVehicleTransmission} options={TRANSMISSION_TYPES} onSelect={v => set('exchVehicleTransmission', v)} />
-      <FormField label="Plate No." value={form.exchVehiclePlateNo} onChangeText={v => set('exchVehiclePlateNo', v)} />
-      <FormField label="License" value={form.exchVehicleLicense} onChangeText={v => set('exchVehicleLicense', v)} />
-      <FormField label="Mileage (km)" value={form.exchVehicleMileage} onChangeText={v => set('exchVehicleMileage', v)} keyboardType="numeric" />
-      <PickerField label="Steering" value={form.exchVehicleSteering} options={['Left', 'Right']} onSelect={v => set('exchVehicleSteering', v)} />
-      <PickerField label="Body Type" value={form.exchVehicleMonolithicCut} options={['Monolithic', 'Cut']} onSelect={v => set('exchVehicleMonolithicCut', v)} />
+      <PickerField label="Manufacturer *" value={form.exchVehicleManufacturer} options={VEHICLE_MANUFACTURERS} onSelect={v => set('exchVehicleManufacturer', v)} error={errors.exchVehicleManufacturer} disabled={readOnly} />
+      <FormField label="Model *" value={form.exchVehicleModel} onChangeText={v => set('exchVehicleModel', v)} error={errors.exchVehicleModel} disabled={readOnly} />
+      <FormField label="Year *" value={form.exchVehicleYear} onChangeText={v => set('exchVehicleYear', v)} keyboardType="numeric" error={errors.exchVehicleYear} disabled={readOnly} />
+      <PickerField label="Category" value={form.exchVehicleCategory} options={VEHICLE_CATEGORIES} onSelect={v => set('exchVehicleCategory', v)} disabled={readOnly} />
+      <FormField label="Color" value={form.exchVehicleColor} onChangeText={v => set('exchVehicleColor', v)} disabled={readOnly} />
+      <FormField label="Chassis No. *" value={form.exchVehicleChassis} onChangeText={v => set('exchVehicleChassis', v)} error={errors.exchVehicleChassis} disabled={readOnly} />
+      <FormField label="Engine No." value={form.exchVehicleEngine} onChangeText={v => set('exchVehicleEngine', v)} disabled={readOnly} />
+      <PickerField label="Engine Type" value={form.exchVehicleEngineType} options={ENGINE_TYPES} onSelect={v => set('exchVehicleEngineType', v)} disabled={readOnly} />
+      <PickerField label="Fuel Type" value={form.exchVehicleFuelType} options={FUEL_TYPES} onSelect={v => set('exchVehicleFuelType', v)} disabled={readOnly} />
+      <PickerField label="Transmission" value={form.exchVehicleTransmission} options={TRANSMISSION_TYPES} onSelect={v => set('exchVehicleTransmission', v)} disabled={readOnly} />
+      <FormField label="Plate No." value={form.exchVehiclePlateNo} onChangeText={v => set('exchVehiclePlateNo', v)} disabled={readOnly} />
+      <FormField label="License" value={form.exchVehicleLicense} onChangeText={v => set('exchVehicleLicense', v)} disabled={readOnly} />
+      <FormField label="Mileage (km)" value={form.exchVehicleMileage} onChangeText={v => set('exchVehicleMileage', v)} keyboardType="numeric" disabled={readOnly} />
+      <PickerField label="Steering" value={form.exchVehicleSteering} options={['Left', 'Right']} onSelect={v => set('exchVehicleSteering', v)} disabled={readOnly} />
+      <PickerField label="Body Type" value={form.exchVehicleMonolithicCut} options={['Monolithic', 'Cut']} onSelect={v => set('exchVehicleMonolithicCut', v)} disabled={readOnly} />
 
       <Divider style={{ marginVertical: 12 }} />
       <Text variant="titleSmall" style={{ fontWeight: '700', color: c.onSurface }}>Price Difference</Text>
-      <FormField label="Amount (AFN)" value={form.priceDifference} onChangeText={v => set('priceDifference', v)} keyboardType="numeric" />
-      <PickerField label="Paid By" value={form.priceDifferencePaidBy} options={['Buyer', 'Seller']} onSelect={v => set('priceDifferencePaidBy', v)} />
+      <FormField label="Amount (AFN)" value={form.priceDifference} onChangeText={v => set('priceDifference', v)} keyboardType="numeric" disabled={readOnly} />
+      <PickerField label="Paid By" value={form.priceDifferencePaidBy} options={['Buyer', 'Seller']} onSelect={v => set('priceDifferencePaidBy', v)} disabled={readOnly} />
+      <View style={styles.row}>
+        <FormField label="Exchange Vehicle Cost" value={form.exchangeVehicleCost} onChangeText={v => set('exchangeVehicleCost', v)} keyboardType="numeric" style={styles.half} disabled={readOnly} />
+        <PickerField label="Cost Currency" value={form.exchangeVehicleCostCurrency} options={CURRENCIES} onSelect={v => set('exchangeVehicleCostCurrency', v)} style={styles.half} disabled={readOnly} />
+      </View>
     </View>
   );
 
-  const renderLicensed = () => (
-    <View style={{ gap: 4 }}>
-      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Licensed Car Details</Text>
-      <FormField label="Traffic Transfer Date" value={form.trafficTransferDate} onChangeText={v => set('trafficTransferDate', v)} placeholder="YYYY-MM-DD" />
-    </View>
-  );
+
 
   const renderNotes = () => (
     <View style={{ gap: 4 }}>
-      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Notes & Witnesses</Text>
-      <FormField label="Note 1" value={form.notes} onChangeText={v => set('notes', v)} multiline numberOfLines={3} />
-      <FormField label="Note 2" value={form.note2} onChangeText={v => set('note2', v)} multiline numberOfLines={3} />
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Payment Information</Text>
+      <FormField label="Currency" value={form.paymentCurrency} disabled />
+      <FormField label="Selling Price *" value={form.sellingPrice} onChangeText={v => set('sellingPrice', v)} keyboardType="numeric" error={errors.sellingPrice} disabled={readOnly} />
+      <FormField label="Down Payment *" value={form.downPayment} onChangeText={v => set('downPayment', v)} keyboardType="numeric" error={errors.downPayment} disabled={readOnly} />
+      <FormField label="Remaining" value={String(remaining)} disabled />
       <Divider style={{ marginVertical: 12 }} />
-      <FormField label="Witness 1" value={form.witnessName1} onChangeText={v => set('witnessName1', v)} />
-      <FormField label="Witness 2" value={form.witnessName2} onChangeText={v => set('witnessName2', v)} />
+      <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Notes & Witnesses</Text>
+      <FormField label="Note" value={form.notes} onChangeText={v => set('notes', v)} multiline numberOfLines={3} />
+      <FormField label="Witness" value={form.witnessName1} onChangeText={v => set('witnessName1', v)} disabled={readOnly} />
+      <FormField label="Witness" value={form.witnessName2} onChangeText={v => set('witnessName2', v)} disabled={readOnly} />
     </View>
   );
 
   const getStepContent = () => {
-    if (step === 0) return renderStep0();
-    if (step === 1) return renderStep1();
-    if (form.saleType === 'Exchange Car') {
-      if (step === 2) return renderExchangeVehicle();
-      if (step === 3) return renderNotes();
-    } else if (form.saleType === 'Licensed Car') {
-      if (step === 2) return renderLicensed();
-      if (step === 3) return renderNotes();
-    } else {
-      if (step === 2) return renderNotes();
-    }
-    return null;
+    return <>
+      {renderSaleInfo()}
+      <Divider style={{ marginVertical: 18 }} />
+      {renderStep1()}
+      <Divider style={{ marginVertical: 18 }} />
+      {renderBuyerInfo()}
+      {form.saleType === 'Exchange Car' && <><Divider style={{ marginVertical: 18 }} />{renderExchangeVehicle()}</>}
+      {form.saleType === 'Licensed Car' && <><Divider style={{ marginVertical: 18 }} />{renderLicensed()}</>}
+      <Divider style={{ marginVertical: 18 }} />
+      {renderNotes()}
+    </>;
   };
 
   const isLastStep = step === STEPS.length - 1;
@@ -254,28 +290,14 @@ export default function SaleFormScreen({ navigation, route }) {
   return (
     <ScreenWrapper title={editing ? 'Edit Sale' : 'New Sale'} navigation={navigation} back>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
-        {/* Step indicator */}
-        <View style={[styles.stepRow, { backgroundColor: c.surfaceVariant }]}>
-          {STEPS.map((s, i) => (
-            <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-              <View style={[styles.stepDot, { backgroundColor: i <= step ? c.primary : c.outline }]}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{i + 1}</Text>
-              </View>
-              <Text variant="labelSmall" style={{ color: i <= step ? c.primary : c.onSurfaceVariant, fontSize: 9, marginTop: 2 }}>{s}</Text>
-            </View>
-          ))}
-        </View>
-
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {getStepContent()}
         </ScrollView>
 
         <View style={[styles.btnRow, { backgroundColor: c.surface, borderTopColor: c.outlineVariant, paddingBottom: Math.max(insets.bottom, 16) }]}>
-          {step > 0 && <Button mode="outlined" onPress={() => setStep(step - 1)} style={{ flex: 1 }}>Back</Button>}
-          {!isLastStep && <Button mode="contained" onPress={() => setStep(step + 1)} style={{ flex: 1 }}>Next</Button>}
-          {isLastStep && <Button mode="contained" onPress={handleSubmit} loading={saving} disabled={saving} style={{ flex: 1 }} labelStyle={{ fontWeight: '700' }}>
+          <Button mode="contained" onPress={handleSubmit} loading={saving} disabled={saving} style={{ flex: 1 }} labelStyle={{ fontWeight: '700' }}>
             {editing ? 'Update Sale' : 'Create Sale'}
-          </Button>}
+          </Button>
         </View>
       </KeyboardAvoidingView>
     </ScreenWrapper>
@@ -286,6 +308,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 40 },
   stepRow: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 8, gap: 4 },
   stepDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  infoCard: { borderRadius: 10, marginTop: 8 },
+  row: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1 },
   btnRow: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1 },
 });

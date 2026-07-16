@@ -12,6 +12,7 @@ import 'swiper/css/pagination';
 import 'swiper/css/thumbs';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { formatCurrency } from '@/utils/currency';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -307,12 +308,9 @@ export default function CarDetailsPage() {
                     <li>{t('price_label') || 'Price'}
                       <span className="car-option">
                         {(() => {
-                          const symbols = { AFN: '؋', USD: '$', PKR: '₨', AED: 'د.إ' };
-                          const cur = vehicle.baseCurrency || 'AFN';
-                          const price = vehicle.sellingPrice
-                            ? parseInt(vehicle.sellingPrice, 10).toLocaleString()
+                          return vehicle.sellingPrice
+                            ? formatCurrency(vehicle.sellingPrice, vehicle.sellingPriceCurrency || vehicle.baseCurrency)
                             : 'N/A';
-                          return `${symbols[cur] || '؋'} ${price}`;
                         })()}
                       </span>
                     </li>

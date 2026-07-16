@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Platform } from 'react-native';
-import { FAB, Text, IconButton, Menu, Chip, TouchableRipple } from 'react-native-paper';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { FAB, Text, IconButton, Menu, Chip, TouchableRipple } from '../components/LocalizedPaper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ScreenWrapper from '../components/ScreenWrapper';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -72,7 +72,7 @@ export default function LedgerScreen({ navigation }) {
           </View>
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
             <Text style={{ fontSize: 15, fontWeight: '800', color: iconColor }}>
-              {credit ? '+' : '-'}{formatCurrency(amt)}
+              {credit ? '+' : '-'}{formatCurrency(amt, item.currency || 'AFN')}
             </Text>
             <View style={{ flexDirection: 'row' }}>
               <IconButton icon="pencil-outline" size={16} iconColor={c.onSurfaceVariant} onPress={() => navigation.navigate('LedgerForm', { entry: item })} style={styles.actionBtn} />
@@ -85,7 +85,31 @@ export default function LedgerScreen({ navigation }) {
   };
 
   const showroomBal = Number(balance?.showroomBalance || balance?.balance || 0);
-  const ownerBal = Number(balance?.ownerBalance || 0);
+  const ownerProfit = Number(balance?.ownerProfit || 0);
+  const totalIncome = Number(balance?.totalIncome || 0);
+  const totalExpenses = Number(balance?.totalExpenses || 0);
+  const totalCommission = Number(balance?.totalCommission || 0);
+  const totalOwnerWithdrawal = Number(balance?.totalOwnerWithdrawal || 0);
+
+  // Income by currency (Vehicle Sale entries)
+  const incomeByCurrency = entries.reduce((acc, e) => {
+    if (e.type === 'Vehicle Sale') {
+      const cur = e.currency || 'AFN';
+      acc[cur] = (acc[cur] || 0) + (parseFloat(e.amount) || 0);
+    }
+    return acc;
+  }, { AFN: 0, USD: 0, PKR: 0, AED: 0 });
+
+  // Net wallet balance per currency
+  const creditTypes = ['Showroom Balance', 'Vehicle Sale', 'Commission', 'Currency Exchange'];
+  const debitTypes = ['Expense', 'Vehicle Purchase', 'Owner Withdrawal'];
+  const walletByCurrency = entries.reduce((acc, e) => {
+    const cur = e.currency || 'AFN';
+    const amt = parseFloat(e.amount) || 0;
+    if (creditTypes.includes(e.type)) acc[cur] = (acc[cur] || 0) + amt;
+    else if (debitTypes.includes(e.type)) acc[cur] = (acc[cur] || 0) - amt;
+    return acc;
+  }, { AFN: 0, USD: 0, PKR: 0, AED: 0 });
 
   return (
     <ScreenWrapper title="Showroom Ledger" navigation={navigation}
@@ -96,41 +120,102 @@ export default function LedgerScreen({ navigation }) {
       </Menu>}
       fab={<FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff" onPress={() => navigation.navigate('LedgerForm')} />}>
 
-      {/* Balance summary */}
-      {balance && (
-        <View style={[styles.balanceRow, { paddingHorizontal: 16, paddingTop: 12 }]}>
-          <View style={[styles.balCard, { backgroundColor: c.info + '10' }, paperTheme.shadows?.sm]}>
-            <LinearGradient colors={[c.info + '20', c.info + '08']} style={styles.balIcon}>
-              <MaterialCommunityIcons name="store-outline" size={18} color={c.info} />
-            </LinearGradient>
-            <Text style={{ color: c.info, fontSize: 11, fontWeight: '600', marginTop: 6 }}>Showroom</Text>
-            <Text style={{ fontWeight: '800', color: c.info, fontSize: 15 }}>{formatCurrency(showroomBal)}</Text>
-          </View>
-          <View style={[styles.balCard, { backgroundColor: c.success + '10' }, paperTheme.shadows?.sm]}>
-            <LinearGradient colors={[c.success + '20', c.success + '08']} style={styles.balIcon}>
-              <MaterialCommunityIcons name="account-outline" size={18} color={c.success} />
-            </LinearGradient>
-            <Text style={{ color: c.success, fontSize: 11, fontWeight: '600', marginTop: 6 }}>Owner</Text>
-            <Text style={{ fontWeight: '800', color: c.success, fontSize: 15 }}>{formatCurrency(ownerBal)}</Text>
-          </View>
-        </View>
-      )}
-
-      {typeFilter !== 'All' && <View style={{ paddingLeft: 16, paddingTop: 8 }}><Chip icon="filter" onClose={() => setTypeFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{typeFilter}</Chip></View>}
-
-      <FlatList data={filtered} keyExtractor={i => String(i.id)} renderItem={renderItem} contentContainerStyle={styles.list}
+      <FlatList
+        data={filtered}
+        keyExtractor={i => String(i.id)}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} colors={[c.primary]} />}
         ListEmptyComponent={<EmptyState loading={loading} message="No ledger entries" icon="📒" />}
-        showsVerticalScrollIndicator={false} />
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            {balance && (
+              <View style={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 8 }}>
+                <View style={[styles.balanceRow]}>
+                  <View style={[styles.balCard, { backgroundColor: c.primary + '10' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={[c.primary + '20', c.primary + '08']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="store-outline" size={18} color={c.primary} />
+                    </LinearGradient>
+                    <Text style={{ color: c.primary, fontSize: 10, fontWeight: '600', marginTop: 6 }}>Showroom Bal</Text>
+                    <Text style={{ fontWeight: '800', color: c.primary, fontSize: 13 }}>{formatCurrency(showroomBal, 'AFN')}</Text>
+                  </View>
+                  <View style={[styles.balCard, { backgroundColor: c.success + '10' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={[c.success + '20', c.success + '08']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="account-cash" size={18} color={c.success} />
+                    </LinearGradient>
+                    <Text style={{ color: c.success, fontSize: 10, fontWeight: '600', marginTop: 6 }}>Owner Profit</Text>
+                    <Text style={{ fontWeight: '800', color: c.success, fontSize: 13 }}>{formatCurrency(ownerProfit, 'AFN')}</Text>
+                  </View>
+                  <View style={[styles.balCard, { backgroundColor: c.error + '10' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={[c.error + '20', c.error + '08']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="trending-down" size={18} color={c.error} />
+                    </LinearGradient>
+                    <Text style={{ color: c.error, fontSize: 10, fontWeight: '600', marginTop: 6 }}>Expenses</Text>
+                    <Text style={{ fontWeight: '800', color: c.error, fontSize: 13 }}>{formatCurrency(totalExpenses, 'AFN')}</Text>
+                  </View>
+                </View>
+                <View style={[styles.balanceRow, { marginTop: 8 }]}>
+                  <View style={[styles.balCard, { backgroundColor: (c.info || '#3b82f6') + '10' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={[(c.info || '#3b82f6') + '20', (c.info || '#3b82f6') + '08']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="trending-up" size={18} color={c.info || '#3b82f6'} />
+                    </LinearGradient>
+                    <Text style={{ color: c.info || '#3b82f6', fontSize: 10, fontWeight: '600', marginTop: 6 }}>Income</Text>
+                    <Text style={{ fontWeight: '800', color: c.info || '#3b82f6', fontSize: 13 }}>{formatCurrency(totalIncome, 'AFN')}</Text>
+                  </View>
+                  <View style={[styles.balCard, { backgroundColor: '#f59e0b10' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={['#f59e0b20', '#f59e0b08']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="handshake" size={18} color="#f59e0b" />
+                    </LinearGradient>
+                    <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '600', marginTop: 6 }}>Commission</Text>
+                    <Text style={{ fontWeight: '800', color: '#f59e0b', fontSize: 13 }}>{formatCurrency(totalCommission, 'AFN')}</Text>
+                  </View>
+                  <View style={[styles.balCard, { backgroundColor: '#8b5cf610' }, paperTheme.shadows?.sm]}>
+                    <LinearGradient colors={['#8b5cf620', '#8b5cf608']} style={styles.balIcon}>
+                      <MaterialCommunityIcons name="account-arrow-up" size={18} color="#8b5cf6" />
+                    </LinearGradient>
+                    <Text style={{ color: '#8b5cf6', fontSize: 10, fontWeight: '600', marginTop: 6 }}>Withdrawal</Text>
+                    <Text style={{ fontWeight: '800', color: '#8b5cf6', fontSize: 13 }}>{formatCurrency(totalOwnerWithdrawal, 'AFN')}</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: c.onSurfaceVariant, marginTop: 12, marginBottom: 6, paddingHorizontal: 0 }}>Income by Currency</Text>
+                <View style={styles.balanceRow}>
+                  {[['AFN', c.primary], ['USD', c.success], ['PKR', '#f59e0b'], ['AED', c.info || '#3b82f6']].map(([cur, color]) => (
+                    <View key={cur} style={[styles.miniCard, { backgroundColor: color + '10' }]}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color }}>{cur}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color }}>{formatCurrency(incomeByCurrency[cur] || 0, cur)}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: c.onSurfaceVariant, marginTop: 10, marginBottom: 6 }}>Wallet Balance by Currency</Text>
+                <View style={styles.balanceRow}>
+                  {[['AFN', c.primary], ['USD', c.success], ['PKR', '#f59e0b'], ['AED', c.info || '#3b82f6']].map(([cur, color]) => {
+                    const val = walletByCurrency[cur] || 0;
+                    const col = val >= 0 ? color : c.error;
+                    return (
+                      <View key={cur} style={[styles.miniCard, { backgroundColor: col + '10' }]}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: col }}>{cur}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: col }}>{formatCurrency(val, cur)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+            {typeFilter !== 'All' && <View style={{ paddingBottom: 6 }}><Chip icon="filter" onClose={() => setTypeFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{typeFilter}</Chip></View>}
+          </>
+        }
+      />
       <ConfirmDialog visible={!!deleteId} title="Delete Entry" message="Delete this ledger entry?" onConfirm={handleDelete} onDismiss={() => setDeleteId(null)} confirmLabel="Delete" destructive />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  balanceRow: { flexDirection: 'row', gap: 10 },
-  balCard: { flex: 1, borderRadius: 16, alignItems: 'center', paddingVertical: 14 },
-  balIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  balanceRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
+  balCard: { flex: 1, borderRadius: 14, alignItems: 'center', paddingVertical: 12 },
+  balIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  miniCard: { flex: 1, borderRadius: 10, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 4 },
   filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
   list: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 90 },
   card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, FlatList, Image, Alert, RefreshControl,
 } from 'react-native';
-import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, Chip, ActivityIndicator } from 'react-native-paper';
+import { Text, FAB, IconButton, TextInput, Button, Dialog, Portal, Chip, ActivityIndicator } from '../components/LocalizedPaper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import ScreenWrapper from '../components/ScreenWrapper';
