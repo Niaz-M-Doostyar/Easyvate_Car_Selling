@@ -20,7 +20,9 @@ function toPashtoDate(d) {
 
 function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rightImgB64 = '') {
   const paymentCurrency = safeText(sale.paymentCurrency || 'افغانۍ');
+  const sellingPriceNum = Number(sale.sellingPrice) || 0;
   const price = sale.sellingPrice ? toPashtoNumber(sale.sellingPrice) : '';
+  const halfPrice = sellingPriceNum ? toPashtoNumber(sellingPriceNum / 2) : '';
   const downPayment = sale.downPayment ? toPashtoNumber(sale.downPayment) : '';
   const remaining = sale.remainingAmount ? toPashtoNumber(sale.remainingAmount) : '';
   const priceDiff = sale.priceDifference ? toPashtoNumber(sale.priceDifference) : '';
@@ -121,10 +123,10 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
   if (typeKey === 'Exchange Car') {
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې دوي عراده موټران سره تبادله سول په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
+        شرعي اقرار کوم چې دوي عراده موټران سره تبادله سول په طور سره ( ${price} ) (${paymentCurrency}) نیمایی ( ${halfPrice} ) و ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) ته ورکړي
       </div>
       <ol class="terms-list">
-        <li>د موټر تیر ترافیکي پیښې مسؤلیت د غلا ضمانت او پور له دغه تاریخ سه  ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په متبادله کوونکي اړه لري.</li>
+        <li>د موټر تیر ترافیکي پیښې مسؤلیت د غلا ضمانت او پور له دغه تاریخ سه  ( ${date} ) په متبادله کوونکي اړه لري.</li>
         <li>د متبادله کوونکي په رضایت سودا صورت ونیو.</li>
         <li>موټران بعد له ټرایي څخه یو او بل ته فعال سره تسلیم سوه.</li>
         <li>باید طرفین یو د بله ضمانت سره واخلي ځکه موټر پلورنځی د دوی ضمانت په غاړه نلري.</li>
@@ -135,10 +137,10 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
   } else if (typeKey === 'Container One Key') {
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( ${halfPrice} ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
-        <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته د رانیوونکي په غاړه دي.</li>
+        <li>د ذکر سوي موټر د ترافیکي پیښې مسؤلیت تر دغه نیټې ( ${date} ) وروسته د رانیوونکي په غاړه دي.</li>
         <li>ذکر شوي موټر کوم قانوني اسناد نه لري فقط یوه کیلي ده.</li>
         <li>موټر چې مکمل چیک او ټرایي سو تر خط لیکلو وروسته رانیوونکی د شکایت حق نه لري.</li>
         <li>د ذکر سوي موټر د غلا مسؤلیت په خرڅوونکي پورې اړه لري.</li>
@@ -151,11 +153,11 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
     // Licensed Car
     customTermsHtml = `
       <div class="terms-text">
-        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) کیږي په لاندې شرایطو خرڅ سو.
+        شرعي اقرار کوم چې ذکر سوی موټر قیمت ( ${price} ) (${paymentCurrency}) چې نیمایي یې ( ${halfPrice} ) کیږي په لاندې شرایطو خرڅ سو.
       </div>
       <ol class="terms-list">
         <li>د موټر د اسنادو او قبالې په نوم کولو مصارف په رانیونکي پورې اړه لري.</li>
-        <li>د موټر نمبر ترافیکي مسؤلیت د غلا ضمانت او پور تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) په خرڅوونکي پورې اړه لري تر دغه تاریخ ( &nbsp;&nbsp; / &nbsp;&nbsp; / &nbsp;&nbsp; ) وروسته په رانیونکي پورې اړه لري.</li>
+        <li>د موټر نمبر ترافیکي مسؤلیت د غلا ضمانت او پور تر دغه تاریخ ( ${date} ) په خرڅوونکي پورې اړه لري تر ذکر سوی تاریخ وروسته په رانیونکي پورې اړه لري.</li>
         <li>رانیوونکي موټر فعال ټرایي کړي او اسنادونه ورته تسلیم سول جانیبینو قناعت کړيدي چې بعداً دعوا یې د اعتبار وړ نده.</li>
         <li>باید طرفین یو د بله ضمانت سره واخلي ځکه موټر پلورنځی د دوی ضمانت په غاړه نلري.</li>
         <li>دا سند درې نقله لیکل کیږي چې یو نقل یې خرڅوونکي ته، بل یې رانیوونکي ته او یو نقل یې په دفتر کې قیدیږي.</li>
@@ -181,7 +183,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
           </tr>
         </thead>
         <tbody>
-          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.manufacturer} ${veh.category}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td><td class="lbl">نوع</td><td class="val">${exch.manufacturer} ${exch.category}</td></tr>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.model}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td><td class="lbl">نوع</td><td class="val">${exch.manufacturer} ${exch.category}</td></tr>
           <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td><td class="lbl">رنګ</td><td class="val">${exch.color}</td></tr>
           <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td><td class="lbl">ماډل</td><td class="val">${exch.model}</td></tr>
           <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td><td class="lbl">انجن</td><td class="val">${exch.engine}</td></tr>
@@ -215,7 +217,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
           </tr>
         </thead>
         <tbody>
-          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.category}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
+          <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">نوع</td><td class="val">${veh.model}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
           <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
           <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
           <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
@@ -239,13 +241,13 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
         </thead>
         <tbody>
           <tr><td class="lbl">نوم</td><td class="val">${seller.name}</td><td class="lbl">جوازسیر په نامه</td><td class="val">${licensePersonName}</td><td class="lbl">نوم</td><td class="val">${buyer.name}</td></tr>
-          <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
-          <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">ماډل</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
-          <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">انجن</td><td class="val">${veh.engine}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
-          <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td></tr>
-          <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">پټرول / ډیزل</td><td class="val">${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td></tr>
-          <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">د پلیټ شمیره</td><td class="val">${veh.plate}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td></tr>
-          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">نوع</td><td class="val">${veh.category}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
+          <tr><td class="lbl">د پلار نوم</td><td class="val">${seller.father}</td><td class="lbl">د پلیټ شمیره</td><td class="val">${veh.plate}</td><td class="lbl">د پلار نوم</td><td class="val">${buyer.father}</td></tr>
+          <tr><td class="lbl">ولایت</td><td class="val">${seller.province}</td><td class="lbl">نوع</td><td class="val">${veh.model}</td><td class="lbl">ولایت</td><td class="val">${buyer.province}</td></tr>
+          <tr><td class="lbl">ولسوالي</td><td class="val">${seller.district}</td><td class="lbl">رنګ</td><td class="val">${veh.color}</td><td class="lbl">ولسوالي</td><td class="val">${buyer.district}</td></tr>
+          <tr><td class="lbl">ناحیه</td><td class="val">${seller.village}</td><td class="lbl">ماډل</td><td class="val">${veh.year}</td><td class="lbl">ناحیه</td><td class="val">${buyer.village}</td></tr>
+          <tr><td class="lbl">فعلي سکونت</td><td class="val">${seller.address}</td><td class="lbl">انجن</td><td class="val">${veh.engine} / ${veh.fuelType}</td><td class="lbl">فعلي سکونت</td><td class="val">${buyer.address}</td></tr>
+          <tr><td class="lbl">د تذکرې نمبر</td><td class="val">${seller.id}</td><td class="lbl">شاسي</td><td class="val">${veh.chassis}</td><td class="lbl">د تذکرې نمبر</td><td class="val">${buyer.id}</td></tr>
+          <tr><td class="lbl">د تلیفون شمیره</td><td class="val">${seller.phone}</td><td class="lbl">اشټرینګ</td><td class="val">${veh.steering}</td><td class="lbl">د تلیفون شمیره</td><td class="val">${buyer.phone}</td></tr>
         </tbody>
       </table>
     `;
@@ -481,7 +483,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
               <div class="sig-line"></div>
               د خرڅوونکي ګوته / لاسلیک
               <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
-              شاهد: (${safeText(sale.witnessName1)})
+               (${safeText(sale.witnessName1)})
             </div>
             <div class="sig-box">
               <div class="sig-line" style="border:none;"></div>
@@ -491,7 +493,7 @@ function buildHtmlForSale(sale, vehicle, customer, fontB64, leftImgB64 = '', rig
               <div class="sig-line"></div>
               د رانیوونکي ګوته / لاسلیک
               <div style="margin-top:5px; border-bottom:1px solid #3b82f6; height:20px;"></div>
-              شاهد: (${safeText(sale.witnessName2)})
+               (${safeText(sale.witnessName2)})
             </div>
           </div>
 
