@@ -8,7 +8,6 @@ import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, VEHICLE_STATUSES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, STEERING_TYPES, MONOLITHIC_CUT, CURRENCIES, formatCurrency } from '../utils/constants';
 import { convertCurrency } from '../utils/currency';
-import { validateRequired, validatePrice } from '../utils/validation';
 import apiClient from '../api/client';
 import { resolveAssetUrl } from '../api/config';
 
@@ -116,19 +115,66 @@ export default function VehicleFormScreen({ navigation, route }) {
 
   const validate = () => {
     const errs = {};
-    if (!form.manufacturer) errs.manufacturer = 'Required';
-    if (!form.basePurchasePrice) errs.basePurchasePrice = 'Required';
-    if (!form.sellingPrice) errs.sellingPrice = 'Required';
+    if (!form.manufacturer.trim()) errs.manufacturer = 'Manufacturer is required';
+    if (!form.model.trim()) errs.model = 'Model is required';
+    if (!form.year || !Number.isFinite(Number(form.year)) || Number(form.year) < 1900 || Number(form.year) > new Date().getFullYear() + 5) {
+      errs.year = `Year must be between 1900 and ${new Date().getFullYear() + 5}`;
+    }
+    if (!form.chassisNumber.trim()) errs.chassisNumber = 'Chassis number is required';
+    if (!form.basePurchasePrice || !Number.isFinite(Number(form.basePurchasePrice)) || Number(form.basePurchasePrice) <= 0) {
+      errs.basePurchasePrice = 'Purchase price must be a positive number';
+    }
+    if (!form.sellingPrice || !Number.isFinite(Number(form.sellingPrice)) || Number(form.sellingPrice) <= 0) {
+      errs.sellingPrice = 'Selling price must be a positive number';
+    }
+    if (hasRef && !ref.fullName.trim()) errs.refFullName = 'Reference person name is required';
+
+    if (hasPartners && partners.length > 0) {
+      partners.forEach((p, index) => {
+        if (!p.customerId || Number(p.sharePercentage) <= 0 || totalCost <= 0) return;
+        const customer = customers.find(item => String(item.id) === String(p.customerId));
+        if (!customer) {
+          errs[`sharing_${index}_balance`] = 'Linked customer could not be found';
+          return;
+        }
+        const currency = (p.investmentCurrency || form.baseCurrency || 'AFN').toUpperCase();
+        const balance = Number(customer[`balance${currency}`] || 0);
+        const requiredInvestment = (Number(p.sharePercentage) / 100) * totalCost;
+        if (requiredInvestment > balance) {
+          errs[`sharing_${index}_balance`] = `Customer balance is ${formatCurrency(balance, currency)}; ${formatCurrency(requiredInvestment, currency)} is required`;
+        }
+      });
+
+      const usesInvestment = partners.some(p => Number(p.investmentAmount) > 0);
+      if (usesInvestment) {
+        const totalInvestment = partners.reduce((sum, p) => sum + (Number(p.investmentAmount) || 0), 0);
+        if (totalInvestment > totalCost + 0.01) errs.sharingTotal = 'Total partner investment cannot exceed the vehicle total cost';
+        partners.forEach((p, index) => {
+          if (!p.personName.trim() && !p.customerId) errs[`sharing_${index}_name`] = 'Partner is required';
+          if (!p.investmentAmount || Number(p.investmentAmount) <= 0) errs[`sharing_${index}_investment`] = 'A positive investment is required';
+        });
+      } else {
+        const totalPercentage = partners.reduce((sum, p) => sum + (Number(p.sharePercentage) || 0), 0);
+        if (totalPercentage > 100) errs.sharingTotal = 'Total partner percentage cannot exceed 100%';
+        partners.forEach((p, index) => {
+          if (!p.personName.trim() && !p.customerId) errs[`sharing_${index}_name`] = 'Partner is required';
+          if (!p.sharePercentage || Number(p.sharePercentage) <= 0) errs[`sharing_${index}_pct`] = 'A positive share percentage is required';
+        });
+      }
+    }
     if (editing && !editReason.trim()) errs.editReason = 'Edit reason is required';
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    return errs;
   };
 
   const handleSave = async () => {
-    // Validation errors, especially the required edit reason, live on the
-    // first step. Always return the user there so the field message is visible.
-    if (!validate()) {
-      setStep(0);
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      const identityFields = ['manufacturer', 'model', 'year', 'chassisNumber', 'basePurchasePrice', 'sellingPrice', 'editReason'];
+      if (identityFields.some(field => validationErrors[field])) setStep(0);
+      else if (validationErrors.refFullName) setStep(1);
+      else if (validationErrors.sharingTotal || Object.keys(validationErrors).some(key => key.startsWith('sharing_'))) setStep(2);
+      else setStep(0);
       return;
     }
     setSaving(true);
@@ -178,6 +224,14 @@ export default function VehicleFormScreen({ navigation, route }) {
   const addPartner = () => setPartners(p => [...p, { personName: '', sharePercentage: '', investmentAmount: '', investmentCurrency: form.baseCurrency, phone: '', customerId: '' }]);
   const updatePartner = (idx, key, val) => {
     setPartners(p => { const n = [...p]; n[idx] = { ...n[idx], [key]: val }; return n; });
+    setErrors(current => ({
+      ...current,
+      [`sharing_${idx}_name`]: key === 'personName' || key === 'customerId' ? null : current[`sharing_${idx}_name`],
+      [`sharing_${idx}_pct`]: key === 'sharePercentage' ? null : current[`sharing_${idx}_pct`],
+      [`sharing_${idx}_investment`]: key === 'investmentAmount' ? null : current[`sharing_${idx}_investment`],
+      [`sharing_${idx}_balance`]: key === 'sharePercentage' || key === 'customerId' || key === 'investmentCurrency' ? null : current[`sharing_${idx}_balance`],
+      sharingTotal: key === 'sharePercentage' || key === 'investmentAmount' ? null : current.sharingTotal,
+    }));
   };
   const removePartner = (idx) => setPartners(p => p.filter((_, i) => i !== idx));
 
@@ -222,7 +276,7 @@ export default function VehicleFormScreen({ navigation, route }) {
   const steps = ['Vehicle Details', 'Reference Person', 'Partnership', 'Images'];
 
   return (
-    <ScreenWrapper title={editing ? 'Edit Vehicle' : 'New Vehicle'} navigation={navigation}>
+    <ScreenWrapper title={editing ? 'Edit Vehicle' : 'New Vehicle'} navigation={navigation} back>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {/* Step indicator */}
         <View style={[styles.stepRow, { borderBottomColor: c.border }]}>
@@ -239,14 +293,14 @@ export default function VehicleFormScreen({ navigation, route }) {
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Vehicle Identity</Text>
               <PickerField label="Manufacturer *" value={form.manufacturer} options={[...new Set([...VEHICLE_MANUFACTURERS, ...(dropdownOptions.manufacturer || [])])]} onSelect={v => updateForm('manufacturer', v)} error={errors.manufacturer} />
               <View style={styles.row}>
-                <FormField label="Model" value={form.model} onChangeText={v => updateForm('model', v)} style={styles.half} />
-                <FormField label="Year" value={form.year} onChangeText={v => updateForm('year', v)} keyboardType="numeric" style={styles.half} />
+                <FormField label="Model *" value={form.model} onChangeText={v => updateForm('model', v)} error={errors.model} style={styles.half} />
+                <FormField label="Year *" value={form.year} onChangeText={v => updateForm('year', v)} keyboardType="numeric" error={errors.year} style={styles.half} />
               </View>
               <View style={styles.row}>
                 <PickerField label="Category" value={form.category} options={[...new Set([...VEHICLE_CATEGORIES, ...(dropdownOptions.category || [])])]} onSelect={v => updateForm('category', v)} style={styles.half} />
                 <FormField label="Color" value={form.color} onChangeText={v => updateForm('color', v)} style={styles.half} />
               </View>
-              <FormField label="Chassis / VIN" value={form.chassisNumber} onChangeText={v => updateForm('chassisNumber', v)} />
+              <FormField label="Chassis / VIN *" value={form.chassisNumber} onChangeText={v => updateForm('chassisNumber', v)} error={errors.chassisNumber} />
               <FormField label="Engine Number" value={form.engineNumber} onChangeText={v => updateForm('engineNumber', v)} />
 
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Specifications</Text>
@@ -305,7 +359,7 @@ export default function VehicleFormScreen({ navigation, route }) {
               </View>
               {hasRef && (
                 <>
-                  <FormField label="Full Name" value={ref.fullName} onChangeText={v => setRef(p => ({ ...p, fullName: v }))} />
+                  <FormField label="Full Name *" value={ref.fullName} onChangeText={v => { setRef(p => ({ ...p, fullName: v })); setErrors(p => ({ ...p, refFullName: null })); }} error={errors.refFullName} />
                   <FormField label="Tazkira Number" value={ref.tazkiraNumber} onChangeText={v => setRef(p => ({ ...p, tazkiraNumber: v }))} />
                   <FormField label="Phone Number" value={ref.phoneNumber} onChangeText={v => setRef(p => ({ ...p, phoneNumber: v }))} keyboardType="phone-pad" />
                   <FormField label="Address" value={ref.address} onChangeText={v => setRef(p => ({ ...p, address: v }))} multiline />
@@ -342,10 +396,10 @@ export default function VehicleFormScreen({ navigation, route }) {
                             }
                           }}
                         />
-                        <FormField label="Person Name" value={p.personName} onChangeText={v => updatePartner(idx, 'personName', v)} />
+                        <FormField label="Person Name *" value={p.personName} onChangeText={v => updatePartner(idx, 'personName', v)} error={errors[`sharing_${idx}_name`]} />
                         <View style={styles.row}>
-                          <FormField label="Share %" value={p.sharePercentage} onChangeText={v => updatePartner(idx, 'sharePercentage', v)} keyboardType="numeric" style={styles.half} />
-                          <FormField label="Investment" value={p.investmentAmount} onChangeText={v => updatePartner(idx, 'investmentAmount', v)} keyboardType="numeric" style={styles.half} />
+                          <FormField label="Share %" value={p.sharePercentage} onChangeText={v => updatePartner(idx, 'sharePercentage', v)} keyboardType="numeric" error={errors[`sharing_${idx}_pct`]} style={styles.half} />
+                          <FormField label="Investment" value={p.investmentAmount} onChangeText={v => updatePartner(idx, 'investmentAmount', v)} keyboardType="numeric" error={errors[`sharing_${idx}_investment`]} style={styles.half} />
                         </View>
                         <PickerField
                           label="Investment Currency"
@@ -353,11 +407,13 @@ export default function VehicleFormScreen({ navigation, route }) {
                           options={CURRENCIES}
                           onSelect={v => updatePartner(idx, 'investmentCurrency', v)}
                         />
+                        {!!errors[`sharing_${idx}_balance`] && <HelperText type="error" visible>{errors[`sharing_${idx}_balance`]}</HelperText>}
                         <FormField label="Phone" value={p.phone} onChangeText={v => updatePartner(idx, 'phone', v)} keyboardType="phone-pad" />
                       </Card.Content>
                     </Card>
                   ))}
                   <Button icon="plus" mode="outlined" onPress={addPartner} style={{ marginTop: 8, borderRadius: 10 }}>Add Partner</Button>
+                  {!!errors.sharingTotal && <HelperText type="error" visible>{errors.sharingTotal}</HelperText>}
                   {partners.length > 0 && (
                     <Card style={[styles.summaryCard, { backgroundColor: c.primaryContainer }]} mode="contained">
                       <Card.Content>

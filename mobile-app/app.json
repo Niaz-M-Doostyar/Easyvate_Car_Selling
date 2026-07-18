@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Niazi Khpalwak Showroom",
+    "name": "Niazi Khpalwak",
     "slug": "niazi-khpalwak-motors",
     "version": "2.0.0",
     "runtimeVersion": "2.0.0",
@@ -74,11 +74,6 @@
       }
     },
     "android": {
-      "statusBar": {
-        "backgroundColor": "#0d1b2a",
-        "barStyle": "light-content",
-        "translucent": false
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1b2a"
@@ -104,7 +99,6 @@
     "plugins": [
       "expo-file-system",
       "expo-font",
-      "expo-video",
       [
         "expo-document-picker",
         {
@@ -119,6 +113,11 @@
           "cameraPermission": "This app uses the camera to capture vehicle photos."
         }
       ]
-    ]
+    ],
+    "androidStatusBar": {
+      "backgroundColor": "#0d1b2a",
+      "barStyle": "light-content",
+      "translucent": false
+    }
   }
 }

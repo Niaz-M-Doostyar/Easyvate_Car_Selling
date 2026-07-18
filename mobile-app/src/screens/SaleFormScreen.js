@@ -7,7 +7,6 @@ import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { SALE_TYPES, VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, AFGHAN_PROVINCES, CURRENCIES } from '../utils/constants';
-import { validatePrice } from '../utils/validation';
 import apiClient from '../api/client';
 
 export default function SaleFormScreen({ navigation, route }) {
@@ -96,12 +95,19 @@ export default function SaleFormScreen({ navigation, route }) {
     const e = {};
     if (!form.vehicleId) e.vehicleId = 'Vehicle is required';
     if (!form.buyerName.trim()) e.buyerName = 'Buyer name is required';
-    if (!form.sellingPrice || Number(form.sellingPrice) <= 0) e.sellingPrice = 'Valid price required';
-    if (!form.downPayment || validatePrice(form.downPayment)) e.downPayment = 'Valid down payment required';
+    if (!form.sellingPrice || !Number.isFinite(Number(form.sellingPrice)) || Number(form.sellingPrice) <= 0) {
+      e.sellingPrice = 'Selling price must be a positive number';
+    }
+    if (!form.downPayment || !Number.isFinite(Number(form.downPayment)) || Number(form.downPayment) <= 0) {
+      e.downPayment = 'Down payment must be a positive number';
+    }
     if (form.saleType === 'Exchange Car') {
       if (!form.exchVehicleManufacturer) e.exchVehicleManufacturer = 'Required';
       if (!form.exchVehicleModel) e.exchVehicleModel = 'Required';
-      if (!form.exchVehicleYear) e.exchVehicleYear = 'Required';
+      if (!form.exchVehicleYear) e.exchVehicleYear = 'Year is required';
+      else if (!Number.isFinite(Number(form.exchVehicleYear)) || Number(form.exchVehicleYear) < 1900 || Number(form.exchVehicleYear) > new Date().getFullYear() + 2) {
+        e.exchVehicleYear = `Year must be between 1900 and ${new Date().getFullYear() + 2}`;
+      }
       if (!form.exchVehicleChassis) e.exchVehicleChassis = 'Required';
     }
     setErrors(e);

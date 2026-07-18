@@ -19,6 +19,8 @@ export default function PayrollScreen({ navigation }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth() + 1));
+  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [payDialog, setPayDialog] = useState(null);
@@ -84,8 +86,8 @@ export default function PayrollScreen({ navigation }) {
   };
 
   const handleBulkGenerate = async () => {
-    const m = new Date().getMonth() + 1;
-    const y = new Date().getFullYear();
+    const m = Number(monthFilter);
+    const y = Number(yearFilter);
     setBulkGenerating(true);
     try {
       const { data } = await apiClient.post('/payroll/generate-bulk', { month: m, year: y });
@@ -116,7 +118,11 @@ export default function PayrollScreen({ navigation }) {
     setPaying(false);
   };
 
-  const filtered = records.filter(x => statusFilter === 'All' || x.status === statusFilter);
+  const filtered = records.filter(x => (
+    Number(x.month) === Number(monthFilter)
+    && Number(x.year) === Number(yearFilter)
+    && (statusFilter === 'All' || x.status === statusFilter)
+  ));
 
   const renderItem = ({ item }) => {
     const isPaid = item.status === 'Paid';
@@ -137,7 +143,7 @@ export default function PayrollScreen({ navigation }) {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: c.onSurface }]}>{item.Employee?.fullName || item.employeeName || 'Employee'}</Text>
-                <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{item.month} {item.year} • {item.Employee?.position || ''}</Text>
+                <Text style={[styles.cardMeta, { color: c.onSurfaceVariant }]}>{MONTHS[Number(item.month) - 1] || item.month} {item.year} • {item.Employee?.position || ''}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: 16, fontWeight: '800', color: c.primary }}>{formatCurrency(item.netSalary || item.salary || 0, 'AFN')}</Text>
@@ -179,20 +185,36 @@ export default function PayrollScreen({ navigation }) {
 
   return (
     <ScreenWrapper title="Payroll" navigation={navigation}
-      actions={<Menu visible={menuVisible} onDismiss={() => setMenuVisible(false)}
-        anchor={<IconButton icon="filter-variant" onPress={() => setMenuVisible(true)} />}>
-        <Menu.Item title="All" onPress={() => { setStatusFilter('All'); setMenuVisible(false); }} />
-        {['Pending', 'Paid', 'Cancelled'].map(s => <Menu.Item key={s} title={s} onPress={() => { setStatusFilter(s); setMenuVisible(false); }} />)}
-      </Menu>}
       actions={
         <View style={{ flexDirection: 'row' }}>
+          <Menu visible={menuVisible} onDismiss={() => setMenuVisible(false)}
+            anchor={<IconButton icon="filter-variant" iconColor={c.onSurface} onPress={() => setMenuVisible(true)} />}>
+            <Menu.Item title="All statuses" onPress={() => { setStatusFilter('All'); setMenuVisible(false); }} />
+            {['Pending', 'Partial', 'Paid', 'Cancelled'].map(s => <Menu.Item key={s} title={s} onPress={() => { setStatusFilter(s); setMenuVisible(false); }} />)}
+          </Menu>
           <IconButton icon="account-multiple-plus-outline" iconColor={c.onSurface} onPress={handleBulkGenerate} disabled={bulkGenerating} />
           <IconButton icon="receipt" iconColor={c.onSurface} onPress={() => setGenDialog(true)} />
         </View>
       }
       fab={<FAB icon="plus" style={[styles.fab, { backgroundColor: c.primary }]} color="#fff" onPress={() => navigation.navigate('PayrollForm')} />}>
 
-      {statusFilter !== 'All' && <View style={{ paddingLeft: 16, paddingTop: 8 }}><Chip icon="filter" onClose={() => setStatusFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{statusFilter}</Chip></View>}
+      <View style={styles.periodFilters}>
+        <PickerField
+          label="Month"
+          value={MONTHS[Number(monthFilter) - 1]}
+          options={MONTHS}
+          onSelect={value => setMonthFilter(String(MONTHS.indexOf(value) + 1))}
+          style={styles.periodFilter}
+        />
+        <PickerField
+          label="Year"
+          value={yearFilter}
+          options={Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i))}
+          onSelect={setYearFilter}
+          style={styles.periodFilter}
+        />
+      </View>
+      {statusFilter !== 'All' && <View style={{ paddingHorizontal: 16 }}><Chip icon="filter" onClose={() => setStatusFilter('All')} style={[styles.filterChip, { backgroundColor: c.primary + '12' }]} textStyle={{ color: c.primary, fontWeight: '600', fontSize: 12 }}>{statusFilter}</Chip></View>}
 
       <FlatList data={filtered} keyExtractor={i => String(i.id)} renderItem={renderItem} contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} colors={[c.primary]} />}
@@ -273,6 +295,8 @@ export default function PayrollScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  periodFilters: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12 },
+  periodFilter: { flex: 1 },
   filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
   list: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 90 },
   card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },

@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 // Use Paper's module entry directly because its production Babel optimizer only
 // supports named imports and cannot transform the namespace required by this adapter.
 import * as Paper from 'react-native-paper/lib/module/index';
@@ -54,13 +55,33 @@ const localizeChildren = (children, t) => React.Children.map(children, child => 
   return child;
 });
 
+const containsNumber = children => {
+  let found = false;
+  React.Children.forEach(children, child => {
+    if (typeof child === 'number' || (typeof child === 'string' && /\d/.test(child))) found = true;
+  });
+  return found;
+};
+
+const readableEnglishStyle = (style, language, children) => {
+  if (language !== 'en') return style;
+  if (containsNumber(children)) return [style, { fontWeight: '500' }];
+
+  const weight = StyleSheet.flatten(style)?.fontWeight;
+  const numericWeight = weight === 'bold' ? 700 : Number.parseInt(String(weight), 10);
+  return numericWeight > 600 ? [style, { fontWeight: '600' }] : style;
+};
+
 export const Text = React.forwardRef(({ children, style, ...props }, ref) => {
-  const { t, isRTL, fontFamily } = useLanguage();
+  const { t, isRTL, fontFamily, language } = useLanguage();
   return (
     <Paper.Text
       ref={ref}
       {...props}
-      style={[{ fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }, style]}
+      style={[
+        { fontFamily, writingDirection: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' },
+        readableEnglishStyle(style, language, children),
+      ]}
     >
       {localizeChildren(children, t)}
     </Paper.Text>

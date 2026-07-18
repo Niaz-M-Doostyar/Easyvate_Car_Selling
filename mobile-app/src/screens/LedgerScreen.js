@@ -212,10 +212,10 @@ export default function LedgerScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  balanceRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
-  balCard: { flex: 1, borderRadius: 14, alignItems: 'center', paddingVertical: 12 },
+  balanceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 },
+  balCard: { width: '48%', borderRadius: 14, alignItems: 'center', paddingVertical: 12 },
   balIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  miniCard: { flex: 1, borderRadius: 10, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 4 },
+  miniCard: { width: '48%', borderRadius: 10, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 4 },
   filterChip: { alignSelf: 'flex-start', borderRadius: 20 },
   list: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 90 },
   card: { borderRadius: 16, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },

@@ -69,7 +69,7 @@ export default function PublicAboutScreen() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#0d1b2a', PRIMARY]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <Text style={[styles.headerTitle, { fontFamily, ...textStyle }]}>{t('About Us')}</Text>
-        <Text style={styles.headerSub}>Niazi Khpalwak Motor Puranchi</Text>
+        <Text style={styles.headerSub}>Niazi Khpalwak</Text>
       </LinearGradient>
 
       <ScrollView

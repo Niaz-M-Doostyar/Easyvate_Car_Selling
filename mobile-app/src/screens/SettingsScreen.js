@@ -136,7 +136,7 @@ export default function SettingsScreen({ navigation }) {
         {/* App Info */}
         <View style={[styles.section, { backgroundColor: c.card }, paperTheme.shadows?.sm]}>
           <Text style={[styles.sectionTitle, { color: c.onSurface, fontFamily }]}>{t('About')}</Text>
-          <InfoRow icon="car-sports" label="App Name" value="Niazi Khpalwak Motor Puranchi" />
+          <InfoRow icon="car-sports" label="App Name" value="Niazi Khpalwak" />
           <InfoRow icon="information-outline" label="Version" value="1.0.0" />
           <InfoRow icon="cellphone" label="Platform" value="React Native (Expo)" />
           <InfoRow icon="account-outline" label="Developer" value="Niaz Mohammad Doostyar" last />
