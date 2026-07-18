@@ -2,8 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getTeamData } from '@/lib/db';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+import { publicAssetUrl } from '@/utils/publicAssetUrl';
 
 const normalizeUrl = (url) => {
   if (!url) return '#';
@@ -11,11 +10,7 @@ const normalizeUrl = (url) => {
   return `https://${url}`;
 };
 
-const getImageUrl = (path) => {
-  if (!path) return '/img/about/team-1.jpg';
-  if (path.startsWith('http')) return path;
-  return `${BACKEND_URL}${path}`;
-};
+const getImageUrl = (path) => publicAssetUrl(path, '/img/about/team-1.jpg');
 
 export default async function TeamPage({ params }) {
   // ✅ Unwrap params Promise

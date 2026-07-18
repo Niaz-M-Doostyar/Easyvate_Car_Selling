@@ -13,14 +13,9 @@ import 'swiper/css/thumbs';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { formatCurrency } from '@/utils/currency';
+import { publicAssetUrl } from '@/utils/publicAssetUrl';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-
-const getImageUrl = (path) => {
-  if (!path) return '/img/cars/details/cd-1.jpg';
-  if (path.startsWith('http')) return path;
-  return `${BACKEND_URL}${path}`;
-};
+const getImageUrl = (path) => publicAssetUrl(path, '/img/cars/details/cd-1.jpg');
 
 export default function CarDetailsPage() {
   const { t } = useTranslation('common');

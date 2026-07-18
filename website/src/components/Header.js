@@ -18,6 +18,7 @@ export default function Header() {
   const router = useRouter();
   const params = useParams();
   const locale = params.locale; // e.g., 'en', 'fa', 'ps'
+  const adminLocale = locale === 'fa' ? 'prs' : (locale || 'en');
   const { t } = useTranslation('common'); // use your common namespace
 
   const [contact, setContact] = useState(null);
@@ -105,7 +106,7 @@ export default function Header() {
               </ul>
             )}
           </div>
-          <Link href="http://localhost:3000/admin/en/login" locale={false} className="primary-btn">{t('login')}</Link>
+          <a href={`/admin/${adminLocale}/login`} className="primary-btn">{t('login')}</a>
         </div>
         <div className="offcanvas__logo">
           <Link href={`/${locale}`}><img src="/img/NiazaiKhapalwak.jpeg" alt="logo" /></Link>
@@ -220,7 +221,7 @@ export default function Header() {
                       </ul>
                     )}
                   </div>
-                  <Link href="http://localhost:3000/admin/login" className="primary-btn" target="_blank" rel="noopener noreferrer">{t('login')}</Link>
+                  <a href={`/admin/${adminLocale}/login`} className="primary-btn">{t('login')}</a>
                 </div>
               </div>
             </div>

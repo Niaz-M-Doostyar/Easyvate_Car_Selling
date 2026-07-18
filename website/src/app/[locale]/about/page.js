@@ -2,14 +2,9 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getAboutData } from '@/lib/db';
+import { publicAssetUrl } from '@/utils/publicAssetUrl';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-
-const getImageUrl = (path) => {
-  if (!path) return '/img/clients/client-1.png';
-  if (path.startsWith('http')) return path;
-  return `${BACKEND_URL}${path}`;
-};
+const getImageUrl = (path) => publicAssetUrl(path, '/img/clients/client-1.png');
 
 export default async function AboutUs({ params }) {
   // ✅ Await the params Promise

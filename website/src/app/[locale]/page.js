@@ -8,18 +8,14 @@ import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
+import { publicAssetUrl } from '@/utils/publicAssetUrl';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-const getImageUrl = (path) => {
-  if (!path) return '/img/cars/car-1.jpg';
-  if (path.startsWith('http')) return path;
-  return `${BACKEND_URL}${path}`;
-};
+const getImageUrl = (path) => publicAssetUrl(path, '/img/cars/car-1.jpg');
 
 const renderStars = (rating) => {
   const stars = [];
@@ -387,7 +383,7 @@ export default function HomePage() {
                 poster="/img/chooseus-video.png"
                 style={{ width: '100%', height: '100%', objectFit: 'inherit', cursor: 'pointer' }}
                 controls
-                preload="auto"
+                preload="metadata"
                 loop={false}
                 onPlaying={() => setVideoPlaying(true)}
                 onPause={() => setVideoPlaying(false)}
@@ -411,7 +407,7 @@ export default function HomePage() {
             </>
           ) : (
             <div style={{ width: '100%', height: '100%', background: '#ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {t('loading_video') || 'Loading video...'}
+              {t('video_unavailable') || 'Video unavailable'}
             </div>
           )}
         </div>
