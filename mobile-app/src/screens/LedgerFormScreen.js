@@ -5,7 +5,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { LEDGER_TYPES } from '../utils/constants';
+import { LEDGER_ENTRY_TYPES } from '../utils/constants';
 import apiClient from '../api/client';
 
 export default function LedgerFormScreen({ navigation, route }) {
@@ -14,7 +14,7 @@ export default function LedgerFormScreen({ navigation, route }) {
   const c = paperTheme.colors;
 
   const [form, setForm] = useState({
-    type: 'Income',
+    type: 'Showroom Balance',
     description: '', amount: '', currency: 'AFN',
     date: new Date().toISOString().split('T')[0],
     notes: '',
@@ -25,7 +25,7 @@ export default function LedgerFormScreen({ navigation, route }) {
   useEffect(() => {
     if (editing) {
       setForm({
-        type: editing.type || 'Income',
+        type: editing.type || 'Showroom Balance',
         description: editing.description || '',
         amount: String(Math.abs(editing.amount || editing.credit || editing.debit || 0)),
         currency: editing.currency || 'AFN',
@@ -67,7 +67,7 @@ export default function LedgerFormScreen({ navigation, route }) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12, color: c.onSurface }}>Ledger Entry</Text>
 
-          <PickerField label="Entry Type *" value={form.type} options={LEDGER_TYPES} onSelect={v => set('type', v)} error={errors.type} />
+          <PickerField label="Entry Type *" value={form.type} options={LEDGER_ENTRY_TYPES} onSelect={v => set('type', v)} error={errors.type} />
           <FormField label="Description *" value={form.description} onChangeText={v => set('description', v)} error={errors.description} />
           <FormField label="Amount *" value={form.amount} onChangeText={v => set('amount', v)} keyboardType="numeric" error={errors.amount} />
 

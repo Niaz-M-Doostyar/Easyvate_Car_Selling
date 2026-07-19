@@ -6,7 +6,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { SALE_TYPES, VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, AFGHAN_PROVINCES, CURRENCIES } from '../utils/constants';
+import { SALE_TYPES, VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, CURRENCIES } from '../utils/constants';
 import apiClient from '../api/client';
 
 export default function SaleFormScreen({ navigation, route }) {
@@ -159,7 +159,7 @@ export default function SaleFormScreen({ navigation, route }) {
       <Text variant="bodySmall" style={{ color: c.onSurfaceVariant, marginBottom: 8 }}>Details of the person buying the vehicle.</Text>
       <FormField label="Full Name *" value={form.buyerName} onChangeText={v => set('buyerName', v)} error={errors.buyerName} disabled={readOnly} />
       <FormField label="Father's Name" value={form.buyerFatherName} onChangeText={v => set('buyerFatherName', v)} disabled={readOnly} />
-      <PickerField label="Province" value={form.buyerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('buyerProvince', v)} disabled={readOnly} />
+      <FormField label="Province" value={form.buyerProvince} onChangeText={v => set('buyerProvince', v)} disabled={readOnly} />
       <FormField label="District" value={form.buyerDistrict} onChangeText={v => set('buyerDistrict', v)} disabled={readOnly} />
       <FormField label="Village" value={form.buyerVillage} onChangeText={v => set('buyerVillage', v)} disabled={readOnly} />
       <FormField label="Address" value={form.buyerAddress} onChangeText={v => set('buyerAddress', v)} multiline disabled={readOnly} />
@@ -211,7 +211,7 @@ export default function SaleFormScreen({ navigation, route }) {
       <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 8, color: c.onSurface }}>Seller / Exchanger Information</Text>
       <FormField label="Seller Name" value={form.sellerName} onChangeText={v => set('sellerName', v)} disabled={readOnly} />
       <FormField label="Father's Name" value={form.sellerFatherName} onChangeText={v => set('sellerFatherName', v)} disabled={readOnly} />
-      <PickerField label="Province" value={form.sellerProvince} options={AFGHAN_PROVINCES} onSelect={v => set('sellerProvince', v)} disabled={readOnly} />
+      <FormField label="Province" value={form.sellerProvince} onChangeText={v => set('sellerProvince', v)} disabled={readOnly} />
       <FormField label="District" value={form.sellerDistrict} onChangeText={v => set('sellerDistrict', v)} disabled={readOnly} />
       <FormField label="Village" value={form.sellerVillage} onChangeText={v => set('sellerVillage', v)} disabled={readOnly} />
       <FormField label="Address" value={form.sellerAddress} onChangeText={v => set('sellerAddress', v)} multiline disabled={readOnly} />

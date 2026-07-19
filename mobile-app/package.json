@@ -1,6 +1,6 @@
 {
   "name": "easyvate-mobile",
-  "version": "1.0.0",
+  "version": "2.0.2",
   "main": "expo/AppEntry",
   "scripts": {
     "start": "expo start",
@@ -46,6 +46,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@react-native-community/cli": "^20.2.0",
+    "@react-native/metro-config": "^0.81.5",
     "@types/react": "~19.1.10",
     "expo-module-scripts": "^55.0.2",
     "react-refresh": "^0.18.0",

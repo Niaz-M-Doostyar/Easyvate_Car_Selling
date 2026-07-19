@@ -6,7 +6,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { VEHICLE_MANUFACTURERS, VEHICLE_CATEGORIES, VEHICLE_STATUSES, FUEL_TYPES, TRANSMISSION_TYPES, ENGINE_TYPES, STEERING_TYPES, MONOLITHIC_CUT, CURRENCIES, formatCurrency } from '../utils/constants';
+import { VEHICLE_STATUSES, FUEL_TYPES, STEERING_TYPES, MONOLITHIC_CUT, CURRENCIES, formatCurrency } from '../utils/constants';
 import { convertCurrency } from '../utils/currency';
 import apiClient from '../api/client';
 import { resolveAssetUrl } from '../api/config';
@@ -291,13 +291,13 @@ export default function VehicleFormScreen({ navigation, route }) {
           {step === 0 && (
             <>
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Vehicle Identity</Text>
-              <PickerField label="Manufacturer *" value={form.manufacturer} options={[...new Set([...VEHICLE_MANUFACTURERS, ...(dropdownOptions.manufacturer || [])])]} onSelect={v => updateForm('manufacturer', v)} error={errors.manufacturer} />
+              <PickerField label="Manufacturer *" value={form.manufacturer} options={[...new Set([form.manufacturer, ...(dropdownOptions.manufacturer || [])])].filter(Boolean)} onSelect={v => updateForm('manufacturer', v)} error={errors.manufacturer} searchable />
               <View style={styles.row}>
                 <FormField label="Model *" value={form.model} onChangeText={v => updateForm('model', v)} error={errors.model} style={styles.half} />
                 <FormField label="Year *" value={form.year} onChangeText={v => updateForm('year', v)} keyboardType="numeric" error={errors.year} style={styles.half} />
               </View>
               <View style={styles.row}>
-                <PickerField label="Category" value={form.category} options={[...new Set([...VEHICLE_CATEGORIES, ...(dropdownOptions.category || [])])]} onSelect={v => updateForm('category', v)} style={styles.half} />
+                <PickerField label="Category" value={form.category} options={[...new Set([form.category, ...(dropdownOptions.category || [])])].filter(Boolean)} onSelect={v => updateForm('category', v)} style={styles.half} searchable />
                 <FormField label="Color" value={form.color} onChangeText={v => updateForm('color', v)} style={styles.half} />
               </View>
               <FormField label="Chassis / VIN *" value={form.chassisNumber} onChangeText={v => updateForm('chassisNumber', v)} error={errors.chassisNumber} />
@@ -305,11 +305,11 @@ export default function VehicleFormScreen({ navigation, route }) {
 
               <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Specifications</Text>
               <View style={styles.row}>
-                <PickerField label="Engine Type" value={form.engineType} options={[...new Set([...ENGINE_TYPES, ...(dropdownOptions.engineType || [])])]} onSelect={v => updateForm('engineType', v)} style={styles.half} />
+                <PickerField label="Engine Type" value={form.engineType} options={[...new Set([form.engineType, ...(dropdownOptions.engineType || [])])].filter(Boolean)} onSelect={v => updateForm('engineType', v)} style={styles.half} searchable />
                 <PickerField label="Fuel Type" value={form.fuelType} options={FUEL_TYPES} onSelect={v => updateForm('fuelType', v)} style={styles.half} />
               </View>
               <View style={styles.row}>
-                <PickerField label="Transmission" value={form.transmission} options={[...new Set([...TRANSMISSION_TYPES, ...(dropdownOptions.transmission || [])])]} onSelect={v => updateForm('transmission', v)} style={styles.half} />
+                <PickerField label="Transmission" value={form.transmission} options={[...new Set([form.transmission, ...(dropdownOptions.transmission || [])])].filter(Boolean)} onSelect={v => updateForm('transmission', v)} style={styles.half} searchable />
                 <FormField label="Mileage (km)" value={form.mileage} onChangeText={v => updateForm('mileage', v)} keyboardType="numeric" style={styles.half} />
               </View>
               <View style={styles.row}>

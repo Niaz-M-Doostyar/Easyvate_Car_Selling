@@ -18,18 +18,16 @@ export const getCurrencySymbol = (currency) => {
 };
 
 export const AFGHAN_PROVINCES = [
-  'Kabul', 'Kandahar', 'Herat', 'Balkh', 'Nangarhar', 'Kunduz', 'Baghlan',
-  'Takhar', 'Badakhshan', 'Ghazni', 'Paktia', 'Parwan', 'Laghman', 'Kapisa',
-  'Bamyan', 'Wardak', 'Logar', 'Panjshir', 'Daykundi', 'Uruzgan', 'Zabul',
-  'Nimroz', 'Helmand', 'Farah', 'Badghis', 'Faryab', 'Jawzjan', 'Sar-e Pol',
-  'Samangan', 'Ghor', 'Kunar', 'Nuristan', 'Khost', 'Paktika',
+  'Badakhshan', 'Badghis', 'Baghlan', 'Balkh', 'Bamyan', 'Daykundi', 'Farah', 'Faryab',
+  'Ghazni', 'Ghor', 'Helmand', 'Herat', 'Jowzjan', 'Kabul', 'Kandahar', 'Kapisa',
+  'Khost', 'Kunar', 'Kunduz', 'Laghman', 'Logar', 'Nangarhar', 'Nimruz', 'Nuristan',
+  'Paktia', 'Paktika', 'Panjshir', 'Parwan', 'Samangan', 'Sar-e Pol', 'Takhar',
+  'Urozgan', 'Wardak', 'Zabul',
 ];
 
 export const VEHICLE_MANUFACTURERS = [
   'Toyota', 'Honda', 'BMW', 'Mercedes-Benz', 'Audi', 'Volkswagen', 'Ford',
   'Chevrolet', 'KIA', 'Hyundai', 'Mazda', 'Nissan', 'Suzuki', 'Daihatsu', 'FAW', 'Changan',
-  'Lexus', 'Mitsubishi', 'Subaru', 'Jeep', 'Land Rover', 'Porsche', 'Ferrari',
-  'Lamborghini', 'Bentley', 'Rolls-Royce', 'Jaguar', 'Volvo', 'MG', 'BYD', 'Geely',
 ];
 
 export const VEHICLE_CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Van', 'Truck', 'Pickup', 'Bus', 'Other'];
@@ -43,12 +41,13 @@ export const EMPLOYEE_ROLES = ['Salesperson', 'Mechanic', 'Accountant', 'Manager
 export const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
 export const LEAVE_TYPES = ['Casual', 'Sick', 'Annual'];
 export const LEDGER_TYPES = [
-  'Income', 'Expense', 'Vehicle Purchase', 'Vehicle Sale', 'Salary',
-  'Currency Exchange', 'Loan Given', 'Loan Received', 'Commission',
-  'Owner Withdrawal', 'Showroom Balance',
+  'Showroom Balance', 'Expense', 'Commission', 'Owner Withdrawal',
+  'Currency Exchange', 'Vehicle Purchase', 'Vehicle Sale', 'Salary',
+  'Loan Given', 'Loan Received',
 ];
+export const LEDGER_ENTRY_TYPES = ['Showroom Balance', 'Expense', 'Commission', 'Owner Withdrawal'];
 
-export const CUSTOMER_TYPES = ['Buyer', 'Investor', 'Capital Provider', 'Borrower'];
+export const CUSTOMER_TYPES = ['Buyer', 'Investor', 'Borrower'];
 export const SALE_TYPES = [
   { value: 'Exchange Car', label: 'Exchange Car', color: '#1565c0' },
   { value: 'Container One Key', label: 'Container One Key', color: '#e65100' },
@@ -64,8 +63,7 @@ export const MONTHS = [
 ];
 
 export const USER_ROLES = [
-  'Super Admin', 'Owner', 'Manager', 'Accountant',
-  'Financial', 'Inventory & Sales', 'Sales', 'Viewer',
+  'Super Admin', 'Owner', 'Manager', 'Inventory & Sales', 'Accountant', 'Viewer',
 ];
 
 export const ROLE_ACCESS = {

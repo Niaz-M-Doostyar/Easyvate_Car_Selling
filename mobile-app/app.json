@@ -2,8 +2,8 @@
   "expo": {
     "name": "Niazi Khpalwak",
     "slug": "niazi-khpalwak-motors",
-    "version": "2.0.0",
-    "runtimeVersion": "2.0.0",
+    "version": "2.0.2",
+    "runtimeVersion": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -19,7 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.niazi.khpalwak.motors",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload vehicle images and team photos.",
         "NSPhotoLibraryAddUsageDescription": "This app saves selected images to your photo library.",
@@ -79,7 +79,7 @@
         "backgroundColor": "#0d1b2a"
       },
       "package": "com.niazi.khpalwak.motors",
-      "versionCode": 4,
+      "versionCode": 10,
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",

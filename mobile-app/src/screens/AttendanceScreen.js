@@ -13,7 +13,7 @@ import { MONTHS } from '../utils/constants';
 import apiClient from '../api/client';
 
 const TABS = ['Today', 'Monthly Summary', 'Records'];
-const LEAVE_TYPES = ['Casual', 'Sick', 'Annual', 'Unpaid'];
+const LEAVE_TYPES = ['Casual', 'Sick', 'Annual'];
 
 export default function AttendanceScreen({ navigation }) {
   const { paperTheme } = useAppTheme();

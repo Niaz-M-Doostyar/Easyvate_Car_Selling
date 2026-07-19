@@ -13,7 +13,7 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { formatCurrency, CUSTOMER_TYPES, CURRENCIES } from '../utils/constants';
 import apiClient from '../api/client';
 
-const LEDGER_TYPES = ['Received', 'Paid', 'Loan Given', 'Loan Received'];
+const LEDGER_TYPES = ['Received', 'Paid', 'Commission', 'Investment', 'Profit Share'];
 
 export default function CustomersScreen({ navigation }) {
   const { paperTheme } = useAppTheme();

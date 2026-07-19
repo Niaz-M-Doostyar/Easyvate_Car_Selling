@@ -190,7 +190,7 @@ export default function PayrollScreen({ navigation }) {
           <Menu visible={menuVisible} onDismiss={() => setMenuVisible(false)}
             anchor={<IconButton icon="filter-variant" iconColor={c.onSurface} onPress={() => setMenuVisible(true)} />}>
             <Menu.Item title="All statuses" onPress={() => { setStatusFilter('All'); setMenuVisible(false); }} />
-            {['Pending', 'Partial', 'Paid', 'Cancelled'].map(s => <Menu.Item key={s} title={s} onPress={() => { setStatusFilter(s); setMenuVisible(false); }} />)}
+            {['Pending', 'Partial', 'Paid'].map(s => <Menu.Item key={s} title={s} onPress={() => { setStatusFilter(s); setMenuVisible(false); }} />)}
           </Menu>
           <IconButton icon="account-multiple-plus-outline" iconColor={c.onSurface} onPress={handleBulkGenerate} disabled={bulkGenerating} />
           <IconButton icon="receipt" iconColor={c.onSurface} onPress={() => setGenDialog(true)} />
@@ -236,7 +236,7 @@ export default function PayrollScreen({ navigation }) {
               <PickerField label="Month" value={MONTHS[Number(genForm.month) - 1]} options={MONTHS}
                 onSelect={v => setGenForm(p => ({ ...p, month: String(MONTHS.indexOf(v) + 1) }))} />
               <PickerField label="Year" value={genForm.year}
-                options={Array.from({ length: 3 }, (_, i) => String(new Date().getFullYear() - i))}
+                options={Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i))}
                 onSelect={v => setGenForm(p => ({ ...p, year: v }))} />
               <FormField label="Commission" value={genForm.commission} onChangeText={v => setGenForm(p => ({ ...p, commission: v }))} keyboardType="numeric" />
               <FormField label="Deductions" value={genForm.deductions} onChangeText={v => setGenForm(p => ({ ...p, deductions: v }))} keyboardType="numeric" />

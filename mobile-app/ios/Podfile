@@ -61,5 +61,23 @@ target 'NiaziKhpalwakMotorPuranchi' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Hermes built from source can regenerate its framework Info.plist without
+    # rerunning CMake's POST_BUILD command, leaving MinimumOSVersion absent.
+    # App Store Connect rejects that framework, so enforce the deployment
+    # target after React Native copies the built framework into destroot.
+    hermes_target = installer.pods_project.targets.find { |target| target.name == 'hermes-engine' }
+    hermes_target&.shell_script_build_phases&.each do |phase|
+      next unless phase.name.include?('[RN] [2] Build Hermes')
+
+      phase.shell_script += <<-'SCRIPT'
+
+HERMES_INFO_PLIST="${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/ios/hermes.framework/Info.plist"
+if [[ -f "${HERMES_INFO_PLIST}" ]]; then
+  /usr/libexec/PlistBuddy -c "Set :MinimumOSVersion ${IPHONEOS_DEPLOYMENT_TARGET}" "${HERMES_INFO_PLIST}" || \
+    /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}" "${HERMES_INFO_PLIST}"
+fi
+SCRIPT
+    end
   end
 end

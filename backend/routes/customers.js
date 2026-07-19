@@ -75,6 +75,9 @@ router.get('/:id/ledger', async (req, res) => {
 router.post('/:id/ledger', async (req, res) => {
   try {
     const { type, amount, currency, purpose, date, saleId } = req.body;
+    // Keep compatibility with older mobile clients that called this entry type
+    // "Loan Given" before the customer ledger standardized it as "Loan".
+    const normalizedType = type === 'Loan Given' ? 'Loan' : type;
     const customer = await Customer.findByPk(req.params.id);
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -82,7 +85,7 @@ router.post('/:id/ledger', async (req, res) => {
 
     const amountNum = parseFloat(amount);
     const amountAFN = await toAFN(amountNum, currency || 'AFN');
-    const isCredit = CREDIT_LEDGER_TYPES.includes(type);
+    const isCredit = CREDIT_LEDGER_TYPES.includes(normalizedType);
     const signedAmount = isCredit ? amountNum : -amountNum;
 
     // Determine which balance field to update
@@ -107,7 +110,7 @@ router.post('/:id/ledger', async (req, res) => {
     // Create ledger entry
     const entry = await CustomerLedger.create({
       customerId: req.params.id,
-      type,
+      type: normalizedType,
       amount: amountNum,
       currency: currency || 'AFN',
       amountInPKR: amountAFN,
@@ -119,7 +122,7 @@ router.post('/:id/ledger', async (req, res) => {
     });
 
     // ─── Handle sale payment status & showroom ledger (unchanged) ───
-    if (saleId && (type === 'Installment' || type === 'Received')) {
+    if (saleId && (normalizedType === 'Installment' || normalizedType === 'Received')) {
       const sale = await Sale.findByPk(saleId);
       if (sale && sale.paymentStatus !== 'Paid') {
         const payAmt = amountAFN;
@@ -153,7 +156,7 @@ router.post('/:id/ledger', async (req, res) => {
 
     // ─── Showroom ledger for other transaction types (unchanged) ───
     const customerName = customer.fullName;
-    switch (type) {
+    switch (normalizedType) {
       case 'Loan':
         await ShowroomLedger.create({
           type: 'Expense',

@@ -5,7 +5,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import FormField from '../components/FormField';
 import PickerField from '../components/PickerField';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { EMPLOYEE_ROLES, EMPLOYEE_STATUSES } from '../utils/constants';
+import { EMPLOYEE_STATUSES } from '../utils/constants';
 import { validateRequired, validatePhone, validateEmail } from '../utils/validation';
 import apiClient from '../api/client';
 
@@ -94,7 +94,7 @@ export default function EmployeeFormScreen({ navigation, route }) {
 
           <Text variant="titleSmall" style={[styles.sectionTitle, { color: c.primary }]}>Employment Details</Text>
           <View style={styles.row}>
-            <PickerField label="Role *" value={form.role} options={EMPLOYEE_ROLES} onSelect={v => update('role', v)} style={styles.half} error={errors.role} />
+            <FormField label="Role *" value={form.role} onChangeText={v => update('role', v)} style={styles.half} error={errors.role} />
             <FormField label="Monthly Salary *" value={form.monthlySalary} onChangeText={v => update('monthlySalary', v)} keyboardType="numeric" error={errors.monthlySalary} style={styles.half} />
           </View>
           <View style={styles.row}>
