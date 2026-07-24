@@ -1,38 +1,52 @@
-// utils/lock.js
-const { sequelize } = require('../models');
+const { QueryTypes } = require('sequelize');
+const { sequelize } = require('../../models');
 
 /**
- * Acquire a MySQL named lock on a dedicated connection.
- * Returns a release function that must be called when done.
+ * Run a callback while holding a MySQL named lock.
+ *
+ * The lock queries and callback share one Sequelize transaction, which pins
+ * them to the same pooled connection. MySQL named locks are connection-scoped,
+ * so acquiring and releasing through different pool connections is unsafe.
  */
 async function withLock(key, timeoutSeconds, fn) {
-  // Get a raw connection from the pool
-  const connection = await sequelize.connectionManager.getConnection();
+  const lockKey = String(key).slice(0, 64);
 
-  try {
-    // Acquire lock on this connection
-    const [results] = await connection.query(
-      `SELECT GET_LOCK(:key, :timeout) AS acquired`,
-      {
-        replacements: { key, timeout: timeoutSeconds },
-        type: sequelize.QueryTypes.SELECT,
+  return sequelize.transaction(async transaction => {
+    let acquired = false;
+
+    try {
+      const results = await sequelize.query(
+        'SELECT GET_LOCK(:key, :timeout) AS acquired',
+        {
+          replacements: { key: lockKey, timeout: timeoutSeconds },
+          type: QueryTypes.SELECT,
+          transaction
+        }
+      );
+
+      acquired = Number(results[0]?.acquired) === 1;
+      if (!acquired) {
+        const error = new Error('Could not acquire attendance lock');
+        error.code = 'LOCK_TIMEOUT';
+        throw error;
       }
-    );
 
-    if (results.acquired !== 1) {
-      throw new Error('Could not acquire lock');
+      return await fn(transaction);
+    } finally {
+      if (acquired) {
+        await sequelize.query(
+          'SELECT RELEASE_LOCK(:key) AS released',
+          {
+            replacements: { key: lockKey },
+            type: QueryTypes.SELECT,
+            transaction
+          }
+        ).catch(error => {
+          console.error('Failed to release MySQL lock:', error.message);
+        });
+      }
     }
-
-    // Execute the critical section (pass connection if needed)
-    return await fn();
-  } finally {
-    // Release lock on the SAME connection
-    await connection.query(`SELECT RELEASE_LOCK(:key)`, {
-      replacements: { key },
-    }).catch(console.error);
-    // Return the connection to the pool
-    sequelize.connectionManager.releaseConnection(connection);
-  }
+  });
 }
 
 module.exports = { withLock };

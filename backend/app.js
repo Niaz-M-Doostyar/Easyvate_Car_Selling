@@ -31,6 +31,7 @@ const todayAttendanceRoutes = require('./routes/todayAttendance');
 const monthlySummaryRoutes = require('./routes/monthlySummary');
 const timeSettingRoutes = require('./routes/timeSetting');
 const leaveRoutes = require('./routes/leaves');
+const { withLock } = require('./src/utils/lock');
 
 const app = express();
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -60,61 +61,88 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.post('/api/attendance/sync', async (req, res) => {
   try {
-    const { empName, ID, date, attendanceCount, checkInTimes } = req.body;
-    console.log(`✅ VMS received: ${empName} (${ID}) - ${checkInTimes.length} punches`);
+    const { empName, ID, date, checkInTimes } = req.body;
 
-    // Validation
     if (!empName || !ID || !date || !Array.isArray(checkInTimes)) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, error: 'Invalid attendance date' });
+    }
 
-    // Find existing employee by biometricId (device ID)
+    const incomingTimes = checkInTimes.map(timestamp => new Date(timestamp));
+    if (incomingTimes.some(timestamp => Number.isNaN(timestamp.getTime()))) {
+      return res.status(400).json({ success: false, error: 'Invalid punch timestamp' });
+    }
+
+    console.log(`✅ VMS received: ${empName} (${ID}) - ${checkInTimes.length} punches`);
+
     const employee = await Employee.findOne({ where: { biometricId: ID.toString() } });
     if (!employee) {
       console.warn(`⚠️ Employee with biometricId ${ID} not found. Skipping.`);
       return res.status(200).json({ success: false, message: `Employee ${ID} not found` });
     }
 
-    // Convert incoming ISO strings to Date objects
-    const incomingTimes = checkInTimes.map(ts => new Date(ts));
+    const lockKey = `attendance_${employee.id}_${date}`;
+    const storedCount = await withLock(lockKey, 5, async transaction => {
+      const existingPunches = await PunchLog.findAll({
+        where: {
+          employeeId: employee.id,
+          date
+        },
+        attributes: ['punchTime'],
+        transaction
+      });
 
-    // Fetch already stored punch times for this employee on the same date
-    const existingPunches = await PunchLog.findAll({
-      where: {
+      const existingTimestamps = existingPunches
+        .filter(punch => punch.punchTime)
+        .map(punch => punch.punchTime.getTime());
+      const newPunches = [];
+
+      for (const timestamp of incomingTimes) {
+        const timeMs = timestamp.getTime();
+        const alreadyStored = existingTimestamps.some(
+          existingMs => Math.abs(existingMs - timeMs) < 1000
+        );
+        const alreadyQueued = newPunches.some(
+          queued => Math.abs(queued.getTime() - timeMs) < 1000
+        );
+
+        if (!alreadyStored && !alreadyQueued) {
+          newPunches.push(timestamp);
+        }
+      }
+
+      if (newPunches.length === 0) {
+        return 0;
+      }
+
+      const punchRecords = newPunches.map(punchTime => ({
         employeeId: employee.id,
-        date: date
-      },
-      attributes: ['punchTime']
+        punchTime,
+        date,
+        source: 'ZK_SYNC'
+      }));
+
+      await PunchLog.bulkCreate(punchRecords, { transaction });
+      return punchRecords.length;
     });
 
-    const existingTimestamps = existingPunches.map(p => p.punchTime.getTime());
-
-    // Filter out punches that already exist (within 1 second tolerance)
-    const newPunches = incomingTimes.filter(ts => {
-      const timeMs = ts.getTime();
-      return !existingTimestamps.some(existingMs => Math.abs(existingMs - timeMs) < 1000);
-    });
-
-    if (newPunches.length === 0) {
+    if (storedCount === 0) {
       console.log(`ℹ️ No new punches for ${employee.fullName} (${ID}) on ${date}`);
       return res.status(200).json({ success: true, message: 'No new punches to store' });
     }
 
-    // Prepare records for new punches
-    const punchRecords = newPunches.map(punchTime => ({
-      employeeId: employee.id,
-      punchTime: punchTime,
-      date: date,
-      source: 'ZK_SYNC'
-    }));
-
-    await PunchLog.bulkCreate(punchRecords);
-
-    console.log(`✅ Stored ${punchRecords.length} new punches for ${employee.fullName} (${ID}) on ${date}`);
-    return res.status(200).json({ success: true, message: `${punchRecords.length} new punches stored` });
-
+    console.log(`✅ Stored ${storedCount} new punches for ${employee.fullName} (${ID}) on ${date}`);
+    return res.status(200).json({ success: true, message: `${storedCount} new punches stored` });
   } catch (error) {
     console.error('❌ Sync storage error:', error);
+    if (error.code === 'LOCK_TIMEOUT') {
+      return res.status(409).json({
+        success: false,
+        error: 'Another request is already processing this employee’s punches. Please retry.'
+      });
+    }
     return res.status(500).json({ success: false, error: error.message });
   }
 });
