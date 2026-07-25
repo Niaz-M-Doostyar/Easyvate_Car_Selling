@@ -584,33 +584,74 @@ router.put('/:id', async (req, res) => {
     // ─────────────────────────────────────────────────────────────
     // 7) Update sharing persons
     // ─────────────────────────────────────────────────────────────
-    // Inside router.put('/:id', ...)
+    //Update sharing persons – ALWAYS reverse old investments when cost or sharing changes
+    const costChanged = costFields.some(field => updates[field] !== undefined);
+    const sharingChanged = sharingPersons !== undefined;
 
-    if (sharingPersons !== undefined) {
-      // --- Step 1: reverse old investments ---
-      const oldSharing = await SharingPerson.findAll({ where: { vehicleId: vehicle.id } });
+    if (costChanged || sharingChanged) {
+      const oldSharing = await SharingPerson.findAll({
+        where: { vehicleId: vehicle.id },
+        order: [['createdAt', 'ASC']],
+      });
+
+      // --- Step 1: reverse all old investments ---
       for (const oldPartner of oldSharing) {
-        if (oldPartner.customerId && oldPartner.investmentAmount > 0) {
+        if (oldPartner.customerId && Number(oldPartner.investmentAmount) > 0) {
           const customer = await Customer.findByPk(oldPartner.customerId);
           if (customer) {
+            const currency = oldPartner.investmentCurrency || vehicle.baseCurrency || 'AFN';
             const balanceField = {
-              USD: 'balanceUSD',
-              PKR: 'balancePKR',
-              AED: 'balanceAED',
-            }[oldPartner.investmentCurrency] || 'balanceAFN';
-            const revertedBalance = parseFloat(customer[balanceField]) + parseFloat(oldPartner.investmentAmount);
-            await customer.update({ [balanceField]: revertedBalance });
-            // Optional: create a reversal ledger entry
+              USD: 'balanceUSD', PKR: 'balancePKR', AED: 'balanceAED',
+            }[currency] || 'balanceAFN';
+
+            const investAmount = Number(oldPartner.investmentAmount);
+            const currentBalance = parseFloat(customer[balanceField]) || 0;
+            const newBalance = currentBalance + investAmount;
+            await customer.update({ [balanceField]: newBalance });
+
+            // Record reversal in customer ledger
+            const amountAFN = await toAFN(investAmount, currency);
+            const lastEntry = await CustomerLedger.findOne({
+              where: { customerId: customer.id },
+              order: [['id', 'DESC']],
+            });
+            const prevBal = lastEntry ? Number(lastEntry.balance || 0) : 0;
+            const newLegacyBal = prevBal + amountAFN;
+
+            await CustomerLedger.create({
+              customerId: customer.id,
+              type: 'Investment Return',
+              amount: investAmount,
+              currency,
+              amountInPKR: amountAFN,
+              purpose: `Reversal of investment in vehicle ${vehicle.vehicleId} (edit)`,
+              date: new Date(),
+              balance: newLegacyBal,
+              saleId: null,
+              addedBy: req.user.id,
+            });
+            await Customer.update({ balance: newLegacyBal }, { where: { id: customer.id } });
           }
         }
       }
 
-      // --- Step 2: apply new sharing (deductions happen inside) ---
-      await persistVehicleSharingPersons(vehicle, sharingPersons);
-
-    } else if (costFields.some(f => updates[f] !== undefined)) {
-      // Only recalculate percentages, no new deduction
-      await refreshVehicleSharingPercentages(vehicle.id);
+      // --- Step 2: apply the new sharing ---
+      if (sharingChanged) {
+        // If the array is empty, it will delete all existing and create none → correct removal
+        await persistVehicleSharingPersons(vehicle, Array.isArray(sharingPersons) ? sharingPersons : []);
+      } else {
+        // Only costs changed – recalculate with the same partners
+        const currentSharing = await SharingPerson.findAll({
+          where: { vehicleId: vehicle.id },
+          order: [['createdAt', 'ASC']],
+        });
+        if (currentSharing.length > 0) {
+          await persistVehicleSharingPersons(
+            vehicle,
+            currentSharing.map(p => p.get({ plain: true }))
+          );
+        }
+      }
     }
 
     const updatedVehicle = await Vehicle.findByPk(vehicle.id, {

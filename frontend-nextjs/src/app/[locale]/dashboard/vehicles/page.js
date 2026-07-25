@@ -339,17 +339,15 @@ export default function VehiclesPage() {
       };
     }
 
-    if (formSharingPersons.length > 0) {
-      vehicleData.sharingPersons = formSharingPersons.map((p) => ({
-        customerId: p.customerId || null,
-        personName: p.personName,
-        percentage: parseFloat(p.percentage) || 0,
-        investmentAmount: parseFloat(p.investmentAmount) || 0,
-        investmentCurrency: p.investmentCurrency || 'AFN',   // <-- add this line
-        phoneNumber: p.phoneNumber || '',
-        calculationMethod: sharingUsesInvestment ? 'Investment' : 'Percentage',
-      }));
-    }
+    vehicleData.sharingPersons = formSharingPersons.map((p) => ({
+      customerId: p.customerId || null,
+      personName: p.personName,
+      percentage: parseFloat(p.percentage) || 0,
+      investmentAmount: parseFloat(p.investmentAmount) || 0,
+      investmentCurrency: p.investmentCurrency || 'AFN',
+      phoneNumber: p.phoneNumber || '',
+      calculationMethod: sharingUsesInvestment ? 'Investment' : 'Percentage',
+    }));
 
     setImageUploading(true);
     try {
@@ -893,7 +891,12 @@ export default function VehiclesPage() {
                     <Autocomplete
                       freeSolo
                       options={customers}
-                      getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt.fullName || '')}
+                      getOptionLabel={(opt) => {
+                        if (typeof opt === 'string') return opt;
+                        const name = opt.fullName || '';
+                        const phone = opt.phoneNumber ? ` (${opt.phoneNumber})` : '';
+                        return name + phone;
+                      }}
                       filterOptions={(options, state) => {
                         const inputValue = state.inputValue.toLowerCase().trim();
                         if (!inputValue) return options;
@@ -903,7 +906,19 @@ export default function VehiclesPage() {
                           opt.nationalIdNumber?.toLowerCase().includes(inputValue)
                         );
                       }}
-                      value={person.customerId ? (customers.find((customer) => customer.id === person.customerId) || person.personName || '') : (person.personName || '')}
+                      value={
+                        (() => {
+                          if (!person.customerId && !person.personName) return '';
+                          const customer = person.customerId
+                            ? customers.find(c => c.id === person.customerId)
+                            : null;
+                          if (customer) {
+                            const phone = customer.phoneNumber ? ` (${customer.phoneNumber})` : '';
+                            return customer.fullName + phone;
+                          }
+                          return person.personName || '';
+                        })()
+                      }
                       onChange={(_, val) => {
                         if (typeof val === 'string') {
                           setFormSharingPersons((prev) => prev.map((entry, entryIndex) => entryIndex === index ? {
