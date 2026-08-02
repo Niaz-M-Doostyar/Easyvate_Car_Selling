@@ -8,7 +8,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, Chip, IconButton, Tooltip,
   Stepper, Step, StepLabel, Tabs, Tab, useTheme, alpha, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  ImageList, ImageListItem, ImageListItemBar, IconButton as MuiIconButton
+  ImageList, ImageListItem, ImageListItemBar, IconButton as MuiIconButton, Divider
 } from '@mui/material';
 import {
   Add, Search, PictureAsPdf, DirectionsCar, Tag, ColorLens,
@@ -77,7 +77,9 @@ export default function VehiclesPage() {
   });
 
   const [refPerson, setRefPerson] = useState({
-    fullName: '', tazkiraNumber: '', phoneNumber: '', address: '', hasReference: false,
+    fullName: '', tazkiraNumber: '', phoneNumber: '', address: '',
+    secondFullName: '', secondTazkiraNumber: '', secondPhoneNumber: '', secondAddress: '',
+    hasReference: false,
   });
 
   const [formSharingPersons, setFormSharingPersons] = useState([]);
@@ -336,6 +338,10 @@ export default function VehiclesPage() {
         tazkiraNumber: refPerson.tazkiraNumber,
         phoneNumber: refPerson.phoneNumber,
         address: refPerson.address,
+        secondFullName: refPerson.secondFullName,
+        secondTazkiraNumber: refPerson.secondTazkiraNumber,
+        secondPhoneNumber: refPerson.secondPhoneNumber,
+        secondAddress: refPerson.secondAddress,
       };
     }
 
@@ -391,7 +397,9 @@ export default function VehiclesPage() {
       sellingPrice: '', sellingPriceCurrency: 'AFN',
       status: 'Available',
     });
-    setRefPerson({ fullName: '', tazkiraNumber: '', phoneNumber: '', address: '', hasReference: false });
+    setRefPerson({ fullName: '', tazkiraNumber: '', phoneNumber: '', address: '',
+      secondFullName: '', secondTazkiraNumber: '', secondPhoneNumber: '', secondAddress: '',
+      hasReference: false });
     setFormSharingPersons([]);
     setErrors({});
     setEditingId(null);
@@ -443,6 +451,10 @@ export default function VehiclesPage() {
         tazkiraNumber: vehicle.referencePerson.tazkiraNumber || '',
         phoneNumber: vehicle.referencePerson.phoneNumber || '',
         address: vehicle.referencePerson.address || '',
+        secondFullName: vehicle.referencePerson.secondFullName || '',
+        secondTazkiraNumber: vehicle.referencePerson.secondTazkiraNumber || '',
+        secondPhoneNumber: vehicle.referencePerson.secondPhoneNumber || '',
+        secondAddress: vehicle.referencePerson.secondAddress || '',
         hasReference: true,
       });
     }
@@ -836,6 +848,10 @@ export default function VehiclesPage() {
             </Box>
             {refPerson.hasReference && (
               <Grid container spacing={2}>
+                {/* First reference person */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight={600}>{t('referencePerson') || 'First Reference Person'}</Typography>
+                </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField fullWidth label={t('labelFullName')} value={refPerson.fullName}
                     onChange={(e) => setRefPerson({ ...refPerson, fullName: e.target.value })}
@@ -855,6 +871,31 @@ export default function VehiclesPage() {
                 <Grid item xs={12} sm={6}>
                   <TextField fullWidth label={t('labelAddress')} value={refPerson.address}
                     onChange={(e) => setRefPerson({ ...refPerson, address: e.target.value })}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><LocationOn fontSize="small" color="action" /></InputAdornment> }} />
+                </Grid>
+
+                {/* Second reference person */}
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }}>{t('secondReferencePerson') || 'Second Reference Person'}</Divider>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth label={t('labelFullName')} value={refPerson.secondFullName}
+                    onChange={(e) => setRefPerson({ ...refPerson, secondFullName: e.target.value })}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" color="action" /></InputAdornment> }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth label={t('labelTazkiraNumber')} value={refPerson.secondTazkiraNumber}
+                    onChange={(e) => setRefPerson({ ...refPerson, secondTazkiraNumber: e.target.value })}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><Badge fontSize="small" color="action" /></InputAdornment> }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth label={t('labelPhoneNumber')} value={refPerson.secondPhoneNumber}
+                    onChange={(e) => setRefPerson({ ...refPerson, secondPhoneNumber: e.target.value })}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><Phone fontSize="small" color="action" /></InputAdornment> }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth label={t('labelAddress')} value={refPerson.secondAddress}
+                    onChange={(e) => setRefPerson({ ...refPerson, secondAddress: e.target.value })}
                     InputProps={{ startAdornment: <InputAdornment position="start"><LocationOn fontSize="small" color="action" /></InputAdornment> }} />
                 </Grid>
               </Grid>
@@ -1392,11 +1433,29 @@ export default function VehiclesPage() {
           {detailTab === 2 && (
             detailVehicle?.referencePerson ? (
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight={600}>{t('firstReferencePerson') || 'First Reference Person'}</Typography>
+                </Grid>
                 {[
                   [t('labelFullName'), detailVehicle.referencePerson.fullName],
                   [t('labelTazkiraNumber'), detailVehicle.referencePerson.tazkiraNumber],
                   [t('labelPhoneNumber'), detailVehicle.referencePerson.phoneNumber],
                   [t('labelAddress'), detailVehicle.referencePerson.address],
+                ].map(([label, value]) => (
+                  <Grid item xs={12} sm={6} key={label}>
+                    <Typography variant="caption" color="text.secondary">{label}</Typography>
+                    <Typography variant="body2" fontWeight={600}>{value || '-'}</Typography>
+                  </Grid>
+                ))}
+                <Grid item xs={12}>
+                  <Divider />
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 1 }}>{t('secondReferencePerson') || 'Second Reference Person'}</Typography>
+                </Grid>
+                {[
+                  [t('labelFullName'), detailVehicle.referencePerson.secondFullName],
+                  [t('labelTazkiraNumber'), detailVehicle.referencePerson.secondTazkiraNumber],
+                  [t('labelPhoneNumber'), detailVehicle.referencePerson.secondPhoneNumber],
+                  [t('labelAddress'), detailVehicle.referencePerson.secondAddress],
                 ].map(([label, value]) => (
                   <Grid item xs={12} sm={6} key={label}>
                     <Typography variant="caption" color="text.secondary">{label}</Typography>

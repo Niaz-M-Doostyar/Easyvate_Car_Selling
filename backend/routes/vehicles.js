@@ -433,17 +433,29 @@ router.post('/', async (req, res) => {
       { stage: 'Repair', amount: repairCost, currency: baseCurr, amountInPKR: await convertToAFN(repairCost, baseCurr) },
     ].filter(item => item.amount && Number(item.amount) > 0);
 
-    for (const cost of costsToCreate) {
-      const created = await VehicleCost.create({ vehicleId: vehicle.id, ...cost, date: new Date(), addedBy: req.user.id });
-      await ShowroomLedger.create({
-        type: 'Vehicle Purchase', amount: created.amount, currency: created.currency, amountInPKR: created.amountInPKR,
-        description: `${created.stage} for ${vehicle.vehicleId}`, date: created.date, referenceId: vehicle.id, referenceType: 'Vehicle', addedBy: req.user.id
-      });
+    if (!referencePerson || !referencePerson.fullName) {
+      for (const cost of costsToCreate) {
+        const created = await VehicleCost.create({ vehicleId: vehicle.id, ...cost, date: new Date(), addedBy: req.user.id });
+        await ShowroomLedger.create({
+          type: 'Vehicle Purchase', amount: created.amount, currency: created.currency, amountInPKR: created.amountInPKR,
+          description: `${created.stage} for ${vehicle.vehicleId}`, date: created.date, referenceId: vehicle.id, referenceType: 'Vehicle', addedBy: req.user.id
+        });
+      }
     }
 
-    // Reference person and sharing persons (unchanged)
+    // Reference person
     if (referencePerson && referencePerson.fullName) {
-      await ReferencePerson.create({ vehicleId: vehicle.id, ...referencePerson });
+      await ReferencePerson.create({
+        vehicleId: vehicle.id,
+        fullName: referencePerson.fullName,
+        tazkiraNumber: referencePerson.tazkiraNumber,
+        phoneNumber: referencePerson.phoneNumber,
+        address: referencePerson.address,
+        secondFullName: referencePerson.secondFullName,
+        secondTazkiraNumber: referencePerson.secondTazkiraNumber,
+        secondPhoneNumber: referencePerson.secondPhoneNumber,
+        secondAddress: referencePerson.secondAddress,
+      });
     }
     if (sharingPersons && sharingPersons.length) {
       await persistVehicleSharingPersons(vehicle, sharingPersons);
@@ -485,9 +497,7 @@ router.put('/:id', async (req, res) => {
     const costFields = ['basePurchasePrice', 'transportCostToDubai', 'importCostToAfghanistan', 'repairCost', 'baseCurrency', 'sellingPrice', 'sellingPriceCurrency'];
 
     if (costFields.some(field => updates[field] !== undefined)) {
-      // ─────────────────────────────────────────────────────────────
-      // 1) Delete old core cost ledger entries (reverse previous deductions)
-      // ─────────────────────────────────────────────────────────────
+      // 1) Always delete old cost ledger entries
       await ShowroomLedger.destroy({
         where: {
           referenceId: vehicle.id,
@@ -512,9 +522,7 @@ router.put('/:id', async (req, res) => {
         }
       });
 
-      // ─────────────────────────────────────────────────────────────
-      // 2) Calculate new totals using updated values
-      // ─────────────────────────────────────────────────────────────
+      // 2) Calculate new totals
       const baseCurr = updates.baseCurrency ?? vehicle.baseCurrency;
       const basePrice = updates.basePurchasePrice ?? vehicle.basePurchasePrice;
       const transport = updates.transportCostToDubai ?? vehicle.transportCostToDubai;
@@ -524,15 +532,16 @@ router.put('/:id', async (req, res) => {
       updates.totalCostOriginal = totalOriginal;
       updates.totalCostPKR = await calculateTotalCostPKR(basePrice, transport, importCost, repair, baseCurr);
 
-      // ─────────────────────────────────────────────────────────────
-      // 3) Recreate core cost records and ledger entries (new deductions)
-      // ─────────────────────────────────────────────────────────────
+      // 3) Recreate core cost records
       const costsToCreate = [
         { stage: 'Base Purchase', amount: basePrice, currency: baseCurr, amountInPKR: await convertToAFN(basePrice, baseCurr) },
         { stage: 'Transport to Dubai', amount: transport, currency: baseCurr, amountInPKR: await convertToAFN(transport, baseCurr) },
         { stage: 'Import to Afghanistan', amount: importCost, currency: baseCurr, amountInPKR: await convertToAFN(importCost, baseCurr) },
         { stage: 'Repair', amount: repair, currency: baseCurr, amountInPKR: await convertToAFN(repair, baseCurr) },
       ].filter(item => item.amount && Number(item.amount) > 0);
+
+      // Only create showroom‑ledger entries if NO reference person exists
+      const hasRefPerson = !!(referencePerson?.fullName || await ReferencePerson.findOne({ where: { vehicleId: vehicle.id } }));
 
       for (const cost of costsToCreate) {
         const created = await VehicleCost.create({
@@ -541,17 +550,20 @@ router.put('/:id', async (req, res) => {
           date: new Date(),
           addedBy: req.user.id
         });
-        await ShowroomLedger.create({
-          type: 'Vehicle Purchase',
-          amount: created.amount,
-          currency: created.currency,
-          amountInPKR: created.amountInPKR,
-          description: `${created.stage} for ${vehicle.vehicleId}`,
-          date: created.date,
-          referenceId: vehicle.id,
-          referenceType: 'Vehicle',
-          addedBy: req.user.id
-        });
+
+        if (!hasRefPerson) {
+          await ShowroomLedger.create({
+            type: 'Vehicle Purchase',
+            amount: created.amount,
+            currency: created.currency,
+            amountInPKR: created.amountInPKR,
+            description: `${created.stage} for ${vehicle.vehicleId}`,
+            date: created.date,
+            referenceId: vehicle.id,
+            referenceType: 'Vehicle',
+            addedBy: req.user.id
+          });
+        }
       }
     }
 
@@ -578,7 +590,19 @@ router.put('/:id', async (req, res) => {
     // ─────────────────────────────────────────────────────────────
     if (referencePerson !== undefined) {
       await ReferencePerson.destroy({ where: { vehicleId: vehicle.id } });
-      if (referencePerson && referencePerson.fullName) await ReferencePerson.create({ vehicleId: vehicle.id, ...referencePerson });
+      if (referencePerson && referencePerson.fullName) {
+        await ReferencePerson.create({
+          vehicleId: vehicle.id,
+          fullName: referencePerson.fullName,
+          tazkiraNumber: referencePerson.tazkiraNumber,
+          phoneNumber: referencePerson.phoneNumber,
+          address: referencePerson.address,
+          secondFullName: referencePerson.secondFullName,
+          secondTazkiraNumber: referencePerson.secondTazkiraNumber,
+          secondPhoneNumber: referencePerson.secondPhoneNumber,
+          secondAddress: referencePerson.secondAddress,
+        });
+      }
     }
 
     // ─────────────────────────────────────────────────────────────

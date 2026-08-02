@@ -27,7 +27,11 @@ const ReferencePerson = sequelize.define('ReferencePerson', {
   },
   address: {
     type: DataTypes.TEXT
-  }
+  },
+  secondFullName: { type: DataTypes.STRING(255) },
+  secondTazkiraNumber: { type: DataTypes.STRING(50) },
+  secondPhoneNumber: { type: DataTypes.STRING(20) },
+  secondAddress: { type: DataTypes.TEXT },
 }, {
   timestamps: true,
   tableName: 'reference_persons'
