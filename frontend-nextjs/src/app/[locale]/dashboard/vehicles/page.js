@@ -220,6 +220,7 @@ export default function VehiclesPage() {
 
   const validateSharingBalances = () => {
   const newErrors = {};
+  if (editingId) return newErrors;
   if (!totalCostReady || totalCost <= 0) return {};
 
   formSharingPersons.forEach((person, idx) => {

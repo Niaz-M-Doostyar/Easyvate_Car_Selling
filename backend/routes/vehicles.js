@@ -689,6 +689,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete vehicle
+// Delete vehicle
 router.delete('/:id', async (req, res) => {
   try {
     const vehicle = await Vehicle.findByPk(req.params.id);
@@ -701,6 +702,56 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Vehicle is locked and cannot be deleted' });
     }
     
+    // ─── Refund partner investments ───
+    const sharingPersons = await SharingPerson.findAll({ where: { vehicleId: vehicle.id } });
+    for (const partner of sharingPersons) {
+      if (partner.customerId && Number(partner.investmentAmount) > 0) {
+        const customer = await Customer.findByPk(partner.customerId);
+        if (customer) {
+          const currency = partner.investmentCurrency || vehicle.baseCurrency || 'AFN';
+          const balanceField = {
+            USD: 'balanceUSD', PKR: 'balancePKR', AED: 'balanceAED',
+          }[currency] || 'balanceAFN';
+
+          const investAmount = Number(partner.investmentAmount);
+          const currentBalance = parseFloat(customer[balanceField]) || 0;
+          const newBalance = currentBalance + investAmount;
+          await customer.update({ [balanceField]: newBalance });
+
+          // Record refund in customer ledger
+          const amountAFN = await toAFN(investAmount, currency);
+          const lastEntry = await CustomerLedger.findOne({
+            where: { customerId: customer.id },
+            order: [['id', 'DESC']],
+          });
+          const prevBal = lastEntry ? Number(lastEntry.balance || 0) : 0;
+          const newLegacyBal = prevBal + amountAFN;
+
+          await CustomerLedger.create({
+            customerId: customer.id,
+            type: 'Investment Return',
+            amount: investAmount,
+            currency,
+            amountInPKR: amountAFN,
+            purpose: `Refund of investment – vehicle ${vehicle.vehicleId} deleted`,
+            date: new Date(),
+            balance: newLegacyBal,
+            addedBy: req.user?.id,
+          });
+          await Customer.update({ balance: newLegacyBal }, { where: { id: customer.id } });
+        }
+      }
+    }
+
+    // ─── Refund showroom ledger (delete the purchase entries) ───
+    await ShowroomLedger.destroy({
+      where: {
+        referenceId: vehicle.id,
+        referenceType: 'Vehicle',
+        type: 'Vehicle Purchase',
+      }
+    });
+
     // Delete associated records
     await VehicleCost.destroy({ where: { vehicleId: vehicle.id } });
     await ReferencePerson.destroy({ where: { vehicleId: vehicle.id } });

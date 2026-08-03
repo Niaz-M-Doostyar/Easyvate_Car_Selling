@@ -603,25 +603,6 @@ router.post('/', async (req, res) => {
       }
     } // end if (!hasReferencePerson)
 
-    // ─── If the vehicle has a reference person, recover the vehicle's total cost ───
-    if (hasReferencePerson) {
-      const vehicleCostAFN = vehicle.totalCostPKR;          // already in AFN
-      const vehicleCostOriginal = vehicle.totalCostOriginal; // original currency amount
-      if (vehicleCostAFN > 0) {
-        await ShowroomLedger.create({
-          type: 'Vehicle Sale',
-          amount: vehicleCostOriginal,
-          currency: vehicle.baseCurrency,
-          amountInPKR: vehicleCostAFN,
-          description: `Cost recovery for vehicle ${vehicle.vehicleId} (reference person sale)`,
-          date: saleDate,
-          referenceId: sale.id,
-          referenceType: 'Sale',
-          addedBy: req.user.id
-        });
-      }
-    }
-
     // ─── Customer ledger entries (always) ───
     const lastCustEntry = await CustomerLedger.findOne({
       where: { customerId },
