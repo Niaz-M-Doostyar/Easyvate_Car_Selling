@@ -78,7 +78,7 @@ const ROLE_ACCESS = {
   'Super Admin': null,
   'Owner': null,
   'Manager': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Employees', 'Attendance', 'Payroll', 'Showroom Ledger', 'Currency Exchange', 'Reports', 'Website About', 'Website Team', 'Website Slider', 'Website Review', 'Website Video'],
-  'Accountant': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Payroll', 'Attendance', 'Reports'],
+  'Accountant': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Payroll', 'Attendance', 'Reports', 'Sales', 'Vehicles', 'Customers'],
   'Financial': ['Dashboard', 'Showroom Ledger', 'Currency Exchange', 'Payroll'],
   'Inventory & Sales': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Currency Exchange', 'Reports'],
   'Sales': ['Dashboard', 'Vehicles', 'Customers', 'Sales', 'Currency Exchange'],
